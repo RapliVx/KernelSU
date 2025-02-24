@@ -761,8 +761,16 @@ fn _list_modules(path: &str) -> Vec<HashMap<String, String>> {
         module_prop_map.insert("dir_id".to_owned(), dir_id.clone());
 
         if !module_prop_map.contains_key("id") || module_prop_map["id"].is_empty() {
-            info!("Use dir name as module id: {dir_id}");
-            module_prop_map.insert("id".to_owned(), dir_id.clone());
+            match entry.file_name().to_str() {
+                Some(id) => {
+                    info!("Use dir name as module id: {}", id);
+                    module_prop_map.insert("id".to_owned(), id.to_owned());
+                }
+                _ => {
+                    info!("Failed to get module id: {:?}", module_prop);
+                    continue;
+                }
+            }
         }
 
         // Add enabled, update, remove flags
