@@ -44,7 +44,7 @@ endif
 
 obj-$(CONFIG_KSU) += kernelsu.o
 
-KSU_MANUAL_VERSION := 12530
+KSU_MANUAL_VERSION := 12535
 
 ifeq ($(strip $(KSU_MANUAL_VERSION)),)
     ifeq ($(shell test -e $(srctree)/$(src)/../.git; echo $$?),0)
@@ -57,7 +57,7 @@ ifeq ($(strip $(KSU_MANUAL_VERSION)),)
     else
         # .git is a text file while the module is imported by 'git submodule add'.
         $(warning "KSU_GIT_VERSION not defined! Using default version.")
-        KSU_VERSION := 12530
+        KSU_VERSION := 12535
         $(info -- KernelSU version (Default): $(KSU_VERSION))
         ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
     endif
@@ -107,11 +107,11 @@ ccflags-y += -DSAMSUNG_UH_DRIVER_EXIST
 endif
 
 ifndef KSU_EXPECTED_SIZE
-KSU_EXPECTED_SIZE := 0x35c
+KSU_EXPECTED_SIZE := 0xa7a
 endif
 
 ifndef KSU_EXPECTED_HASH
-KSU_EXPECTED_HASH := 947ae944f3de4ed4c21a7e4f7953ecf351bfa2b36239da37a34111ad29993eef
+KSU_EXPECTED_HASH := fc96800c737e6d5291e1c588c65f25fb9d5077d70d3517edeaf4d27136f67e70
 endif
 
 ifdef KSU_MANAGER_PACKAGE
