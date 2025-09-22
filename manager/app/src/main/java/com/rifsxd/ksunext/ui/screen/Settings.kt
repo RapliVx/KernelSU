@@ -270,7 +270,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 
             var checkUpdate by rememberSaveable {
                 mutableStateOf(
-                    prefs.getBoolean("check_update", false)
+                    prefs.getBoolean("check_update", true)
                 )
             }
             SwitchItem(
