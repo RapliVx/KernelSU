@@ -237,18 +237,37 @@ fun UpdateCard() {
         exit = shrinkVertically() + fadeOut()
     ) {
         val updateDialog = rememberConfirmDialog(onConfirm = { uriHandler.openUri(newVersionUrl) })
-        WarningCard(
-            message = stringResource(id = R.string.new_version_available).format(newVersionCode),
-            MaterialTheme.colorScheme.outlineVariant
+        ElevatedCard(
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
         ) {
-            if (changelog.isEmpty()) {
-                uriHandler.openUri(newVersionUrl)
-            } else {
-                updateDialog.showConfirm(
-                    title = title,
-                    content = changelog,
-                    markdown = true,
-                    confirm = updateText
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        if (changelog.isEmpty()) {
+                            uriHandler.openUri(newVersionUrl)
+                        } else {
+                            updateDialog.showConfirm(
+                                title = title,
+                                content = changelog,
+                                markdown = true,
+                                confirm = updateText
+                            )
+                        }
+                    }
+                    .padding(24.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Update,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 20.dp)
+                )
+                Text(
+                    text = stringResource(id = R.string.new_version_available).format(newVersionCode),
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
