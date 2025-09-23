@@ -285,17 +285,17 @@ fun RebootDropdownItem(@StringRes id: Int, reason: String = "") {
     })
 }
 
-@Composable
-fun getSeasonalIcon(): ImageVector {
-    val month = Calendar.getInstance().get(Calendar.MONTH) // 0-11 for January-December
-    return when (month) {
-        Calendar.DECEMBER, Calendar.JANUARY, Calendar.FEBRUARY -> Icons.Filled.AcUnit // Winter
-        Calendar.MARCH, Calendar.APRIL, Calendar.MAY -> Icons.Filled.Spa // Spring
-        Calendar.JUNE, Calendar.JULY, Calendar.AUGUST -> Icons.Filled.WbSunny // Summer
-        Calendar.SEPTEMBER, Calendar.OCTOBER, Calendar.NOVEMBER -> Icons.Filled.Forest // Fall
-        else -> Icons.Filled.Whatshot // Fallback icon
-    }
-}
+// @Composable
+// fun getSeasonalIcon(): ImageVector {
+//     val month = Calendar.getInstance().get(Calendar.MONTH) // 0-11 for January-December
+//     return when (month) {
+//         Calendar.DECEMBER, Calendar.JANUARY, Calendar.FEBRUARY -> Icons.Filled.AcUnit // Winter
+//         Calendar.MARCH, Calendar.APRIL, Calendar.MAY -> Icons.Filled.Spa // Spring
+//         Calendar.JUNE, Calendar.JULY, Calendar.AUGUST -> Icons.Filled.WbSunny // Summer
+//         Calendar.SEPTEMBER, Calendar.OCTOBER, Calendar.NOVEMBER -> Icons.Filled.Forest // Fall
+//         else -> Icons.Filled.Whatshot // Fallback icon
+//     }
+// }
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -331,7 +331,7 @@ private fun TopBar(
                 }
             ) {
                 Icon(
-                    imageVector = getSeasonalIcon(),
+                    painter = painterResource(R.drawable.ic_ksu_next),
                     contentDescription = null,
                     modifier = Modifier
                         .padding(end = 8.dp)
@@ -646,7 +646,7 @@ private fun InfoCard(autoExpand: Boolean = false) {
                     } else {
                         "${managerVersion.first} (${managerVersion.second})"
                     },
-                    icon = painterResource(R.drawable.ic_ksu_next),
+                    icon = Icons.Filled.AutoAwesomeMotion,
                 )
 
                 if (ksuVersion != null &&
