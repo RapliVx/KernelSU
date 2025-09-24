@@ -155,27 +155,45 @@ class MainActivity : ComponentActivity() {
                             navController = navController,
                             defaultTransitions = object : NavHostAnimatedDestinationStyle() {
                                 override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-                                    if (targetState.destination.route !in bottomBarRoutes) {
+                                    if (targetState.destination.route in bottomBarRoutes && initialState.destination.route in bottomBarRoutes) {
+                                        // Slide left/right between bottom bar destinations
+                                        val fromIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == initialState.destination.route }
+                                        val toIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == targetState.destination.route }
+                                        if (toIndex > fromIndex) {
+                                            slideInHorizontally(initialOffsetX = { it })
+                                        } else {
+                                            slideInHorizontally(initialOffsetX = { -it })
+                                        }
+                                    } else if (targetState.destination.route !in bottomBarRoutes) {
                                         // Slide in and fade in for detail screens
                                         slideInHorizontally(
                                             initialOffsetX = { it },
                                             animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
                                         ) + fadeIn(animationSpec = tween(400))
                                     } else {
-                                        // Tab switch: scale and fade
+                                        // Default fade in
                                         fadeIn(animationSpec = tween(340))
                                     }
                                 }
 
                                 override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-                                    if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
+                                    if (initialState.destination.route in bottomBarRoutes && targetState.destination.route in bottomBarRoutes) {
+                                        // Slide left/right between bottom bar destinations
+                                        val fromIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == initialState.destination.route }
+                                        val toIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == targetState.destination.route }
+                                        if (toIndex > fromIndex) {
+                                            slideOutHorizontally(targetOffsetX = { -it })
+                                        } else {
+                                            slideOutHorizontally(targetOffsetX = { it })
+                                        }
+                                    } else if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
                                         // Slide out and fade out for main->detail
                                         slideOutHorizontally(
                                             targetOffsetX = { -it / 2 },
                                             animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
                                         ) + fadeOut(animationSpec = tween(400))
                                     } else {
-                                        // Tab switch: scale and fade
+                                        // Default fade out
                                         fadeOut(animationSpec = tween(340))
                                     }
                                 }
