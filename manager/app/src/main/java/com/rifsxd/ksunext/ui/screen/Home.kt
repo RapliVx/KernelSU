@@ -307,9 +307,13 @@ private fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     var isSpinning by remember { mutableStateOf(false) }
+    var rotationTarget by remember { mutableStateOf(0f) }
     val rotation by animateFloatAsState(
-        targetValue = if (isSpinning) 360f else 0f,
-        animationSpec = tween(durationMillis = 800),
+        targetValue = rotationTarget,
+        animationSpec = tween(
+            durationMillis = 1400,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing
+        ),
         finishedListener = {
             isSpinning = false
         }
@@ -317,6 +321,7 @@ private fun TopBar(
 
     LaunchedEffect(Unit) {
         isSpinning = true
+        rotationTarget += 360f * 6
     }
 
     TopAppBar(
@@ -327,7 +332,10 @@ private fun TopBar(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
                 ) {
-                    if (!isSpinning) isSpinning = true
+                    if (!isSpinning) {
+                        isSpinning = true
+                        rotationTarget += 360f * 6
+                    }
                 }
             ) {
                 Icon(
