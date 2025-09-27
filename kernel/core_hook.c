@@ -360,6 +360,15 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 		return 0;
 	}
 
+    if (arg2 == CMD_GET_VERSION_TAG) {
+        const char *tag = KERNEL_SU_VERSION_TAG;
+        size_t tag_len = strlen(tag) + 1;
+        if (copy_to_user((void __user *)arg3, tag, tag_len)) {
+            pr_err("prctl reply error, cmd: %lu\n", arg2);
+        }
+        return 0;
+    }
+
 	if (arg2 == CMD_GET_MANAGER_UID) {
 		uid_t manager_uid = ksu_get_manager_uid();
 		if (copy_to_user(arg3, &manager_uid, sizeof(manager_uid))) {
