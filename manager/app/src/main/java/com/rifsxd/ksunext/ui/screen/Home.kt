@@ -37,7 +37,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -81,59 +80,20 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
 
-    val scrollState = rememberScrollState()
-    var showFab by remember { mutableStateOf(true) }
-
-    // FAB hide/show logic
-    LaunchedEffect(scrollState) {
-        var lastOffset = scrollState.value
-        snapshotFlow { scrollState.value }
-            .distinctUntilChanged()
-            .collect { currOffset ->
-                val isScrollingDown = currOffset > lastOffset + 4
-                val isScrollingUp = currOffset < lastOffset - 4
-
-                when {
-                    isScrollingDown && showFab -> showFab = false
-                    isScrollingUp && !showFab -> showFab = true
-                }
-
-                lastOffset = currOffset
-            }
-    }
 
     Scaffold(
         topBar = {
             TopBar(
                 kernelVersion,
                 ksuVersion,
+                onSettingsClick = {
+                    navigator.navigate(SettingScreenDestination)
+                },
                 onInstallClick = {
                     navigator.navigate(InstallScreenDestination)
                 },
                 scrollBehavior = scrollBehavior
             )
-        },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = showFab,
-                enter = scaleIn(
-                    animationSpec = tween(200),
-                    initialScale = 0.8f
-                ) + fadeIn(animationSpec = tween(400)),
-                exit = scaleOut(
-                    animationSpec = tween(200),
-                    targetScale = 0.8f
-                ) + fadeOut(animationSpec = tween(400))
-            ) {
-                FloatingActionButton(
-                    onClick = { navigator.navigate(SettingScreenDestination) }
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = stringResource(R.string.settings)
-                    )
-                }
-            }
         },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { innerPadding ->
@@ -141,7 +101,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             modifier = Modifier
                 .padding(innerPadding)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(scrollState)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -438,6 +398,7 @@ private fun TopBar(
     kernelVersion: KernelVersion,
     ksuVersion: Int?,
     onInstallClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     var isSpinning by remember { mutableStateOf(false) }
@@ -527,6 +488,12 @@ private fun TopBar(
                         RebootDropdownItem(id = R.string.reboot_edl, reason = "edl")
                     }
                 }
+            }
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = stringResource(id = R.string.settings)
+                )
             }
         },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
