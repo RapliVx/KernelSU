@@ -152,7 +152,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
 
             val checkUpdate =
                 LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                    .getBoolean("check_update", false)
+                    .getBoolean("check_update", true)
             if (checkUpdate) {
                 UpdateCard()
             }
@@ -322,6 +322,7 @@ fun UpdateCard() {
     val newVersionCode = newVersion.versionCode
     val newVersionUrl = newVersion.downloadUrl
     val changelog = newVersion.changelog
+    val newVersionTag = newVersion.versionTag
 
     val uriHandler = LocalUriHandler.current
     val title = stringResource(id = R.string.module_changelog)
@@ -362,7 +363,11 @@ fun UpdateCard() {
                     modifier = Modifier.padding(end = 20.dp)
                 )
                 Text(
-                    text = stringResource(id = R.string.new_version_available).format(newVersionCode),
+                    text = if (!newVersionTag.isNullOrEmpty()) {
+                        stringResource(id = R.string.new_version_available, newVersionTag, newVersionCode)
+                    } else {
+                        stringResource(id = R.string.new_version_available, "", newVersionCode)
+                    },
                     style = MaterialTheme.typography.bodyMedium
                 )
             }

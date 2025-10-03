@@ -77,6 +77,7 @@ fun checkNewVersion(): LatestVersionInfo {
                 val body = response.body?.string() ?: return defaultValue
                 val json = org.json.JSONObject(body)
                 val changelog = json.optString("body")
+                val versionTag = json.optString("tag_name", "")
 
                 val assets = json.getJSONArray("assets")
                 val pkgId = ksuApp.applicationContext.packageName
@@ -101,10 +102,10 @@ fun checkNewVersion(): LatestVersionInfo {
                     return LatestVersionInfo(
                         versionCode,
                         downloadUrl,
-                        changelog
+                        changelog,
+                        versionTag
                     )
                 }
-
             }
     }
     return defaultValue
