@@ -7,6 +7,12 @@
 #include "linux/key.h"
 #include <linux/list.h>
 
+#if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
+#define kcompat_barrier() do { barrier(); isb(); } while (0)
+#else
+#define kcompat_barrier() barrier()
+#endif
+
 /**
  * list_count_nodes - count the number of nodes in a list
  * the head of the list
