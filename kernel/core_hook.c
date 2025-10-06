@@ -297,25 +297,25 @@ int ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
 	// this is mostly for that multiuser bs
 	// here we just let them suffer
 	uid_t current_uid_val = current_uid().val;
-	// skip this private space support if uid below 100k
-	if (current_uid_val < 100000)
-		goto skip_check;
-
 	uid_t manager_uid = ksu_get_manager_uid();
 	if (current_uid_val != manager_uid && 
 		current_uid_val % 100000 == manager_uid) {
 			ksu_set_manager_uid(current_uid_val);
+			// make sure all cpus sees this change, next line will check
+			smp_mb();
 	}
 
 skip_check:
 	// yes this causes delay, but this keeps the delay consistent, which is what we want
-	// with a barrier for safety as the compiler might try to do something smart.
-	kcompat_barrier();
+	barrier();
 	if (!is_allow_su())
 		return 0;
 
 	// we move it after uid check here so they cannot
 	// compare 0xdeadbeef call to a non-0xdeadbeef call
+	// with barriers around for safety as the compiler
+	// might try to do something smart.
+	barrier();
 	if (KERNEL_SU_OPTION != option)
 		return 0;
 
