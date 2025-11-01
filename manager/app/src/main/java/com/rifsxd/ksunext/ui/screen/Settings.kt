@@ -67,7 +67,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
     var isGlobalNamespaceEnabled by rememberSaveable { mutableStateOf(false) }
     isGlobalNamespaceEnabled = isGlobalNamespaceEnabled()
 
-    val isManager = Natives.becomeManager(ksuApp.packageName)
+    val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
 
     Scaffold(

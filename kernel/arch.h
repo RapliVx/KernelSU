@@ -20,6 +20,8 @@
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
 #define PRCTL_SYMBOL "__arm64_sys_prctl"
+#define REBOOT_SYMBOL "__arm64_sys_reboot"
+#define SECURITY_TASK_FIX_SETUID_SYMBOL "security_task_fix_setuid"
 #define SYS_READ_SYMBOL "__arm64_sys_read"
 #define SYS_NEWFSTATAT_SYMBOL "__arm64_sys_newfstatat"
 #define SYS_FACCESSAT_SYMBOL "__arm64_sys_faccessat"
@@ -49,6 +51,8 @@
 #define __PT_IP_REG ip
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
 #define PRCTL_SYMBOL "__x64_sys_prctl"
+#define REBOOT_SYMBOL "__x64_sys_reboot"
+#define SECURITY_TASK_FIX_SETUID_SYMBOL "security_task_fix_setuid"
 #define SYS_READ_SYMBOL "__x64_sys_read"
 #define SYS_NEWFSTATAT_SYMBOL "__x64_sys_newfstatat"
 #define SYS_FACCESSAT_SYMBOL "__x64_sys_faccessat"

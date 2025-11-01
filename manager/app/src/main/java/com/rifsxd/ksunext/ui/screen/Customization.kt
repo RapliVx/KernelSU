@@ -51,7 +51,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
 
-    val isManager = Natives.becomeManager(ksuApp.packageName)
+    val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
 
     Scaffold(

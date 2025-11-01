@@ -71,7 +71,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val kernelVersion = getKernelVersion()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
-    val isManager = Natives.becomeManager(ksuApp.packageName)
+    val isManager = Natives.isManager
     val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
     val ksuVersion = if (isManager) Natives.version else null
     val ksuVersionTag = if (isManager) Natives.getVersionTag() else null
@@ -703,7 +703,7 @@ private fun InfoCard(autoExpand: Boolean = false) {
 
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    val isManager = Natives.becomeManager(ksuApp.packageName)
+    val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
 
     var expanded by rememberSaveable { mutableStateOf(false) }
