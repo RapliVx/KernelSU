@@ -317,7 +317,7 @@ static ssize_t read_iter_proxy(struct kiocb *iocb, struct iov_iter *to)
 	return ret;
 }
 
-int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
+static int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
 			size_t *count_ptr, loff_t **pos)
 {
 #ifndef CONFIG_KSU_KPROBES_HOOK
@@ -413,7 +413,7 @@ int ksu_handle_vfs_read(struct file **file_ptr, char __user **buf_ptr,
 	return 0;
 }
 
-int ksu_handle_sys_read(unsigned int fd, char __user **buf_ptr,
+static int ksu_handle_sys_read(unsigned int fd, char __user **buf_ptr,
 			size_t *count_ptr)
 {
 	struct file *file = fget(fd);
