@@ -376,8 +376,8 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
 	{ .cmd = KSU_IOCTL_GET_MANAGER_UID, .handler = do_get_manager_uid, .perm_check = perm_check_basic },
 	{ .cmd = KSU_IOCTL_GET_APP_PROFILE, .handler = do_get_app_profile, .perm_check = perm_check_manager },
 	{ .cmd = KSU_IOCTL_SET_APP_PROFILE, .handler = do_set_app_profile, .perm_check = perm_check_manager },
-	{ .cmd = KSU_IOCTL_GET_FEATURE, .handler = do_get_feature, .perm_check = perm_check_manager },
-	{ .cmd = KSU_IOCTL_SET_FEATURE, .handler = do_set_feature, .perm_check = perm_check_manager },
+	{ .cmd = KSU_IOCTL_GET_FEATURE, .handler = do_get_feature, .perm_check = perm_check_basic },
+	{ .cmd = KSU_IOCTL_SET_FEATURE, .handler = do_set_feature, .perm_check = perm_check_basic },
 	{ .cmd = KSU_IOCTL_GET_HOOK_MODE, .handler = do_get_hook_mode, .perm_check = perm_check_basic },
 	{ .cmd = KSU_IOCTL_GET_VERSION_TAG, .handler = do_get_version_tag, .perm_check = perm_check_basic },
 	{ .cmd = 0, .handler = NULL, .perm_check = NULL } // Sentinel
