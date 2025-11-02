@@ -233,4 +233,6 @@
     <string name="module_sort_webui_first">Sort (WebUI first)</string>
     <string name="settings_global_namespace_mode">Global namespace mode</string>
     <string name="settings_global_namespace_mode_summary">All root sessions use the global mount namespace</string>
+    <string name="settings_disable_kernel_umount">Disable kernel umount</string>
+    <string name="settings_disable_kernel_umount_summary">Temporarily disable kernel-level umount behavior controlled by KernelSU.</string>
 </resources>

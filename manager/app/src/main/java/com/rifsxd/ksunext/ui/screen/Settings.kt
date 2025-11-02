@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.rounded.FolderDelete
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -160,6 +161,21 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                         if (Natives.setSuEnabled(shouldEnable)) {
                             isSuDisabled = !shouldEnable
                         }
+                    }
+                }
+
+                var isKernelUmountDisabled by rememberSaveable {
+                    mutableStateOf(!Natives.isKernelUmountEnabled())
+                }
+                SwitchItem(
+                    icon = Icons.Rounded.FolderDelete,
+                    title = stringResource(id = R.string.settings_disable_kernel_umount),
+                    summary = stringResource(id = R.string.settings_disable_kernel_umount_summary),
+                    checked = isKernelUmountDisabled
+                ) { checked ->
+                    val shouldEnable = !checked
+                    if (Natives.setKernelUmountEnabled(shouldEnable)) {
+                        isKernelUmountDisabled = !shouldEnable
                     }
                 }
                 
