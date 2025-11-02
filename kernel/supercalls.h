@@ -103,14 +103,6 @@ struct ksu_get_version_tag_cmd {
 typedef int (*ksu_ioctl_handler_t)(void __user *arg);
 typedef bool (*ksu_perm_check_t)(void);
 
-// Permission check functions
-bool only_manager(void);
-bool only_root(void);
-bool perm_check_daemon(void);
-bool perm_check_daemon_or_manager(void);
-bool manager_or_root(void);
-bool always_allow(void);
-
 // IOCTL command mapping
 struct ksu_ioctl_cmd_map {
 	unsigned int cmd;
