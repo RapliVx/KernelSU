@@ -17,6 +17,7 @@
 #include "objsec.h"
 #include "allowlist.h"
 #include "arch.h"
+#include "feature.h"
 #include "klog.h" // IWYU pragma: keep
 #include "ksud.h"
 #include "kernel_compat.h"
@@ -29,6 +30,44 @@ static bool ksu_sucompat_non_kp __read_mostly = true;
 #endif
 
 extern void escape_to_root();
+void ksu_sucompat_enable();
+void ksu_sucompat_disable();
+
+static bool ksu_su_compat_enabled = true;
+
+static int su_compat_feature_get(u32 *value)
+{
+	*value = ksu_su_compat_enabled ? 1 : 0;
+	return 0;
+}
+
+static int su_compat_feature_set(u32 value)
+{
+	bool enable = value != 0;
+
+	if (enable == ksu_su_compat_enabled) {
+		pr_info("su_compat: no need to change\n");
+		return 0;
+	}
+
+	if (enable) {
+		ksu_sucompat_enable();
+	} else {
+		ksu_sucompat_disable();
+	}
+
+	ksu_su_compat_enabled = enable;
+	pr_info("su_compat: set to %d\n", enable);
+
+	return 0;
+}
+
+static const struct ksu_feature_handler su_compat_handler = {
+	.feature_id = KSU_FEATURE_SU_COMPAT,
+	.name = "su_compat",
+	.get_handler = su_compat_feature_get,
+	.set_handler = su_compat_feature_set,
+};
 
 static void __user *userspace_stack_buffer(const void *d, size_t len)
 {
@@ -275,9 +314,7 @@ static void destroy_kprobe(struct kprobe **kp_ptr)
 static struct kprobe *su_kps[4];
 #endif
 
-// sucompat: permited process can execute 'su' to gain root access.
-void ksu_sucompat_init()
-{
+void ksu_sucompat_enable(){
 #ifdef CONFIG_KSU_KPROBES_HOOK
 	su_kps[0] = init_kprobe(SYS_EXECVE_SYMBOL, execve_handler_pre);
 	su_kps[1] = init_kprobe(SYS_FACCESSAT_SYMBOL, faccessat_handler_pre);
@@ -289,8 +326,7 @@ void ksu_sucompat_init()
 #endif
 }
 
-void ksu_sucompat_exit()
-{
+void ksu_sucompat_disable(){
 #ifdef CONFIG_KSU_KPROBES_HOOK
 	int i;
 	for (i = 0; i < ARRAY_SIZE(su_kps); i++) {
@@ -300,4 +336,23 @@ void ksu_sucompat_exit()
 	ksu_sucompat_non_kp = false;
 	pr_info("ksu_sucompat_exit: hooks disabled: execve/execveat_su, faccessat, stat, devpts\n");
 #endif
+}
+
+// sucompat: permited process can execute 'su' to gain root access.
+void ksu_sucompat_init()
+{
+	if (ksu_register_feature_handler(&su_compat_handler)) {
+		pr_err("Failed to register su_compat feature handler\n");
+	}
+	if (ksu_su_compat_enabled) {
+		ksu_sucompat_enable();
+	}
+}
+
+void ksu_sucompat_exit()
+{
+	if (ksu_su_compat_enabled) {
+		ksu_sucompat_disable();
+	}
+	ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT);
 }
