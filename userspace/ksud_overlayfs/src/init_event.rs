@@ -195,6 +195,11 @@ pub fn on_post_data_fs() -> Result<()> {
         warn!("do temp dir mount failed: {e}");
     }
 
+    // load feature config
+    if let Err(e) = crate::feature::init_features() {
+        warn!("init features failed: {e}");
+    }
+
     // exec modules post-fs-data scripts
     // TODO: Add timeout
     if let Err(e) = crate::module::exec_stage_script("post-fs-data", true) {
