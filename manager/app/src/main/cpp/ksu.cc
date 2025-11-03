@@ -224,5 +224,5 @@ int legacy_get_version(void) {
     if(result == 0xDEADBEEF) {
         return version;
     }
-    return 0;
+    return -1;
 }
