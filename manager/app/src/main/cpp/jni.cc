@@ -23,7 +23,7 @@ Java_com_rifsxd_ksunext_Natives_getVersion(JNIEnv *env, jobject) {
         return version;
     }
     // try legacy method as fallback
-    return legacy_get_version();
+    return legacy_get_info().first;
 }
 
 extern "C"

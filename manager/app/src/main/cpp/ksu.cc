@@ -3,15 +3,15 @@
 //
 
 #include <sys/prctl.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdio.h>
+#include <cstdint>
+#include <cstring>
+#include <cstdio>
 #include <unistd.h>
-#include <limits.h>
+#include <climits>
 #include <utility>
 #include <android/log.h>
 #include <dirent.h>
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <sys/syscall.h>
 #include "ksu.h"
@@ -101,12 +101,18 @@ bool is_safe_mode() {
 
 bool is_lkm_mode() {
     auto info = get_info();
-    return (info.flags & 0x1) != 0;
+    if (info.version > 0) {
+        return (info.flags & 0x1) != 0;
+    }
+    return (legacy_get_info().second & 0x1) != 0;
 }
 
 bool is_manager() {
     auto info = get_info();
-    return (info.flags & 0x2) != 0;
+    if (info.version > 0) {
+        return (info.flags & 0x2) != 0;
+    }
+    return legacy_get_info().first;
 }
 
 bool uid_should_umount(int uid) {
@@ -214,15 +220,4 @@ const char* get_version_tag(void)
 
 bool is_zygisk_enabled() {
     return !!getenv("ZYGISK_ENABLED");
-}
-
-int legacy_get_version(void) {
-    int32_t version = -1;
-    int32_t flags = 0;
-    int32_t result = 0;
-    prctl(0xDEADBEEF, 2, &version, &flags, &result);
-    if(result == 0xDEADBEEF) {
-        return version;
-    }
-    return -1;
 }
