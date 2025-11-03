@@ -215,3 +215,14 @@ const char* get_version_tag(void)
 bool is_zygisk_enabled() {
     return !!getenv("ZYGISK_ENABLED");
 }
+
+int legacy_get_version(void) {
+    int32_t version = -1;
+    int32_t flags = 0;
+    int32_t result = 0;
+    prctl(0xDEADBEEF, 2, &version, &flags, &result);
+    if(result == 0xDEADBEEF) {
+        return version;
+    }
+    return 0;
+}
