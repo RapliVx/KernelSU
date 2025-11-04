@@ -1,4 +1,6 @@
-#include "linux/slab.h"
+#include <linux/slab.h>
+#include <linux/task_work.h>
+#include <linux/thread_info.h>
 #include <linux/seccomp.h>
 #include <linux/bpf.h>
 #include <linux/capability.h>
@@ -316,8 +318,47 @@ static void try_umount(const char *mnt, bool check_mnt, int flags)
 	}
 }
 
+struct umount_tw {
+	struct callback_head cb;
+	const struct cred *old_cred;
+};
+
+static void umount_tw_func(struct callback_head *cb)
+{
+	struct umount_tw *tw = container_of(cb, struct umount_tw, cb);
+	qconst struct cred *saved = NULL;
+	if (tw->old_cred) {
+		saved = override_creds(tw->old_cred);
+	}
+
+	// fixme: use `collect_mounts` and `iterate_mount` to iterate all mountpoint and
+	// filter the mountpoint whose target is `/data/adb`
+	try_umount("/odm", true, 0);
+	try_umount("/system", true, 0);
+	try_umount("/system_ext", true, 0);
+	try_umount("/vendor", true, 0);
+	try_umount("/product", true, 0);
+	try_umount("/data/adb/modules", false, MNT_DETACH);
+
+	// try umount ksu temp path
+	try_umount("/debug_ramdisk", false, MNT_DETACH);
+	try_umount("/sbin", false, MNT_DETACH);
+
+	// try umount hosts file
+	try_umount("/system/etc/hosts", false, MNT_DETACH);
+
+	if (saved)
+		revert_creds(saved);
+
+	if (tw->old_cred)
+		put_cred(tw->old_cred);
+
+	kfree(tw);
+}
+
 int ksu_handle_setuid(struct cred *new, const struct cred *old)
 {
+	struct umount_tw *tw;
 	if (!new || !old) {
 		return 0;
 	}
@@ -389,21 +430,21 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 	pr_info("handle umount for uid: %d, pid: %d\n", new_uid.val, current->pid);
 #endif
 
-	// fixme: use `collect_mounts` and `iterate_mount` to iterate all mountpoint and
-	// filter the mountpoint whose target is `/data/adb`
-	try_umount("/odm", true, 0);
-	try_umount("/system", true, 0);
-	try_umount("/system_ext", true, 0);
-	try_umount("/vendor", true, 0);
-	try_umount("/product", true, 0);
-	try_umount("/data/adb/modules", false, MNT_DETACH);
+	tw = kmalloc(sizeof(*tw), GFP_ATOMIC);
+	if (!tw)
+		return 0;
 
-	// try umount ksu temp path
-	try_umount("/debug_ramdisk", false, MNT_DETACH);
-	try_umount("/sbin", false, MNT_DETACH);
+	tw->old_cred = get_current_cred();
+	tw->cb.func = umount_tw_func;
 
-	// try umount hosts file
-	try_umount("/system/etc/hosts", false, MNT_DETACH);
+	int err = task_work_add(current, &tw->cb, TWA_RESUME);
+	if (err) {
+		if (tw->old_cred) {
+			put_cred(tw->old_cred);
+		}
+		kfree(tw);
+		pr_warn("unmount add task_work failed\n");
+	}
 
 	return 0;
 }
@@ -469,7 +510,8 @@ static struct kprobe reboot_kp = {
 };
 
 // 2. cap_task_fix_setuid hook for handling setuid
-static int cap_task_fix_setuid_handler_pre(struct kprobe *p, struct pt_regs *regs)
+static int cap_task_fix_setuid_handler_pre(struct kprobe *p,
+						struct pt_regs *regs)
 {
 	struct cred *new = (struct cred *)PT_REGS_PARM1(regs);
 	const struct cred *old = (const struct cred *)PT_REGS_PARM2(regs);
