@@ -565,6 +565,9 @@ void __init ksu_core_init(void)
 		pr_err("ksu_kprobe_init failed: %d\n", rc);
 	}
 #endif
+	if (ksu_register_feature_handler(&kernel_umount_handler)) {
+		pr_err("Failed to register umount feature handler\n");
+	}
 }
 
 void ksu_core_exit(void)
@@ -573,4 +576,5 @@ void ksu_core_exit(void)
 #ifdef CONFIG_KSU_KPROBES_HOOK
 	ksu_kprobe_exit();
 #endif
+	ksu_unregister_feature_handler(KSU_FEATURE_KERNEL_UMOUNT);
 }
