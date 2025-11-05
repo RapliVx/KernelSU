@@ -133,7 +133,7 @@ object Natives {
     }
 
     fun requireNewKernel(): Boolean {
-        return version < MINIMAL_SUPPORTED_KERNEL
+        return version != -1 && version < MINIMAL_SUPPORTED_KERNEL
     }
 
     val KSU_WORK_DIR = "/data/adb/ksu/"
