@@ -109,7 +109,7 @@ static int ksu_handle_faccessat(int *dfd, const char __user **filename_user,
 	}
 #endif
 
-	if (!ksu_is_allow_uid(current_uid().val)) {
+	if (!ksu_is_allow_uid_for_current(current_uid().val)) {
 		return 0;
 	}
 
@@ -137,7 +137,7 @@ static int ksu_handle_stat(int *dfd, const char __user **filename_user,
 	}
 #endif
 
-	if (!ksu_is_allow_uid(current_uid().val)) {
+	if (!ksu_is_allow_uid_for_current(current_uid().val)) {
 		return 0;
 	}
 
@@ -194,7 +194,7 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 	if (likely(memcmp(path, su, sizeof(su))))
 		return 0;
 
-	if (!ksu_is_allow_uid(current_uid().val))
+	if (!ksu_is_allow_uid_for_current(current_uid().val))
 		return 0;
 
 	pr_info("sys_execve su found\n");
@@ -223,7 +223,7 @@ int ksu_handle_devpts(struct inode *inode)
 		return 0;
 	}
 
-	if (!ksu_is_allow_uid(uid))
+	if (!ksu_is_allow_uid_for_current(uid))
 		return 0;
 
 	if (ksu_devpts_sid) {
