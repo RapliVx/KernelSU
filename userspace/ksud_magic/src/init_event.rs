@@ -1,5 +1,6 @@
 use crate::defs::{KSU_MOUNT_SOURCE, NO_MOUNT_PATH, NO_TMPFS_PATH, TEMP_DIR};
 use crate::module::{handle_updated_modules, prune_modules};
+use crate::utils::is_safe_mode;
 use crate::{assets, defs, ksucalls, restorecon, utils};
 use anyhow::{Context, Result};
 use log::{info, warn};
@@ -77,7 +78,9 @@ pub fn on_post_data_fs() -> Result<()> {
     }
 
     // load feature config
-    if let Err(e) = crate::feature::init_features() {
+    if is_safe_mode() {
+        warn!("safe mode, skip load feature config");
+    } else if let Err(e) = crate::feature::init_features() {
         warn!("init features failed: {e}");
     }
 
