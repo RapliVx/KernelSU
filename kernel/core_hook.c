@@ -232,6 +232,7 @@ void escape_to_root(void)
 	}
 }
 
+extern void ext4_unregister_sysfs(struct super_block *sb);
 void nuke_ext4_sysfs(void)
 {
 	struct path path;
@@ -311,6 +312,7 @@ static bool should_umount(struct path *path)
 	return false;
 }
 
+extern int path_umount(struct path *path, int flags);
 static int ksu_umount_mnt(struct path *path, int flags)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0) || defined(KSU_UMOUNT)
