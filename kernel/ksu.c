@@ -11,12 +11,9 @@
 #include "klog.h" // IWYU pragma: keep
 #include "ksu.h"
 #include "throne_tracker.h"
-
-extern void ksu_sucompat_init();
-extern void ksu_sucompat_exit();
-extern void ksu_ksud_init();
-extern void ksu_ksud_exit();
-extern void ksu_supercalls_init();
+#include "sucompat.h"
+#include "ksud.h"
+#include "supercalls.h"
 
 int __init kernelsu_init(void)
 {
