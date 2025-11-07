@@ -13,6 +13,7 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/version.h>
+#include <linux/spinlock.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 #include <linux/sched/task_stack.h>
 #else
@@ -377,11 +378,12 @@ static struct kprobe *pts_kp = NULL;
 #ifdef CONFIG_KRETPROBES
 
 static int tracepoint_reg_count = 0;
-static DEFINE_MUTEX(tracepoint_reg_mutex);
+static DEFINE_SPINLOCK(tracepoint_reg_lock);
 
 static int syscall_regfunc_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-	mutex_lock(&tracepoint_reg_mutex);
+	unsigned long flags;
+	spin_lock_irqsave(&tracepoint_reg_lock, flags);
 	if (tracepoint_reg_count < 1) {
 		// while install our tracepoint, mark our processes
 		unmark_all_process();
@@ -391,13 +393,14 @@ static int syscall_regfunc_handler(struct kretprobe_instance *ri, struct pt_regs
 		mark_all_process();
 	}
 	tracepoint_reg_count++;
-	mutex_unlock(&tracepoint_reg_mutex);
+	spin_unlock_irqrestore(&tracepoint_reg_lock, flags);
 	return 0;
 }
 
 static int syscall_unregfunc_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-	mutex_lock(&tracepoint_reg_mutex);
+	unsigned long flags;
+	spin_lock_irqsave(&tracepoint_reg_lock, flags);
 	if (tracepoint_reg_count <= 1) {
 		// while uninstall our tracepoint, unmark all processes
 		unmark_all_process();
@@ -407,7 +410,7 @@ static int syscall_unregfunc_handler(struct kretprobe_instance *ri, struct pt_re
 		ksu_mark_running_process();
 	}
 	tracepoint_reg_count--;
-	mutex_unlock(&tracepoint_reg_mutex);
+	spin_unlock_irqrestore(&tracepoint_reg_lock, flags);
 	return 0;
 }
 
