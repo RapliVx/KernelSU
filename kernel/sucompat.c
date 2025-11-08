@@ -22,7 +22,6 @@
 #include <asm/syscall.h>
 #include <trace/events/syscalls.h>
 
-#include "objsec.h"
 #include "allowlist.h"
 #include "arch.h"
 #include "feature.h"
@@ -31,6 +30,7 @@
 #include "seccomp_cache.h"
 #include "sucompat.h"
 #include "core_hook.h"
+#include "app_profile.h"
 
 #define SU_PATH "/system/bin/su"
 #define SH_PATH "/system/bin/sh"
@@ -40,7 +40,6 @@ static bool ksu_sucompat_non_kp __read_mostly = true;
 #endif
 
 bool ksu_su_compat_enabled __read_mostly = true;
-extern void escape_to_root();
 void ksu_sucompat_enable();
 void ksu_sucompat_disable();
 
@@ -248,7 +247,7 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 	pr_info("sys_execve su found\n");
 	*filename_user = ksud_user_path();
 
-	escape_to_root();
+	escape_with_root_profile();
 
 	return 0;
 }
