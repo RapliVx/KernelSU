@@ -28,9 +28,6 @@ static inline size_t list_count_nodes(const struct list_head *head)
 }
 #endif
 
-extern long ksu_strncpy_from_user_nofault(char *dst,
-					  const void __user *unsafe_addr,
-					  long count);
 extern long ksu_strncpy_from_user_retry(char *dst,
 					  const void __user *unsafe_addr,
 					  long count);
