@@ -78,6 +78,12 @@ struct ksu_get_wrapper_fd_cmd {
 	__u32 flags; // Input: flags of userspace fd
 };
 
+struct ksu_manage_mark_cmd {
+	__u32 operation; // Input: KSU_MARK_*
+	__s32 pid; // Input: target pid (0 for all processes)
+	__u32 result; // Output: for get operation - mark status or reg_count
+};
+
 struct ksu_get_hook_mode_cmd {
 	char mode[16];
 };
@@ -85,6 +91,11 @@ struct ksu_get_hook_mode_cmd {
 struct ksu_get_version_tag_cmd {
 	char tag[32];
 };
+
+#define KSU_MARK_GET 1
+#define KSU_MARK_MARK 2
+#define KSU_MARK_UNMARK 3
+#define KSU_MARK_REFRESH 4
 
 // IOCTL command definitions
 #define KSU_IOCTL_GRANT_ROOT _IOC(_IOC_NONE, 'K', 1, 0)
@@ -102,6 +113,7 @@ struct ksu_get_version_tag_cmd {
 #define KSU_IOCTL_GET_FEATURE _IOC(_IOC_READ|_IOC_WRITE, 'K', 13, 0)
 #define KSU_IOCTL_SET_FEATURE _IOC(_IOC_WRITE, 'K', 14, 0)
 #define KSU_IOCTL_GET_WRAPPER_FD _IOC(_IOC_WRITE, 'K', 15, 0)
+#define KSU_IOCTL_MANAGE_MARK _IOC(_IOC_READ|_IOC_WRITE, 'K', 16, 0)
 #define KSU_IOCTL_GET_HOOK_MODE _IOC(_IOC_READ, 'K', 19, 0)
 #define KSU_IOCTL_GET_VERSION_TAG _IOC(_IOC_READ, 'K', 20, 0)
 
