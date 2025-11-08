@@ -11,7 +11,6 @@
 
 #include "allowlist.h"
 #include "klog.h" // IWYU pragma: keep
-#include "ksu.h"
 #include "manager.h"
 #include "throne_tracker.h"
 #include "seccomp_cache.h"

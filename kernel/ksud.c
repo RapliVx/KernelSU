@@ -31,7 +31,7 @@
 #include "ksud.h"
 #include "seccomp_cache.h"
 #include "selinux/selinux.h"
-#include "sucompat.h"
+#include "hook_manager.h"
 
 bool ksu_module_mounted __read_mostly = false;
 
