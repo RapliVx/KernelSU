@@ -277,7 +277,7 @@ static int scan_user_data_for_uids(struct list_head *uid_list)
 		return -EINVAL;
 	}
 
-	dir_file = ksu_filp_open_compat(USER_DATA_PATH, O_RDONLY, 0);
+	dir_file = filp_open(USER_DATA_PATH, O_RDONLY, 0);
 	if (IS_ERR(dir_file)) {
 		pr_err("Failed to open %s, err: (%ld)\n", USER_DATA_PATH, PTR_ERR(dir_file));
 		return PTR_ERR(dir_file);
@@ -302,8 +302,8 @@ static int scan_user_data_for_uids(struct list_head *uid_list)
 
 extern bool is_manager_apk(char *path);
 FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
-			     int namelen, loff_t off, u64 ino,
-			     unsigned int d_type)
+				int namelen, loff_t off, u64 ino,
+				unsigned int d_type)
 {
 	struct my_dir_context *my_ctx =
 		container_of(ctx, struct my_dir_context, ctx);
@@ -327,10 +327,9 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 		return FILLDIR_ACTOR_CONTINUE; // Skip staging package
 	}
 
-	if (snprintf(dirpath, DATA_PATH_LEN, "%s/%.*s", my_ctx->parent_dir,
-		     namelen, name) >= DATA_PATH_LEN) {
-		pr_err("Path too long: %s/%.*s\n", my_ctx->parent_dir, namelen,
-		       name);
+	if (snprintf(dirpath, DATA_PATH_LEN, "%s/%.*s", my_ctx->parent_dir, namelen,
+			name) >= DATA_PATH_LEN) {
+		pr_err("Path too long: %s/%.*s\n", my_ctx->parent_dir, namelen, name);
 		return FILLDIR_ACTOR_CONTINUE;
 	}
 
@@ -358,7 +357,7 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 #else
 			unsigned int hash = full_name_hash(NULL, dirpath, strlen(dirpath));
 #endif
-			list_for_each_entry(pos, &apk_path_hash_list, list) {
+			list_for_each_entry (pos, &apk_path_hash_list, list) {
 				if (hash == pos->hash) {
 					pos->exists = true;
 					return FILLDIR_ACTOR_CONTINUE;
@@ -366,19 +365,20 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 			}
 
 			bool is_manager = is_manager_apk(dirpath);
-			pr_info("Found new base.apk at path: %s, is_manager: %d\n",
-				dirpath, is_manager);
+			pr_info("Found new base.apk at path: %s, is_manager: %d\n", dirpath,
+				is_manager);
 			if (is_manager) {
 				crown_manager(dirpath, my_ctx->private_data);
 				*my_ctx->stop = 1;
 
 				// Manager found, clear APK cache list
-				list_for_each_entry_safe(pos, n, &apk_path_hash_list, list) {
+				list_for_each_entry_safe (pos, n, &apk_path_hash_list, list) {
 					list_del(&pos->list);
 					kfree(pos);
 				}
 			} else {
-				struct apk_path_hash *apk_data = kmalloc(sizeof(struct apk_path_hash), GFP_ATOMIC);
+				struct apk_path_hash *apk_data =
+					kmalloc(sizeof(struct apk_path_hash), GFP_ATOMIC);
 				apk_data->hash = hash;
 				apk_data->exists = true;
 				list_add_tail(&apk_data->list, &apk_path_hash_list);
@@ -405,7 +405,7 @@ static void search_manager(const char *path, int depth, struct list_head *uid_da
 	
 	// Initialize APK cache list
 	struct apk_path_hash *pos, *n;
-	list_for_each_entry(pos, &apk_path_hash_list, list) {
+	list_for_each_entry (pos, &apk_path_hash_list, list) {
 		pos->exists = false;
 	}
 
@@ -422,17 +422,17 @@ static void search_manager(const char *path, int depth, struct list_head *uid_da
 	for (i = depth; i >= 0; i--) {
 		struct data_path *pos, *n;
 
-		list_for_each_entry_safe(pos, n, &data_path_list, list) {
+		list_for_each_entry_safe (pos, n, &data_path_list, list) {
 			struct my_dir_context ctx = { .ctx.actor = my_actor,
-						      .data_path_list = &data_path_list,
-						      .parent_dir = pos->dirpath,
-						      .private_data = uid_data,
-						      .depth = pos->depth,
-						      .stop = &stop };
+							.data_path_list = &data_path_list,
+							.parent_dir = pos->dirpath,
+							.private_data = uid_data,
+							.depth = pos->depth,
+							.stop = &stop };
 			struct file *file;
 
 			if (!stop) {
-				file = ksu_filp_open_compat(pos->dirpath, O_RDONLY | O_NOFOLLOW, 0);
+				file = filp_open(pos->dirpath, O_RDONLY | O_NOFOLLOW, 0);
 				if (IS_ERR(file)) {
 					pr_err("Failed to open directory: %s, err: %ld\n", pos->dirpath, PTR_ERR(file));
 					goto skip_iterate;
@@ -442,15 +442,17 @@ static void search_manager(const char *path, int depth, struct list_head *uid_da
 				if (!data_app_magic) {
 					if (S_MAGIC_COMPAT(file)) {
 						data_app_magic = S_MAGIC_COMPAT(file);
-						pr_info("%s: dir: %s got magic! 0x%lx\n", __func__, pos->dirpath, data_app_magic);
+						pr_info("%s: dir: %s got magic! 0x%lx\n", __func__,
+							pos->dirpath, data_app_magic);
 					} else {
 						filp_close(file, NULL);
 						goto skip_iterate;
 					}
 				}
-				
+
 				if (S_MAGIC_COMPAT(file) != data_app_magic) {
-					pr_info("%s: skip: %s magic: 0x%lx expected: 0x%lx\n", __func__, pos->dirpath, 
+					pr_info("%s: skip: %s magic: 0x%lx expected: 0x%lx\n",
+						__func__, pos->dirpath,
 						S_MAGIC_COMPAT(file), data_app_magic);
 					filp_close(file, NULL);
 					goto skip_iterate;
@@ -459,7 +461,7 @@ static void search_manager(const char *path, int depth, struct list_head *uid_da
 				iterate_dir(file, &ctx.ctx);
 				filp_close(file, NULL);
 			}
-skip_iterate:
+		skip_iterate:
 			list_del(&pos->list);
 			if (pos != &data)
 				kfree(pos);
@@ -467,7 +469,7 @@ skip_iterate:
 	}
 
 	// Remove stale cached APK entries
-	list_for_each_entry_safe(pos, n, &apk_path_hash_list, list) {
+	list_for_each_entry_safe (pos, n, &apk_path_hash_list, list) {
 		if (!pos->exists) {
 			list_del(&pos->list);
 			kfree(pos);
@@ -495,7 +497,7 @@ void track_throne()
 {
 	struct list_head uid_list;
 	struct uid_data *np, *n;
-	struct file *fp;
+	struct file *fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
 	int ret = 0;
 	INIT_LIST_HEAD(&uid_list);
 
@@ -506,10 +508,9 @@ void track_throne()
 		pr_warn("Failed to scan %s, falling back to %s\n",
 			USER_DATA_PATH, SYSTEM_PACKAGES_LIST_PATH);
 
-		fp = ksu_filp_open_compat(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
 		if (IS_ERR(fp)) {
-			pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n",
-			       __func__, PTR_ERR(fp));
+			pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n", __func__,
+				PTR_ERR(fp));
 			return;
 		}
 
@@ -523,13 +524,13 @@ void track_throne()
 		loff_t line_start = 0;
 		char buf[KSU_MAX_PACKAGE_NAME];
 		for (;;) {
-			ssize_t count = ksu_kernel_read_compat(fp, &chr, sizeof(chr), &pos);
+			ssize_t count = kernel_read(fp, &chr, sizeof(chr), &pos);
 			if (count != sizeof(chr))
 				break;
 			if (chr != '\n')
 				continue;
 
-			count = ksu_kernel_read_compat(fp, buf, sizeof(buf), &line_start);
+			count = kernel_read(fp, buf, sizeof(buf), &line_start);
 
 			struct uid_data *data = kzalloc(sizeof(struct uid_data), GFP_ATOMIC);
 			if (!data) {
