@@ -1,7 +1,6 @@
 #include <linux/rcupdate.h>
 #include <linux/slab.h>
 #include <linux/task_work.h>
-#include "manager.h"
 #include <asm/current.h>
 #include <linux/compat.h>
 #include <linux/cred.h>
@@ -22,8 +21,10 @@
 #include <linux/printk.h>
 #include <linux/types.h>
 #include <linux/uaccess.h>
+#include <linux/namei.h>
 #include <linux/workqueue.h>
 
+#include "manager.h"
 #include "allowlist.h"
 #include "arch.h"
 #include "klog.h" // IWYU pragma: keep
@@ -31,6 +32,8 @@
 #include "seccomp_cache.h"
 #include "selinux/selinux.h"
 #include "sucompat.h"
+
+bool ksu_module_mounted __read_mostly = false;
 
 static const char KERNEL_SU_RC[] =
 	"\n"
@@ -93,6 +96,32 @@ void on_post_fs_data(void)
 
 	ksu_file_sid = ksu_get_ksu_file_sid();
 	pr_info("ksu_file sid: %d\n", ksu_file_sid);
+}
+
+extern void ext4_unregister_sysfs(struct super_block *sb);
+static void nuke_ext4_sysfs(void)
+{
+	struct path path;
+	int err = kern_path("/data/adb/modules", 0, &path);
+	if (err) {
+		pr_err("nuke path err: %d\n", err);
+		return;
+	}
+
+	struct super_block *sb = path.dentry->d_inode->i_sb;
+	const char *name = sb->s_type->name;
+	if (strcmp(name, "ext4") != 0) {
+		pr_info("nuke but module aren't mounted\n");
+		path_put(&path);
+		return;
+	}
+
+	ext4_unregister_sysfs(sb);
+	path_put(&path);
+}
+
+void on_module_mounted(void){
+	nuke_ext4_sysfs();
 }
 
 #define MAX_ARG_STRINGS 0x7FFFFFFF
