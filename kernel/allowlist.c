@@ -399,6 +399,7 @@ close_file:
 	filp_close(fp, 0);
 unlock:
 	mutex_unlock(&allowlist_mutex);
+	kfree(_cb);
 }
 
 void persistent_allow_list()
