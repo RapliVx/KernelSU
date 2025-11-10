@@ -108,4 +108,3 @@ fun getBugreportFile(context: Context): File {
 
     return targetFile
 }
-

@@ -143,11 +143,6 @@
     <string name="install_only_support_ko_file">Obsługiwane są wyłącznie pliki .ko</string>
     <string name="settings_disable_kernel_umount">Wyłącz odmontowywanie jądra</string>
     <string name="settings_disable_kernel_umount_summary">Wyłącz odmontowywanie z poziomu jądra, kontrolowane przez KernelSU.</string>
-    <string name="processing">Przetwarzanie…</string>
-    <string name="refresh_pulling">Przeciągnij w dół, aby odświeżyć</string>
-    <string name="refresh_release">Uwolnij, aby odświeżyć</string>
-    <string name="refresh_refresh">Odświeżanie…</string>
-    <string name="refresh_complete">Odświeżono pomyślnie</string>
     <string name="settings_module_check_update">Sprawdź aktualizację modułów</string>
     <string name="settings_enable_enhanced_security">Włącz rozszerzone zabezpieczenia</string>
     <string name="settings_enable_enhanced_security_summary">Włącz bardziej rygorystyczne zasady bezpieczeństwa.</string>
