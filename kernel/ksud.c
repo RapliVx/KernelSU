@@ -114,6 +114,7 @@ void on_module_mounted(void){
     nuke_ext4_sysfs("/data/adb/modules");
 }
 
+extern void avc_spoof_init();
 void on_boot_completed(void){
     ksu_boot_completed = true;
     pr_info("on_boot_completed!\n");
@@ -121,6 +122,8 @@ void on_boot_completed(void){
     // forked process excepte zygote and adbd
     ksu_unmark_all_process();
     ksu_mark_running_process();
+    
+    avc_spoof_init();
 }
 
 #define MAX_ARG_STRINGS 0x7FFFFFFF
