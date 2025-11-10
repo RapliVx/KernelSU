@@ -92,9 +92,7 @@ class SuperUserViewModel : ViewModel() {
                 else -> 2
             }
         }.then(compareBy(Collator.getInstance(Locale.getDefault()), AppInfo::label))
-        apps.sortedWith(comparator).also {
-            isRefreshing = false
-        }
+        apps.sortedWith(comparator)
     }
 
     val appList by derivedStateOf {
@@ -141,7 +139,6 @@ class SuperUserViewModel : ViewModel() {
     }
 
     suspend fun fetchAppList() {
-
         isRefreshing = true
 
         val result = connectKsuService {
@@ -173,5 +170,7 @@ class SuperUserViewModel : ViewModel() {
             }.filter { it.packageName != ksuApp.packageName }
             Log.i(TAG, "load cost: ${SystemClock.elapsedRealtime() - start}")
         }
+        
+        isRefreshing = false
     }
 }

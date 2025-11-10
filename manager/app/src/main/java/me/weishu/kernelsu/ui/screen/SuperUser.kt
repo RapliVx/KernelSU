@@ -1,9 +1,10 @@
 package me.weishu.kernelsu.ui.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,8 +15,10 @@ import androidx.compose.material3.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -36,8 +39,14 @@ import com.ramcosta.composedestinations.result.ResultRecipient
 import kotlinx.coroutines.launch
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.ExpressiveListItem
+import me.weishu.kernelsu.ui.component.ExpressiveListScope
+import me.weishu.kernelsu.ui.component.ExpressiveLazyList
+import me.weishu.kernelsu.ui.component.ExpressiveListItemScope
+import me.weishu.kernelsu.ui.component.LocalExpressiveListScope
 import me.weishu.kernelsu.ui.component.SearchAppBar
 import me.weishu.kernelsu.ui.viewmodel.SuperUserViewModel
+import androidx.compose.runtime.CompositionLocalProvider
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
@@ -120,15 +129,25 @@ fun SuperUserScreen(
             },
             isRefreshing = viewModel.isRefreshing
         ) {
-            LazyColumn(
-                state = listState,
+            val appList = viewModel.appList
+            ExpressiveLazyList(
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                state = listState
             ) {
-                items(viewModel.appList, key = { it.packageName + it.uid }) { app ->
-                    AppItem(app) {
-                        navigator.navigate(AppProfileScreenDestination(app))
+                items(
+                    count = appList.size,
+                    key = { appList[it].packageName + appList[it].uid }
+                ) { index ->
+                    val app = appList[index]
+                    ExpressiveListItemScope(
+                        index = index,
+                        totalCount = appList.size
+                    ) {
+                        AppItem(app) {
+                            navigator.navigate(AppProfileScreenDestination(app))
+                        }
                     }
                 }
             }
@@ -136,49 +155,48 @@ fun SuperUserScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AppItem(
     app: SuperUserViewModel.AppInfo,
     onClickListener: () -> Unit,
 ) {
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClickListener),
+    ExpressiveListItem(
+        onClick = onClickListener,
         headlineContent = { Text(app.label) },
-        supportingContent = {
-            Column {
-                Text(app.packageName, color = MaterialTheme.colorScheme.outline)
-                FlowRow {
-                    if (app.allowSu) {
+        supportingContent = { Text(app.packageName) },
+        trailingContent = {
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                if (app.allowSu) {
+                    LabelText(
+                        label = "ROOT",
+                        textColor = MaterialTheme.colorScheme.onPrimary,
+                        backgroundColor = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    if (Natives.uidShouldUmount(app.uid)) {
                         LabelText(
-                            label = "ROOT",
-                            textColor = MaterialTheme.colorScheme.onPrimary,
-                            backgroundColor = MaterialTheme.colorScheme.primary
-                        )
-                    } else {
-                        if (Natives.uidShouldUmount(app.uid)) {
-                            LabelText(
-                                label = "UMOUNT",
-                                textColor = MaterialTheme.colorScheme.onSecondary,
-                                backgroundColor = MaterialTheme.colorScheme.secondary
-                            )
-                        }
-                    }
-                    if (app.hasCustomProfile) {
-                        LabelText(
-                            label = "CUSTOM",
-                            textColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            backgroundColor = MaterialTheme.colorScheme.secondaryContainer
+                            label = "UMOUNT",
+                            textColor = MaterialTheme.colorScheme.onSecondary,
+                            backgroundColor = MaterialTheme.colorScheme.secondary
                         )
                     }
-                    val userId = app.uid / 100000
-                    if (userId != 0) {
-                        LabelText(
-                            label = "UID$userId",
-                            textColor = MaterialTheme.colorScheme.onTertiary,
-                            backgroundColor = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
+                }
+                if (app.hasCustomProfile) {
+                    LabelText(
+                        label = "CUSTOM",
+                        textColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        backgroundColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                }
+                val userId = app.uid / 100000
+                if (userId != 0) {
+                    LabelText(
+                        label = "UID$userId",
+                        textColor = MaterialTheme.colorScheme.onTertiary,
+                        backgroundColor = MaterialTheme.colorScheme.tertiary
+                    )
                 }
             }
         },
@@ -190,7 +208,6 @@ private fun AppItem(
                     .build(),
                 contentDescription = app.label,
                 modifier = Modifier
-                    .padding(4.dp)
                     .width(48.dp)
                     .height(48.dp)
             )

@@ -1,7 +1,6 @@
 package me.weishu.kernelsu.ui.screen
 
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -9,10 +8,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
@@ -26,7 +24,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -60,6 +57,9 @@ import com.ramcosta.composedestinations.result.getOr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.ExpressiveLazyList
+import me.weishu.kernelsu.ui.component.ExpressiveListItem
+import me.weishu.kernelsu.ui.component.ExpressiveListItemScope
 import me.weishu.kernelsu.ui.viewmodel.TemplateViewModel
 
 /**
@@ -159,7 +159,8 @@ fun AppProfileTemplateScreen(
                 scope.launch { viewModel.fetchTemplates() }
             }
         ) {
-            LazyColumn(
+            val templateList = viewModel.templateList
+            ExpressiveLazyList(
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -167,8 +168,17 @@ fun AppProfileTemplateScreen(
                     PaddingValues(bottom = 16.dp + 56.dp + 16.dp /* Scaffold Fab Spacing + Fab container height */)
                 }
             ) {
-                items(viewModel.templateList, key = { it.id }) { app ->
-                    TemplateItem(navigator, app)
+                items(
+                    count = templateList.size,
+                    key = { templateList[it].id }
+                ) { index ->
+                    val template = templateList[index]
+                    ExpressiveListItemScope(
+                        index = index,
+                        totalCount = templateList.size
+                    ) {
+                        TemplateItem(navigator, template)
+                    }
                 }
             }
         }
@@ -181,11 +191,10 @@ private fun TemplateItem(
     navigator: DestinationsNavigator,
     template: TemplateViewModel.TemplateInfo
 ) {
-    ListItem(
-        modifier = Modifier
-            .clickable {
-                navigator.navigate(TemplateEditorScreenDestination(template, !template.local))
-            },
+    ExpressiveListItem(
+        onClick = {
+            navigator.navigate(TemplateEditorScreenDestination(template, !template.local))
+        },
         headlineContent = { Text(template.name) },
         supportingContent = {
             Column {
