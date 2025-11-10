@@ -81,6 +81,18 @@ static inline bool is_appuid(uid_t uid)
     return appid >= FIRST_APPLICATION_UID && appid <= LAST_APPLICATION_UID;
 }
 
+static inline bool is_unsupported_app_uid(uid_t uid)
+{
+    uid_t appid = uid % 100000;
+    return appid > LAST_APPLICATION_UID;
+}
+
+static bool is_non_appuid(uid_t uid)
+{
+    uid_t appid = uid % PER_USER_RANGE;
+    return appid < FIRST_APPLICATION_UID;
+}
+
 int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
 {
     // we rely on the fact that zygote always call setresuid(3) with same uids
@@ -117,11 +129,22 @@ int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
         ksu_set_task_tracepoint_flag(current);
     }
 
-    // FIXME: isolated process which directly forks from zygote is not handled
     if (!is_appuid(new_uid)) {
         pr_info("handle setresuid ignore non application or isolated uid: %d\n", new_uid);
         ksu_clear_task_tracepoint_flag(current);
+        // don't return here, it can be an isoservice!
+        // return 0;
+    }
+
+    if (is_non_appuid(new_uid)) {
+        //pr_info("handle setuid ignore non application uid: %d\n", new_uid.val);
         return 0;
+    }
+
+    // isolated process may be directly forked from zygote, always unmount
+    if (is_unsupported_app_uid(new_uid)) {
+        // pr_info("handle umount for unsupported application uid: %d\n", new_uid.val);
+        goto do_umount;
     }
 
     // if on private space, see if its possibly the manager
@@ -151,6 +174,7 @@ int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
         ksu_clear_task_tracepoint_flag(current);
     }
 
+do_umount:
     // Handle kernel umount
     ksu_handle_umount(old_uid, new_uid);
 
