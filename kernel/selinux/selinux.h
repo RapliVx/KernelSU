@@ -21,6 +21,8 @@ bool is_ksu_domain();
 
 bool is_zygote(const struct cred* cred);
 
+bool is_init(const struct cred* cred);
+
 void apply_kernelsu_rules();
 
 u32 ksu_get_ksu_file_sid();
