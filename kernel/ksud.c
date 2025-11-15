@@ -31,7 +31,6 @@
 #include "ksud.h"
 #include "seccomp_cache.h"
 #include "selinux/selinux.h"
-#include "syscall_hook_manager.h"
 #include "throne_tracker.h"
 
 bool ksu_module_mounted __read_mostly = false;
@@ -90,8 +89,6 @@ void on_post_fs_data(void)
 	done = true;
 	pr_info("on_post_fs_data!\n");
 	ksu_load_allow_list();
-	pr_info("mark tif for running process\n");
-	ksu_mark_running_process();
 	ksu_observer_init();
 	// sanity check, this may influence the performance
 	stop_input_hook();
@@ -132,9 +129,6 @@ void on_boot_completed(void){
 	ksu_boot_completed = true;
 	pr_info("on_boot_completed!\n");
 	track_throne(true);
-	// remark process, we don't want to mark other init
-	// forked process excepte zygote and adbd
-	ksu_mark_running_process();
 }
 
 #define MAX_ARG_STRINGS 0x7FFFFFFF
@@ -332,7 +326,6 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 			task_work_add(init_task, &on_post_fs_data_cb, TWA_RESUME);
 		}
 		rcu_read_unlock();
-		ksu_set_task_tracepoint_flag(current); // we are zygote!
 
 		stop_execve_hook();
 	}
