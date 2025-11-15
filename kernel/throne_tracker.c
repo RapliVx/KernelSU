@@ -492,7 +492,7 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 	return exist;
 }
 
-void track_throne()
+void track_throne(bool prune_only)
 {
 	struct list_head uid_list;
 	struct uid_data *np, *n;
@@ -572,6 +572,9 @@ void track_throne()
 			atomic_set(&scan_lock, 1);
 		}
 	}
+
+    if (prune_only)
+        goto prune;
 
 	// check if manager UID exists
     bool manager_exist = false;
