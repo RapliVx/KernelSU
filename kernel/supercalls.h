@@ -97,6 +97,21 @@ struct ksu_get_version_tag_cmd {
 #define KSU_MARK_UNMARK 3
 #define KSU_MARK_REFRESH 4
 
+struct ksu_nuke_ext4_sysfs_cmd {
+    __aligned_u64 arg; // Input: mnt pointer
+};
+
+struct ksu_add_try_umount_cmd {
+	__aligned_u64 arg; // char ptr, this is the mountpoint
+	__u32 flags; // this is the flag we use for it
+	__u8 mode; // denotes what to do with it 0:wipe_list 1:add_to_list 2:delete_entry
+};
+
+#define KSU_UMOUNT_WIPE 0  // ignore everything and wipe list
+#define KSU_UMOUNT_ADD 1   // add entry (path + flags)
+#define KSU_UMOUNT_DEL 2   // delete entry, strcmp
+
+
 // IOCTL command definitions
 #define KSU_IOCTL_GRANT_ROOT _IOC(_IOC_NONE, 'K', 1, 0)
 #define KSU_IOCTL_GET_INFO _IOC(_IOC_READ, 'K', 2, 0)
@@ -115,6 +130,7 @@ struct ksu_get_version_tag_cmd {
 #define KSU_IOCTL_GET_WRAPPER_FD _IOC(_IOC_WRITE, 'K', 15, 0)
 #define KSU_IOCTL_MANAGE_MARK _IOC(_IOC_READ|_IOC_WRITE, 'K', 16, 0)
 #define KSU_IOCTL_NUKE_EXT4_SYSFS _IOC(_IOC_WRITE, 'K', 17, 0)
+#define KSU_IOCTL_ADD_TRY_UMOUNT _IOC(_IOC_WRITE, 'K', 18, 0)
 #define KSU_IOCTL_GET_HOOK_MODE _IOC(_IOC_READ, 'K', 19, 0)
 #define KSU_IOCTL_GET_VERSION_TAG _IOC(_IOC_READ, 'K', 20, 0)
 
