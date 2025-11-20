@@ -95,6 +95,14 @@ fun execKsud(args: String, newShell: Boolean = false): Boolean {
     }
 }
 
+suspend fun getFeatureStatus(feature: String): String = withContext(Dispatchers.IO) {
+    val shell = createRootShell(true)
+    
+    val out = shell.newJob()
+        .add("${getKsuDaemonPath()} feature check $feature").to(ArrayList<String>(), null).exec().out
+    out.firstOrNull()?.trim().orEmpty()
+}
+
 fun install() {
     val start = SystemClock.elapsedRealtime()
     val magiskboot = File(ksuApp.applicationInfo.nativeLibraryDir, "libmagiskboot.so").absolutePath
