@@ -367,6 +367,9 @@ enum Feature {
     Get {
         /// Feature ID or name (su_compat, kernel_umount)
         id: String,
+        /// Read from config file
+        #[arg(long, default_value_t = false)]
+        config: bool,
     },
 
     /// Set feature value
@@ -575,10 +578,19 @@ pub fn run() -> Result<()> {
         },
 
         Commands::Feature { command } => match command {
-            Feature::Get { id } => crate::feature::get_feature(id),
-            Feature::Set { id, value } => crate::feature::set_feature(id, value),
-            Feature::List => crate::feature::list_features(),
-            Feature::Check { id } => crate::feature::check_feature(id),
+            Feature::Get { id, config } => {
+                if config {
+                    crate::feature::get_feature_config(&id)
+                } else {
+                    crate::feature::get_feature(&id)
+                }
+            }
+            Feature::Set { id, value } => crate::feature::set_feature(&id, value),
+            Feature::List => {
+                crate::feature::list_features();
+                Ok(())
+            }
+            Feature::Check { id } => crate::feature::check_feature(&id),
             Feature::Load => crate::feature::load_config_and_apply(),
             Feature::Save => crate::feature::save_config(),
         },
