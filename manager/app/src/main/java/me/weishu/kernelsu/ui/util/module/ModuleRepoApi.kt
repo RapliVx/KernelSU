@@ -91,23 +91,23 @@ fun fetchModuleDetail(moduleId: String): ModuleDetail? {
         val obj = JSONObject(body)
 
         val readme = obj.optString("readme", "").ifBlank { null }
-    val lr = obj.optJSONObject("latestRelease")
-    var latestTag = ""
-    var latestTime = ""
-    var latestAssetName: String? = null
-    var latestAssetUrl: String? = null
-    if (lr != null) {
-        latestTag = lr.optString("name", lr.optString("version", ""))
-        latestTime = lr.optString("time", "")
-        val urlDl = lr.optString("downloadUrl", "")
-        if (urlDl.isNotEmpty()) {
-            latestAssetName = urlDl.substringAfterLast('/')
-            latestAssetUrl = urlDl
+        val lr = obj.optJSONObject("latestRelease")
+        var latestTag = ""
+        var latestTime = ""
+        var latestAssetName: String? = null
+        var latestAssetUrl: String? = null
+        if (lr != null) {
+            latestTag = lr.optString("name", lr.optString("version", ""))
+            latestTime = lr.optString("time", "")
+            val urlDl = lr.optString("downloadUrl", "")
+            if (urlDl.isNotEmpty()) {
+                latestAssetName = urlDl.substringAfterLast('/')
+                latestAssetUrl = urlDl
+            }
+        } else {
+            // fallback: schema may provide latest release as a string
+            latestTag = obj.optString("latestRelease", "")
         }
-    } else {
-        // fallback: schema may provide latest release as a string
-        latestTag = obj.optString("latestRelease", "")
-    }
 
         val releasesArray = obj.optJSONArray("releases")
         val releases = if (releasesArray != null) {

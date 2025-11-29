@@ -3,16 +3,17 @@ package me.weishu.kernelsu.ui.viewmodel
 import android.util.Log
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.ksuApp
-import me.weishu.kernelsu.ui.component.SearchStatus
 import me.weishu.kernelsu.ui.util.HanziToPinyin
 import okhttp3.Request
 import org.json.JSONArray
@@ -60,14 +61,19 @@ class ModuleRepoViewModel : ViewModel() {
     private var _modules = mutableStateOf<List<RepoModule>>(emptyList())
     val modules: State<List<RepoModule>> = _modules
 
+    var search by mutableStateOf(TextFieldValue(""))
+
+    val filteredModules by derivedStateOf {
+        val searchText = search.text
+        modules.value.filter { module ->
+            module.moduleId.contains(searchText, true) || module.moduleName.contains(searchText, true) ||
+            HanziToPinyin.getInstance().toPinyinString(module.moduleName).contains(searchText, true) ||
+            module.summary.contains(searchText, true) || module.authors.contains(searchText, true)
+        }
+    }
+
     var isRefreshing by mutableStateOf(false)
         private set
-
-    private val _searchStatus = mutableStateOf(SearchStatus(""))
-    val searchStatus: State<SearchStatus> = _searchStatus
-
-    private val _searchResults = mutableStateOf<List<RepoModule>>(emptyList())
-    val searchResults: State<List<RepoModule>> = _searchResults
 
     fun refresh() {
         viewModelScope.launch {
@@ -80,41 +86,16 @@ class ModuleRepoViewModel : ViewModel() {
         }
     }
 
-    suspend fun updateSearchText(text: String) {
-        _searchStatus.value.searchText = text
-
-        if (text.isEmpty()) {
-            _searchStatus.value.resultStatus = SearchStatus.ResultStatus.DEFAULT
-            _searchResults.value = emptyList()
-            return
-        }
-
-        val result = withContext(Dispatchers.IO) {
-            _searchStatus.value.resultStatus = SearchStatus.ResultStatus.LOAD
-            _modules.value.filter {
-                it.moduleId.contains(text, true)
-                        || it.moduleName.contains(text, true)
-                        || it.authors.contains(text, true)
-                        || it.summary.contains(text, true)
-                        || HanziToPinyin.getInstance().toPinyinString(it.moduleName).contains(text, true)
-            }
-        }
-
-        _searchResults.value = result
-        _searchStatus.value.resultStatus = if (result.isEmpty()) {
-            SearchStatus.ResultStatus.EMPTY
-        } else {
-            SearchStatus.ResultStatus.SHOW
-        }
-    }
-
     private fun fetchModulesInternal(): List<RepoModule> {
         return runCatching {
             val request = Request.Builder().url(MODULES_URL).build()
             ksuApp.okhttpClient.newCall(request).execute().use { resp ->
                 if (!resp.isSuccessful) return emptyList()
                 val body = resp.body?.string() ?: return emptyList()
-                val json = JSONArray(body)
+                val json = kotlin.runCatching { JSONArray(body) }.getOrElse {
+                    val obj = JSONObject(body)
+                    obj.optJSONArray("modules") ?: JSONArray()
+                }
                 (0 until json.length()).mapNotNull { idx ->
                     val item = json.optJSONObject(idx) ?: return@mapNotNull null
                     parseRepoModule(item)

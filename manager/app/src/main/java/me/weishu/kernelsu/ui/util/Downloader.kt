@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.core.content.ContextCompat
@@ -18,14 +20,11 @@ import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import android.os.Handler
-import android.os.Looper
 
 /**
  * @author weishu
  * @date 2023/6/22.
  */
-@SuppressLint("Range")
 fun download(
     url: String,
     fileName: String,
