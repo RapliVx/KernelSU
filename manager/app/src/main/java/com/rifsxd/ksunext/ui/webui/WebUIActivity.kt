@@ -75,7 +75,9 @@ class WebUIActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         lifecycleScope.launch {
-            superUserViewModel.fetchAppList()
+            if (SuperUserViewModel.apps.isEmpty()) {
+                SuperUserViewModel().fetchAppList()
+            }
         }
 
         fileChooserLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
