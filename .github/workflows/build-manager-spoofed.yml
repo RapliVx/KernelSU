@@ -4,19 +4,21 @@ on:
   push:
     branches: [ "next" ]
     paths:
-      - '.github/workflows/build-manager-spoofed.yml'
+      - '.github/workflows/build-manager.yml'
       - '.github/workflows/build-lkm.yml'
+      - '.github/workflows/ksud.yml'
       - 'manager/**'
       - 'kernel/**'
-      - 'userspace/ksud/**'
+      - 'userspace/**'
   pull_request:
     branches: [ "next" ]
     paths:
-      - '.github/workflows/build-manager-spoofed.yml'
+      - '.github/workflows/build-manager.yml'
       - '.github/workflows/build-lkm.yml'
+      - '.github/workflows/ksud.yml'
       - 'manager/**'
       - 'kernel/**'
-      - 'userspace/ksud/**'
+      - 'userspace/**'
   workflow_call:
   workflow_dispatch:
 
