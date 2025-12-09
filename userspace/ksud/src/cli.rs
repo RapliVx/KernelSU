@@ -435,8 +435,8 @@ pub fn run() -> Result<()> {
     #[cfg(target_os = "android")]
     android_logger::init_once(
         Config::default()
-            .with_max_level(LevelFilter::Trace) // limit log level
-            .with_tag("KernelSU Next"), // logs will show under mytag tag
+            .with_max_level(crate::debug_select!(LevelFilter::Trace, LevelFilter::Info))
+            .with_tag("KernelSU Next"),
     );
 
     #[cfg(not(target_os = "android"))]
