@@ -5,7 +5,7 @@
 #ifndef KERNELSU_KSU_H
 #define KERNELSU_KSU_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <sys/ioctl.h>
 #include <utility>
 
@@ -83,6 +83,7 @@ int get_app_profile(app_profile *profile);
 enum ksu_feature_id {
     KSU_FEATURE_SU_COMPAT = 0,
     KSU_FEATURE_KERNEL_UMOUNT = 1,
+    KSU_FEATURE_ENHANCED_SECURITY = 2,
 };
 
 // Generic feature API
@@ -162,10 +163,12 @@ struct ksu_set_app_profile_cmd {
 
 // Su compat
 bool set_su_enabled(bool enabled);
+
 bool is_su_enabled();
 
 // Kernel umount
 bool set_kernel_umount_enabled(bool enabled);
+
 bool is_kernel_umount_enabled();
 
 struct ksu_get_hook_mode_cmd {
@@ -175,6 +178,11 @@ struct ksu_get_hook_mode_cmd {
 struct ksu_get_version_tag_cmd {
     char tag[32];
 };
+
+// Enhanced security
+bool set_enhanced_security_enabled(bool enabled);
+
+bool is_enhanced_security_enabled();
 
 // IOCTL command definitions
 #define KSU_IOCTL_GRANT_ROOT _IOC(_IOC_NONE, 'K', 1, 0)

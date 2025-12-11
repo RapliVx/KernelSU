@@ -350,3 +350,15 @@ JNIEXPORT jboolean JNICALL
 Java_com_rifsxd_ksunext_Natives_setKernelUmountEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     return set_kernel_umount_enabled(enabled);
 }
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_rifsxd_ksunext_Natives_isEnhancedSecurityEnabled(JNIEnv *env, jobject thiz) {
+    return is_enhanced_security_enabled();
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_rifsxd_ksunext_Natives_setEnhancedSecurityEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+    return set_enhanced_security_enabled(enabled);
+}
