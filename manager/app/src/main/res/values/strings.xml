@@ -227,4 +227,6 @@
     <string name="settings_global_namespace_mode_summary">All root sessions use the global mount namespace</string>
     <string name="settings_disable_kernel_umount">Disable kernel umount</string>
     <string name="settings_disable_kernel_umount_summary">Temporarily disable kernel-level umount behavior controlled by KernelSU.</string>
+    <string name="settings_enable_enhanced_security">Enable enhanced security</string>
+    <string name="settings_enable_enhanced_security_summary">Enable stricter security policies.</string>
 </resources>

@@ -13,7 +13,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.rounded.FolderDelete
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -168,7 +167,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     mutableStateOf(!Natives.isKernelUmountEnabled())
                 }
                 SwitchItem(
-                    icon = Icons.Rounded.FolderDelete,
+                    icon = Icons.Filled.FolderDelete,
                     title = stringResource(id = R.string.settings_disable_kernel_umount),
                     summary = stringResource(id = R.string.settings_disable_kernel_umount_summary),
                     checked = isKernelUmountDisabled
@@ -178,6 +177,24 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                         isKernelUmountDisabled = !shouldEnable
                     }
                 }
+
+                var isEnhancedSecurityDisabled by rememberSaveable {
+                    mutableStateOf(!Natives.isEnhancedSecurityEnabled())
+                }
+
+                SwitchItem(
+                    icon = Icons.Filled.EnhancedEncryption,
+                    title = stringResource(id = R.string.settings_enable_enhanced_security),
+                    summary = stringResource(id = R.string.settings_enable_enhanced_security_summary),
+                    checked = isEnhancedSecurityDisabled
+                ) { checked ->
+
+                    val shouldEnable = !checked   // SAME as kernel umount logic
+
+                    if (Natives.setEnhancedSecurityEnabled(shouldEnable)) {
+                        isEnhancedSecurityDisabled = !shouldEnable
+                    }
+}
                 
                 SwitchItem(
                     icon = Icons.Filled.Engineering,
