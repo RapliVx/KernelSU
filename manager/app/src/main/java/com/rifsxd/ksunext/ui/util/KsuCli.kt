@@ -31,38 +31,8 @@ import java.util.*
 private const val TAG = "KsuCli"
 private const val BUSYBOX = "/data/adb/ksu/bin/busybox"
 
-private val ksuDaemonMagicPath by lazy {
-    "${ksuApp.applicationInfo.nativeLibraryDir}${File.separator}libksud_magic.so"
-}
-
-private val ksuDaemonOverlayfsPath by lazy {
-    "${ksuApp.applicationInfo.nativeLibraryDir}${File.separator}libksud_overlayfs.so"
-}
-
-fun readMountSystemFile(): Boolean {
-    val filePath = "/data/adb/ksu/mount_system"
-    val result = ShellUtils.fastCmd("cat $filePath").trim()
-    return result == "OVERLAYFS"
-}
-
-// Get the path based on the user's choice
-fun getKsuDaemonPath(): String {
-    val useOverlayFs = readMountSystemFile()
-
-    return if (useOverlayFs) {
-        ksuDaemonOverlayfsPath
-    } else {
-        ksuDaemonMagicPath
-    }
-}
-
-fun updateMountSystemFile(useOverlayFs: Boolean) {
-    val filePath = "/data/adb/ksu/mount_system"
-    if (useOverlayFs) {
-        ShellUtils.fastCmd("echo -n OVERLAYFS > $filePath")
-    } else {
-        ShellUtils.fastCmd("echo -n MAGIC_MOUNT > $filePath")
-    }
+private fun getKsuDaemonPath(): String {
+    return ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud.so"
 }
 
 data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) {
@@ -92,7 +62,7 @@ fun Uri.getFileName(context: Context): String? {
 fun createRootShellBuilder(globalMnt: Boolean = false): Shell.Builder {
     return Shell.Builder.create().run {
         val cmd = buildString {
-            append("$ksuDaemonMagicPath debug su")
+            append("${getKsuDaemonPath()} debug su")
             if (globalMnt) append(" -g")
             append(" || ")
             append("su")

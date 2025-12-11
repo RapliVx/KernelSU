@@ -199,38 +199,10 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-            var useOverlayFs by rememberSaveable {
-                mutableStateOf(readMountSystemFile())
-            }
-
-            LaunchedEffect(Unit) {
-                useOverlayFs = readMountSystemFile()
-            }
-
             var showRebootDialog by remember { mutableStateOf(false) }
 
             val isOverlayAvailable = overlayFsAvailable()
 
-            if (ksuVersion != null && isOverlayAvailable) {
-                SwitchItem(
-                    icon = Icons.Filled.Build,
-                    title = stringResource(id = R.string.use_overlay_fs),
-                    summary = stringResource(id = R.string.use_overlay_fs_summary),
-                    checked = useOverlayFs
-                ) {
-                    prefs.edit { putBoolean("use_overlay_fs", it) }
-                    useOverlayFs = it
-                    if (useOverlayFs) {
-                        moduleBackup()
-                        updateMountSystemFile(true)
-                    } else {
-                        moduleMigration()
-                        updateMountSystemFile(false)
-                    }
-                    if (isManager) install()
-                    showRebootDialog = true
-                }
-            }
 
             if (showRebootDialog) {
                 AlertDialog(
@@ -273,7 +245,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 checkUpdate = it
             }
 
-            if (isOverlayAvailable && useOverlayFs) {
+            if (isOverlayAvailable) {
                 val shrink = stringResource(id = R.string.shrink_sparse_image)
                 val shrinkMessage = stringResource(id = R.string.shrink_sparse_image_message)
                 ListItem(

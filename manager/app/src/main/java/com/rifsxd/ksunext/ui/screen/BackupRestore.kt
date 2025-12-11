@@ -153,44 +153,41 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
 
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-            var useOverlayFs by rememberSaveable {
-                mutableStateOf(readMountSystemFile())
-            }
 
             val moduleRestore = stringResource(id = R.string.module_restore)
             val restoreMessage = stringResource(id = R.string.module_restore_message)
 
-            ListItem(
-                leadingContent = {
-                    Icon(
-                        Icons.Filled.Restore,
-                        moduleRestore,
-                        tint = if (useOverlayFs) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurface
-                    )
-                },
-                headlineContent = { 
-                    Text(
-                        moduleRestore,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (useOverlayFs) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurface
-                    ) 
-                },
-                modifier = Modifier.clickable(
-                    enabled = !useOverlayFs,
-                    onClick = {
-                        scope.launch {
-                            val result = restoreDialog.awaitConfirm(title = moduleRestore, content = restoreMessage)
-                            if (result == ConfirmResult.Confirmed) {
-                                loadingDialog.withLoading {
-                                    moduleRestore()
-                                    showRebootDialog = true
-                                }
-                            }
-                        }
-                    }
-                )
-            )
+            // ListItem(
+            //     leadingContent = {
+            //         Icon(
+            //             Icons.Filled.Restore,
+            //             moduleRestore,
+            //             tint = MaterialTheme.colorScheme.onSurface
+            //         )
+            //     },
+            //     headlineContent = { 
+            //         Text(
+            //             moduleRestore,
+            //             style = MaterialTheme.typography.titleMedium,
+            //             fontWeight = FontWeight.SemiBold,
+            //             color = MaterialTheme.colorScheme.onSurface
+            //         ) 
+            //     },
+            //     modifier = Modifier.clickable(
+            //         enabled = false,
+            //         onClick = {
+            //             scope.launch {
+            //                 val result = restoreDialog.awaitConfirm(title = moduleRestore, content = restoreMessage)
+            //                 if (result == ConfirmResult.Confirmed) {
+            //                     loadingDialog.withLoading {
+            //                         moduleRestore()
+            //                         showRebootDialog = true
+            //                     }
+            //                 }
+            //             }
+            //         }
+            //     )
+            // )
 
             HorizontalDivider(thickness = Dp.Hairline)
 
