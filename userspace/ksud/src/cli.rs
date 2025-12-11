@@ -102,10 +102,6 @@ enum Commands {
         /// KMI version, if specified, will use the specified KMI
         #[arg(long, default_value = None)]
         kmi: Option<String>,
-
-        /// target partition override (init_boot | boot | vendor_boot)
-        #[arg(long, default_value = None)]
-        partition: Option<String>,
     },
 
     /// Restore boot or init_boot images patched by KernelSU Next
@@ -470,7 +466,6 @@ pub fn run() -> Result<()> {
             out,
             magiskboot,
             kmi,
-            partition,
         } => crate::boot_patch::patch(
             boot, kernel, module, init, ota, flash, out, magiskboot, kmi,
         ),
