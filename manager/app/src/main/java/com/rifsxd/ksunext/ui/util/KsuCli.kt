@@ -529,42 +529,6 @@ fun moduleMigration(): Boolean {
     return ShellUtils.fastCmdResult(command)
 }
 
-private val suSFSDaemonPath by lazy {
-    "${ksuApp.applicationInfo.nativeLibraryDir}${File.separator}libsusfsd.so"
-}
-
-fun getSuSFS(): String {
-    return ShellUtils.fastCmd("$suSFSDaemonPath support")
-}
-
-fun getSuSFSVersion(): String {
-    return ShellUtils.fastCmd("$suSFSDaemonPath version")
-}
-
-fun getSuSFSVariant(): String {
-    return ShellUtils.fastCmd("$suSFSDaemonPath variant")
-}
-
-fun getSuSFSFeatures(): String {
-    return ShellUtils.fastCmd("$suSFSDaemonPath features")
-}
-
-fun hasSuSFs_SUS_SU(): String {
-    return ShellUtils.fastCmd("$suSFSDaemonPath sus_su support")
-}
-
-fun susfsSUS_SU_0(): String {
-    return ShellUtils.fastCmd("$suSFSDaemonPath sus_su 0")
-}
-
-fun susfsSUS_SU_2(): String {
-    return ShellUtils.fastCmd("$suSFSDaemonPath sus_su 2")
-}
-
-fun susfsSUS_SU_Mode(): String {
-    return ShellUtils.fastCmd("$suSFSDaemonPath sus_su mode")
-}
-
 fun currentMountSystem(): String {
     val result = ShellUtils.fastCmd("${getKsuDaemonPath()} module mount").trim()
     return result.substringAfter(":").substringAfter(" ").trim()

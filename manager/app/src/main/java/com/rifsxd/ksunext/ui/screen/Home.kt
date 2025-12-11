@@ -794,23 +794,6 @@ private fun InfoCard(autoExpand: Boolean = false) {
                         icon = Icons.Filled.SettingsSuggest,
                     )
 
-                    val suSFS = getSuSFS()
-                    if (suSFS == "Supported") {
-                        val isSUS_SU = hasSuSFs_SUS_SU() == "Supported"
-                        val susSUMode = if (isSUS_SU) {
-                            val mode = susfsSUS_SU_Mode()
-                            val modeString =
-                                if (mode == "2") stringResource(R.string.enabled) else stringResource(R.string.disabled)
-                            "| SuS SU: $modeString"
-                        } else ""
-                        Spacer(Modifier.height(16.dp))
-                        InfoCardItem(
-                            label = stringResource(R.string.home_susfs_version),
-                            content = "${stringResource(R.string.susfs_supported)} | ${getSuSFSVersion()} (${getSuSFSVariant()}) $susSUMode",
-                            icon = painterResource(R.drawable.ic_sus),
-                        )
-                    }
-
                     if (Natives.isZygiskEnabled()) {
                         Spacer(Modifier.height(16.dp))
                         InfoCardItem(
