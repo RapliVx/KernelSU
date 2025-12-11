@@ -43,168 +43,110 @@ static bool ksu_enhanced_security_enabled = false;
 
 static int enhanced_security_feature_get(u64 *value)
 {
-	*value = ksu_enhanced_security_enabled ? 1 : 0;
-	return 0;
+    *value = ksu_enhanced_security_enabled ? 1 : 0;
+    return 0;
 }
 
 static int enhanced_security_feature_set(u64 value)
 {
-	bool enable = value != 0;
-	ksu_enhanced_security_enabled = enable;
-	pr_info("enhanced_security: set to %d\n", enable);
-	return 0;
+    bool enable = value != 0;
+    ksu_enhanced_security_enabled = enable;
+    pr_info("enhanced_security: set to %d\n", enable);
+    return 0;
 }
 
 static const struct ksu_feature_handler enhanced_security_handler = {
-	.feature_id = KSU_FEATURE_ENHANCED_SECURITY,
-	.name = "enhanced_security",
-	.get_handler = enhanced_security_feature_get,
-	.set_handler = enhanced_security_feature_set,
+    .feature_id = KSU_FEATURE_ENHANCED_SECURITY,
+    .name = "enhanced_security",
+    .get_handler = enhanced_security_feature_get,
+    .set_handler = enhanced_security_feature_set,
 };
 
 static inline bool is_allow_su()
 {
-	if (is_manager()) {
-		// we are manager, allow!
-		return true;
-	}
-	return ksu_is_allow_uid_for_current(current_uid().val);
-}
-
-static bool is_system_bin_su(void)
-{
-    static const char *su_paths[] = {
-        "/system/bin/su",
-        "/vendor/bin/su",
-        "/product/bin/su",
-        "/system_ext/bin/su",
-		"/odm/bin/su",
-		"/system/xbin/su",
-		"/system_ext/xbin/su"
-    };
-    char path_buf[256];
-    char *pathname;
-    int i;
-
-    struct mm_struct *mm = current->mm;
-    if (mm && mm->exe_file) {
-        pathname = d_path(&mm->exe_file->f_path, path_buf, sizeof(path_buf));
-        if (!IS_ERR(pathname)) {
-            for (i = 0; i < ARRAY_SIZE(su_paths); i++) {
-                if (strcmp(pathname, su_paths[i]) == 0)
-                    return true;
-            }
-        }
+    if (is_manager()) {
+        // we are manager, allow!
+        return true;
     }
-    return false;
+    return ksu_is_allow_uid_for_current(current_uid().val);
 }
 
 int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
 {
-	uid_t new_uid = ruid;
-	uid_t old_uid = current_uid().val;
+    // we rely on the fact that zygote always call setresuid(3) with same uids
+    uid_t new_uid = ruid;
+    uid_t old_uid = current_uid().val;
 
-	pr_info("handle_setresuid from %d to %d\n", old_uid, new_uid);
+    pr_info("handle_setresuid from %d to %d\n", old_uid, new_uid);
 
-	// if old process is root, ignore it.
-	if (old_uid != 0 && ksu_enhanced_security_enabled) {
-		// disallow any non-ksu domain escalation from non-root to root!
-		// euid is what we care about here as it controls permission
-		if (unlikely(euid == 0)) {
-			if (!is_ksu_domain()) {
-				pr_warn("find suspicious EoP: %d %s, from %d to %d\n",
-					current->pid, current->comm, old_uid, new_uid);
-				force_sig(SIGKILL);
-				return 0;
-			}
-		}
-		// disallow appuid decrease to any other uid if it is not allowed to su
-		if (is_appuid(old_uid)) {
-			if (euid < current_euid().val && !ksu_is_allow_uid_for_current(old_uid)) {
-				pr_warn("find suspicious EoP: %d %s, from %d to %d\n",
-					current->pid, current->comm, old_uid, new_uid);
-				force_sig(SIGKILL);
-				return 0;
-			}
-		}
-		return 0;
-	}
+    // if old process is root, ignore it.
+    if (old_uid != 0 && ksu_enhanced_security_enabled) {
+        // disallow any non-ksu domain escalation from non-root to root!
+        // euid is what we care about here as it controls permission
+        if (unlikely(euid == 0)) {
+            if (!is_ksu_domain()) {
+                pr_warn("find suspicious EoP: %d %s, from %d to %d\n", 
+                    current->pid, current->comm, old_uid, new_uid);
+                force_sig(SIGKILL);
+                return 0;
+            }
+        }
+        // disallow appuid decrease to any other uid if it is not allowed to su
+        if (is_appuid(old_uid)) {
+            if (euid < current_euid().val && !ksu_is_allow_uid_for_current(old_uid)) {
+                pr_warn("find suspicious EoP: %d %s, from %d to %d\n", 
+                    current->pid, current->comm, old_uid, new_uid);
+                force_sig(SIGKILL);
+                return 0;
+            }
+        }
+        return 0;
+    }
 
-	// if on private space, see if its possibly the manager
-	if (new_uid > PER_USER_RANGE && new_uid % PER_USER_RANGE == ksu_get_manager_uid()) {
-		ksu_set_manager_uid(new_uid);
-	}
+    // if on private space, see if its possibly the manager
+    if (new_uid > PER_USER_RANGE && new_uid % PER_USER_RANGE == ksu_get_manager_uid()) {
+        ksu_set_manager_uid(new_uid);
+    }
 
-	if (ksu_get_manager_uid() == new_uid) {
-		pr_info("install fd for manager: %d\n", new_uid);
-		ksu_install_fd();
-		spin_lock_irq(&current->sighand->siglock);
-		ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
-		ksu_set_task_tracepoint_flag(current);
-		spin_unlock_irq(&current->sighand->siglock);
-		return 0;
-	}
+    if (ksu_get_manager_uid() == new_uid) {
+        pr_info("install fd for manager: %d\n", new_uid);
+        ksu_install_fd();
+        spin_lock_irq(&current->sighand->siglock);
+        ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
+        ksu_set_task_tracepoint_flag(current);
+        spin_unlock_irq(&current->sighand->siglock);
+        return 0;
+    }
 
-	if (ksu_is_allow_uid_for_current(new_uid)) {
-		if (current->seccomp.mode == SECCOMP_MODE_FILTER &&
-			current->seccomp.filter) {
-			spin_lock_irq(&current->sighand->siglock);
-			ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
-			spin_unlock_irq(&current->sighand->siglock);
-		}
-		ksu_set_task_tracepoint_flag(current);
-	} else {
-		ksu_clear_task_tracepoint_flag_if_needed(current);
-	}
+    if (ksu_is_allow_uid_for_current(new_uid)) {
+        if (current->seccomp.mode == SECCOMP_MODE_FILTER &&
+            current->seccomp.filter) {
+            spin_lock_irq(&current->sighand->siglock);
+            ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
+            spin_unlock_irq(&current->sighand->siglock);
+        }
+        ksu_set_task_tracepoint_flag(current);
+    } else {
+        ksu_clear_task_tracepoint_flag_if_needed(current);
+    }
 
-	// Handle kernel umount
-	ksu_handle_umount(old_uid, new_uid);
+    // Handle kernel umount
+    ksu_handle_umount(old_uid, new_uid);
 
-	return 0;
+    return 0;
 }
-
-extern int ksu_handle_devpts(struct inode *inode); // sucompat.c
-
-static int ksu_inode_permission(struct inode *inode, int mask)
-{
-	if (unlikely(inode->i_sb && inode->i_sb->s_magic == DEVPTS_SUPER_MAGIC)) {
-#ifdef CONFIG_KSU_DEBUG
-		pr_info("%s: devpts inode accessed with mask: %x\n", __func__, mask);
-#endif
-		ksu_handle_devpts(inode);
-	}
-	return 0;
-}
-
-// kernel 4.9 and older
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(CONFIG_IS_HW_HISI) || defined(CONFIG_KSU_ALLOWLIST_WORKAROUND)
-int ksu_key_permission(key_ref_t key_ref, const struct cred *cred,
-			      unsigned perm)
-{
-	if (init_session_keyring != NULL) {
-		return 0;
-	}
-	if (strcmp(current->comm, "init")) {
-		// we are only interested in `init` process
-		return 0;
-	}
-	init_session_keyring = cred->session_keyring;
-	pr_info("kernel_compat: got init_session_keyring\n");
-	return 0;
-}
-#endif
 
 void ksu_setuid_hook_init(void)
 {
-	ksu_kernel_umount_init();
-	if (ksu_register_feature_handler(&enhanced_security_handler)) {
-		pr_err("Failed to register enhanced security feature handler\n");
-	}
+    ksu_kernel_umount_init();
+    if (ksu_register_feature_handler(&enhanced_security_handler)) {
+        pr_err("Failed to register enhanced security feature handler\n");
+    }
 }
 
 void ksu_setuid_hook_exit(void)
 {
-	pr_info("ksu_core_exit\n");
-	ksu_kernel_umount_exit();
-	ksu_unregister_feature_handler(KSU_FEATURE_ENHANCED_SECURITY);
+    pr_info("ksu_core_exit\n");
+    ksu_kernel_umount_exit();
+    ksu_unregister_feature_handler(KSU_FEATURE_ENHANCED_SECURITY);
 }
