@@ -84,7 +84,6 @@ fun SettingScreen(navigator: DestinationsNavigator) {
             AboutDialog(it)
         }
         val loadingDialog = rememberLoadingDialog()
-        val shrinkDialog = rememberConfirmDialog()
 
         Column(
             modifier = Modifier
@@ -216,9 +215,6 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 
             var showRebootDialog by remember { mutableStateOf(false) }
 
-            val isOverlayAvailable = overlayFsAvailable()
-
-
             if (showRebootDialog) {
                 AlertDialog(
                     onDismissRequest = { showRebootDialog = false },
@@ -258,34 +254,6 @@ fun SettingScreen(navigator: DestinationsNavigator) {
             ) {
                 prefs.edit { putBoolean("check_update", it) }
                 checkUpdate = it
-            }
-
-            if (isOverlayAvailable) {
-                val shrink = stringResource(id = R.string.shrink_sparse_image)
-                val shrinkMessage = stringResource(id = R.string.shrink_sparse_image_message)
-                ListItem(
-                    leadingContent = {
-                        Icon(
-                            Icons.Filled.Compress,
-                            shrink
-                        )
-                    },
-                    headlineContent = { Text(
-                        text = shrink,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    ) },
-                    modifier = Modifier.clickable {
-                        scope.launch {
-                            val result = shrinkDialog.awaitConfirm(title = shrink, content = shrinkMessage)
-                            if (result == ConfirmResult.Confirmed) {
-                                loadingDialog.withLoading {
-                                    shrinkModules()
-                                }
-                            }
-                        }
-                    }
-                )
             }
 
             val customization = stringResource(id = R.string.customization)

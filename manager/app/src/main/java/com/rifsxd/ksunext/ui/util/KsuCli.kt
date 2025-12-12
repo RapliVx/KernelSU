@@ -227,10 +227,6 @@ fun uninstallPermanently(
     return FlashResult(result)
 }
 
-suspend fun shrinkModules(): Boolean = withContext(Dispatchers.IO) {
-    execKsud("module shrink", true)
-}
-
 @Parcelize
 sealed class LkmSelection : Parcelable {
     data class LkmUri(val uri: Uri) : LkmSelection()
@@ -337,11 +333,6 @@ suspend fun getSupportedKmis(): List<String> = withContext(Dispatchers.IO) {
     val cmd = "boot-info supported-kmi"
     val out = Shell.cmd("${getKsuDaemonPath()} $cmd").to(ArrayList(), null).exec().out
     out.filter { it.isNotBlank() }.map { it.trim() }
-}
-
-fun overlayFsAvailable(): Boolean {
-    // check /proc/filesystems
-    return ShellUtils.fastCmdResult("cat /proc/filesystems | grep overlay")
 }
 
 fun hasMagisk(): Boolean {
