@@ -1,8 +1,6 @@
 package com.rifsxd.ksunext.ui.webui;
 
 import android.content.Context;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
@@ -10,6 +8,7 @@ import android.graphics.drawable.Drawable;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.rifsxd.ksunext.ui.viewmodel.SuperUserViewModel;
 
 public class AppIconUtil {
     private static final Map<String, Bitmap> iconCache = new HashMap<>();
@@ -19,9 +18,7 @@ public class AppIconUtil {
         if (cached != null) return cached;
 
         try {
-            PackageManager pm = context.getPackageManager();
-            ApplicationInfo appInfo = pm.getApplicationInfo(packageName, 0);
-            Drawable drawable = pm.getApplicationIcon(appInfo);
+            Drawable drawable = SuperUserViewModel.getAppIconDrawable(context, packageName);
             Bitmap raw = drawableToBitmap(drawable, sizePx);
             Bitmap icon = Bitmap.createScaledBitmap(raw, sizePx, sizePx, true);
             iconCache.put(packageName, icon);

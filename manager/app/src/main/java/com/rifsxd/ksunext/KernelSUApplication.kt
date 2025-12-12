@@ -2,10 +2,17 @@ package com.rifsxd.ksunext
 
 import android.app.Application
 import android.system.Os
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import coil.Coil
 import coil.ImageLoader
 import com.rifsxd.ksunext.ui.util.createRootShellBuilder
+import com.rifsxd.ksunext.ui.viewmodel.SuperUserViewModel
 import com.topjohnwu.superuser.Shell
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import me.zhanghai.android.appiconloader.coil.AppIconFetcher
 import me.zhanghai.android.appiconloader.coil.AppIconKeyer
 import okhttp3.Cache
@@ -15,15 +22,21 @@ import java.util.*
 
 lateinit var ksuApp: KernelSUApplication
 
-class KernelSUApplication : Application() {
+class KernelSUApplication : Application(), ViewModelStoreOwner {
 
     lateinit var okhttpClient: OkHttpClient
+    private val appViewModelStore by lazy { ViewModelStore() }
 
     override fun onCreate() {
         super.onCreate()
         ksuApp = this
         Shell.setDefaultBuilder(createRootShellBuilder(true))
         Shell.enableVerboseLogging = BuildConfig.DEBUG
+
+        val superUserViewModel = ViewModelProvider(this)[SuperUserViewModel::class.java]
+        CoroutineScope(Dispatchers.Main).launch {
+            superUserViewModel.fetchAppList()
+        }
 
         val context = this
         val iconSize = resources.getDimensionPixelSize(android.R.dimen.app_icon_size)
@@ -54,6 +67,9 @@ class KernelSUApplication : Application() {
                     )
                 }.build()
     }
+
+    override val viewModelStore: ViewModelStore
+        get() = appViewModelStore
 
 
 }

@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.edit
+import android.graphics.drawable.Drawable
 import androidx.lifecycle.ViewModel
 import com.rifsxd.ksunext.IKsuInterface
 import com.rifsxd.ksunext.Natives
@@ -34,7 +35,13 @@ class SuperUserViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "SuperUserViewModel"
-        private var apps by mutableStateOf<List<AppInfo>>(emptyList())
+         var apps by mutableStateOf<List<AppInfo>>(emptyList())
+
+        @JvmStatic
+        fun getAppIconDrawable(context: Context, packageName: String): Drawable? {
+            val appDetail = apps.find { it.packageName == packageName }
+            return appDetail?.packageInfo?.applicationInfo?.loadIcon(context.packageManager)
+        }
         private var profileOverrides by mutableStateOf<Map<String, Natives.Profile>>(emptyMap())
     }
 
