@@ -334,7 +334,7 @@ suspend fun getCurrentKmi(): String = withContext(Dispatchers.IO) {
 }
 
 suspend fun getSupportedKmis(): List<String> = withContext(Dispatchers.IO) {
-    val cmd = "boot-info supported-kmis"
+    val cmd = "boot-info supported-kmi"
     val out = Shell.cmd("${getKsuDaemonPath()} $cmd").to(ArrayList(), null).exec().out
     out.filter { it.isNotBlank() }.map { it.trim() }
 }
