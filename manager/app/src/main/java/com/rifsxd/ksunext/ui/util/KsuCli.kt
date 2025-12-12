@@ -510,7 +510,7 @@ fun getModuleSize(dir: File): Long {
 }
 
 fun isSuCompatDisabled(): Boolean {
-    return Natives.version >= Natives.MINIMAL_SUPPORTED_SU_COMPAT && !Natives.isSuEnabled()
+    return !Natives.isSuEnabled()
 }
 
 fun zygiskRequired(dir: File): Boolean {

@@ -106,7 +106,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             val lkmMode = ksuVersion?.let {
-                if (it >= Natives.MINIMAL_SUPPORTED_KERNEL_LKM && kernelVersion.isGKI()) Natives.isLkmMode else null
+                if (kernelVersion.isGKI()) Natives.isLkmMode else null
             }
 
             StatusCard(kernelVersion, ksuVersion, lkmMode, ksuVersionTag = ksuVersionTag) {
@@ -759,8 +759,7 @@ private fun InfoCard(autoExpand: Boolean = false) {
                 InfoCardItem(
                     label = stringResource(R.string.home_manager_version),
                     content = if (
-                        developerOptionsEnabled &&
-                        Natives.version >= Natives.MINIMAL_SUPPORTED_MANAGER_UID
+                        developerOptionsEnabled
                     ) {
                         "${managerVersion.first} (${managerVersion.second}) | UID: ${Natives.getManagerUid()}"
                     } else {
@@ -769,8 +768,7 @@ private fun InfoCard(autoExpand: Boolean = false) {
                     icon = Icons.Filled.AutoAwesomeMotion,
                 )
 
-                if (ksuVersion != null &&
-                    Natives.version >= Natives.MINIMAL_SUPPORTED_HOOK_MODE) {
+                if (ksuVersion != null) {
 
                     val hookMode =
                         Natives.getHookMode()
