@@ -13,7 +13,7 @@
 #include "supercalls.h"
 #include "ksu.h"
 
-struct cred* ksu_cred;
+struct cred *ksu_cred;
 
 int __init kernelsu_init(void)
 {

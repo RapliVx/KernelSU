@@ -1,0 +1,26 @@
+name: ClangFormat check
+
+on:
+  push:
+    branches: [ "next", "dev" ]
+    paths:
+      - '.github/workflows/clang-format.yml'
+      - 'kernel/**'
+  pull_request:
+    branches: [ "next", "dev" ]
+    paths:
+      - '.github/workflows/clang-format.yml'
+      - 'kernel/**'
+
+permissions:
+  checks: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: check
+        working-directory: kernel
+        run: clang-format -Werror -n *.c
