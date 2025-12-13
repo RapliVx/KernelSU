@@ -16,6 +16,7 @@ import android.view.Window
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.widget.Toast
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.graphics.createBitmap
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -213,23 +214,19 @@ class WebViewInterface(
     }
 
     @JavascriptInterface
-    fun listSystemPackages(): String {
+    fun listPackages(type: String): String {
         val packageNames = SuperUserViewModel.apps
             .filter { appInfo ->
-                appInfo.packageInfo.applicationInfo?.let { it.flags and ApplicationInfo.FLAG_SYSTEM != 0 } ?: false
+                val flags = appInfo.packageInfo.applicationInfo?.flags ?: 0
+                when (type.lowercase()) {
+                    "system" -> (flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                    "user" -> (flags and ApplicationInfo.FLAG_SYSTEM) == 0
+                    else -> true
+                }
             }
             .map { it.packageName }
             .sorted()
-        val jsonArray = JSONArray()
-        for (pkgName in packageNames) {
-            jsonArray.put(pkgName)
-        }
-        return jsonArray.toString()
-    }
 
-    @JavascriptInterface
-    fun listAllPackages(): String {
-        val packageNames = SuperUserViewModel.apps.map { it.packageName }.sorted()
         val jsonArray = JSONArray()
         for (pkgName in packageNames) {
             jsonArray.put(pkgName)
@@ -249,13 +246,11 @@ class WebViewInterface(
                 val pkg = appInfo.packageInfo
                 val app = pkg.applicationInfo
                 val obj = JSONObject()
-                @Suppress("DEPRECATION")
-                val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pkg.longVersionCode else pkg.versionCode
                 obj.put("packageName", pkg.packageName)
                 obj.put("versionName", pkg.versionName ?: "")
-                obj.put("versionCode", versionCode)
+                obj.put("versionCode", PackageInfoCompat.getLongVersionCode(pkg))
                 obj.put("appLabel", appInfo.label)
-                obj.put("isSystem", app != null && (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0)
+                obj.put("isSystem", if (app != null) ((app.flags and ApplicationInfo.FLAG_SYSTEM) != 0) else JSONObject.NULL)
                 obj.put("uid", app?.uid ?: JSONObject.NULL)
                 jsonArray.put(obj)
             } else {
