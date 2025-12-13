@@ -20,6 +20,8 @@
 #include "app_profile.h"
 #include "util.h"
 
+extern void write_sulog(uint8_t sym);
+
 #define SU_PATH "/system/bin/su"
 #define SH_PATH "/system/bin/sh"
 
@@ -82,10 +84,11 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user,
 	memset(path, 0, sizeof(path));
 	strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
-	if (unlikely(!memcmp(path, su, sizeof(su)))) {
-		pr_info("faccessat su->sh!\n");
-		*filename_user = sh_user_path();
-	}
+    if (unlikely(!memcmp(path, su, sizeof(su)))) {
+        write_sulog('a');
+        pr_info("faccessat su->sh!\n");
+        *filename_user = sh_user_path();
+    }
 
 	return 0;
 }
@@ -107,10 +110,11 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 	memset(path, 0, sizeof(path));
 	strncpy_from_user_nofault(path, *filename_user, sizeof(path));
 
-	if (unlikely(!memcmp(path, su, sizeof(su)))) {
-		pr_info("newfstatat su->sh!\n");
-		*filename_user = sh_user_path();
-	}
+    if (unlikely(!memcmp(path, su, sizeof(su)))) {
+        write_sulog('s');
+        pr_info("newfstatat su->sh!\n");
+        *filename_user = sh_user_path();
+    }
 
 	return 0;
 }
@@ -157,8 +161,10 @@ int ksu_handle_execve_sucompat(const char __user **filename_user,
 	if (likely(memcmp(path, su, sizeof(su))))
 		return 0;
 
-	pr_info("sys_execve su found\n");
-	*filename_user = ksud_user_path();
+    write_sulog('x');
+
+    pr_info("sys_execve su found\n");
+    *filename_user = ksud_user_path();
 
 	escape_with_root_profile();
 
