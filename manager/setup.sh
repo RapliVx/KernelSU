@@ -12,7 +12,7 @@
     echo 'org.gradle.parallel=true'
     echo 'org.gradle.vfs.watch=true'
     echo 'org.gradle.jvmargs=-Xmx2048m'
-    echo 'android.native.buildOutput=verbose'
+    echo 'android.r8.maxWorkers=4'
 } >> gradle.properties
 
 ./gradlew clean assembleRelease
@@ -23,4 +23,8 @@
     echo 'android.experimental.enableNewResourceShrinker.preciseShrinking=true'
     echo 'android.enableAppCompileTimeRClass=true'
     echo 'android.useAndroidX=true'
+    echo 'org.gradle.jvmargs=-Xmx2048m'
+    echo 'org.gradle.parallel=true'
+    echo 'org.gradle.vfs.watch=true'
+    echo 'android.r8.maxWorkers=4'
 } >> gradle.properties
