@@ -51,35 +51,6 @@ import com.rifsxd.ksunext.ui.util.*
 @Destination<RootGraph>
 @Composable
 fun InstallScreen(navigator: DestinationsNavigator) {
-    var showLkmWarning by rememberSaveable { mutableStateOf(true) }
-
-    if (showLkmWarning) {
-        AlertDialog(
-            onDismissRequest = {
-                showLkmWarning = false
-                navigator.popBackStack()
-            },
-            title = { Text(
-                text = stringResource(R.string.warning),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            ) },
-            text = { Text(stringResource(R.string.lkm_warning_message)) },
-            confirmButton = {
-                TextButton(onClick = { showLkmWarning = false }) {
-                    Text(stringResource(R.string.proceed))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showLkmWarning = false
-                    navigator.popBackStack()
-                }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
 
     var installMethod by remember {
         mutableStateOf<InstallMethod?>(null)

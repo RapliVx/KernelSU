@@ -98,7 +98,6 @@
     <string name="proceed">Proceed</string>
     <string name="cancel">Cancel</string>
     <string name="later">Later</string>
-    <string name="lkm_warning_message">The LKM patch relies on closed source components. Do you want to continue?</string>
     <string name="home_next_kernelsu">🔥 Next build</string>
     <string name="home_next_kernelsu_repo">https://github.com/KernelSU-Next/KernelSU-Next</string>
     <string name="home_next_kernelsu_body">Next experimental branch. Check it out on GitHub!</string>
