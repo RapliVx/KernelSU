@@ -1,3 +1,4 @@
+
 #include <linux/err.h>
 #include <linux/fs.h>
 #include <linux/list.h>
@@ -12,7 +13,6 @@
 #include "throne_tracker.h"
 
 uid_t ksu_manager_uid = KSU_INVALID_UID;
-static uid_t locked_manager_uid = KSU_INVALID_UID;
 
 #define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list"
 
@@ -74,7 +74,7 @@ static void crown_manager(const char *apk, struct list_head *uid_data)
 #ifdef KSU_MANAGER_PACKAGE
 	// pkg is `/<real package>`
 	if (strncmp(pkg, KSU_MANAGER_PACKAGE, sizeof(KSU_MANAGER_PACKAGE))) {
-		pr_info("manager package is inconsistent: %s\n",
+		pr_info("manager package is inconsistent with kernel build: %s\n",
 				KSU_MANAGER_PACKAGE);
 		return;
 	}
@@ -84,15 +84,8 @@ static void crown_manager(const char *apk, struct list_head *uid_data)
 
 	list_for_each_entry (np, list, list) {
 		if (strncmp(np->package, pkg, KSU_MAX_PACKAGE_NAME) == 0) {
-			// unlock previously locked UID if different
-			if (locked_manager_uid != KSU_INVALID_UID && locked_manager_uid != np->uid) {
-				pr_info("Unlocking previous manager UID: %d\n", locked_manager_uid);
-				ksu_invalidate_manager_uid();  // unlock old one
-				locked_manager_uid = KSU_INVALID_UID;
-			}
-			pr_info("Crowning new manager: %s(uid=%d)\n", pkg, np->uid);
-			ksu_set_manager_uid(np->uid);   // throne new UID
-			locked_manager_uid = np->uid;   // store locked UID
+			pr_info("Crowning manager: %s(uid=%d)\n", pkg, np->uid);
+			ksu_set_manager_uid(np->uid);
 			break;
 		}
 	}
@@ -135,8 +128,8 @@ struct my_dir_context {
 #endif
 extern bool is_manager_apk(char *path);
 FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
-				int namelen, loff_t off, u64 ino,
-				unsigned int d_type)
+							int namelen, loff_t off, u64 ino,
+							unsigned int d_type)
 {
 	struct my_dir_context *my_ctx =
 		container_of(ctx, struct my_dir_context, ctx);
@@ -155,19 +148,19 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 		return FILLDIR_ACTOR_CONTINUE; // Skip "." and ".."
 
 	if (d_type == DT_DIR && namelen >= 8 && !strncmp(name, "vmdl", 4) &&
-	    !strncmp(name + namelen - 4, ".tmp", 4)) {
+		!strncmp(name + namelen - 4, ".tmp", 4)) {
 		pr_info("Skipping directory: %.*s\n", namelen, name);
 		return FILLDIR_ACTOR_CONTINUE; // Skip staging package
 	}
 
 	if (snprintf(dirpath, DATA_PATH_LEN, "%s/%.*s", my_ctx->parent_dir, namelen,
-			name) >= DATA_PATH_LEN) {
+				name) >= DATA_PATH_LEN) {
 		pr_err("Path too long: %s/%.*s\n", my_ctx->parent_dir, namelen, name);
 		return FILLDIR_ACTOR_CONTINUE;
 	}
 
 	if (d_type == DT_DIR && my_ctx->depth > 0 &&
-	    (my_ctx->stop && !*my_ctx->stop)) {
+		(my_ctx->stop && !*my_ctx->stop)) {
 		struct data_path *data = kzalloc(sizeof(struct data_path), GFP_ATOMIC);
 
 		if (!data) {
@@ -191,7 +184,7 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 
 			bool is_manager = is_manager_apk(dirpath);
 			pr_info("Found new base.apk at path: %s, is_manager: %d\n", dirpath,
-				is_manager);
+					is_manager);
 			if (is_manager) {
 				crown_manager(dirpath, my_ctx->private_data);
 				*my_ctx->stop = 1;
@@ -238,18 +231,18 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 
 		list_for_each_entry_safe (pos, n, &data_path_list, list) {
 			struct my_dir_context ctx = { .ctx.actor = my_actor,
-											.data_path_list = &data_path_list,
-											.parent_dir = pos->dirpath,
-											.private_data = uid_data,
-											.depth = pos->depth,
-											.stop = &stop };
+										.data_path_list = &data_path_list,
+										.parent_dir = pos->dirpath,
+										.private_data = uid_data,
+										.depth = pos->depth,
+										.stop = &stop };
 			struct file *file;
 
 			if (!stop) {
 				file = filp_open(pos->dirpath, O_RDONLY | O_NOFOLLOW, 0);
 				if (IS_ERR(file)) {
 					pr_err("Failed to open directory: %s, err: %ld\n",
-							pos->dirpath, PTR_ERR(file));
+						pos->dirpath, PTR_ERR(file));
 					goto skip_iterate;
 				}
 
@@ -258,7 +251,7 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 					if (file->f_inode->i_sb->s_magic) {
 						data_app_magic = file->f_inode->i_sb->s_magic;
 						pr_info("%s: dir: %s got magic! 0x%lx\n", __func__,
-							pos->dirpath, data_app_magic);
+								pos->dirpath, data_app_magic);
 					} else {
 						filp_close(file, NULL);
 						goto skip_iterate;
@@ -267,8 +260,8 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 
 				if (file->f_inode->i_sb->s_magic != data_app_magic) {
 					pr_info("%s: skip: %s magic: 0x%lx expected: 0x%lx\n",
-						__func__, pos->dirpath,
-						file->f_inode->i_sb->s_magic, data_app_magic);
+							__func__, pos->dirpath,
+							file->f_inode->i_sb->s_magic, data_app_magic);
 					filp_close(file, NULL);
 					goto skip_iterate;
 				}
@@ -300,7 +293,7 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 	bool exist = false;
 	list_for_each_entry (np, list, list) {
 		if (np->uid == uid % 100000 &&
-		    strncmp(np->package, package, KSU_MAX_PACKAGE_NAME) == 0) {
+			strncmp(np->package, package, KSU_MAX_PACKAGE_NAME) == 0) {
 			exist = true;
 			break;
 		}
@@ -310,81 +303,80 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 
 void track_throne(bool prune_only)
 {
-		struct file *fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
-		if (IS_ERR(fp)) {
-			pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n", __func__,
-					PTR_ERR(fp));
-			return;
+	struct file *fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
+	if (IS_ERR(fp)) {
+		pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n", __func__,
+			PTR_ERR(fp));
+		return;
+	}
+
+	struct list_head uid_list;
+	INIT_LIST_HEAD(&uid_list);
+
+	char chr = 0;
+	loff_t pos = 0;
+	loff_t line_start = 0;
+	char buf[KSU_MAX_PACKAGE_NAME];
+	for (;;) {
+		ssize_t count = kernel_read(fp, &chr, sizeof(chr), &pos);
+		if (count != sizeof(chr))
+			break;
+		if (chr != '\n')
+			continue;
+
+		count = kernel_read(fp, buf, sizeof(buf), &line_start);
+
+		struct uid_data *data = kzalloc(sizeof(struct uid_data), GFP_ATOMIC);
+		if (!data) {
+			filp_close(fp, 0);
+			goto out;
 		}
 
-		struct list_head uid_list;
-		INIT_LIST_HEAD(&uid_list);
-
-		char chr = 0;
-		loff_t pos = 0;
-		loff_t line_start = 0;
-		char buf[KSU_MAX_PACKAGE_NAME];
-		for (;;) {
-			ssize_t count = kernel_read(fp, &chr, sizeof(chr), &pos);
-			if (count != sizeof(chr))
-				break;
-			if (chr != '\n')
-				continue;
-
-			count = kernel_read(fp, buf, sizeof(buf), &line_start);
-
-			struct uid_data *data = kzalloc(sizeof(struct uid_data), GFP_ATOMIC);
-			if (!data) {
-				filp_close(fp, 0);
-				goto out;
-			}
-
-			char *tmp = buf;
-			const char *delim = " ";
-			char *package = strsep(&tmp, delim);
-			char *uid = strsep(&tmp, delim);
-			if (!uid || !package) {
-				pr_err("update_uid: package or uid is NULL!\n");
-				break;
-			}
-
-			u32 res;
-			if (kstrtou32(uid, 10, &res)) {
-				pr_err("update_uid: uid parse err\n");
-				break;
-			}
-			data->uid = res;
-			strncpy(data->package, package, KSU_MAX_PACKAGE_NAME);
-			list_add_tail(&data->list, &uid_list);
-			// reset line start
-			line_start = pos;
+		char *tmp = buf;
+		const char *delim = " ";
+		char *package = strsep(&tmp, delim);
+		char *uid = strsep(&tmp, delim);
+		if (!uid || !package) {
+			pr_err("update_uid: package or uid is NULL!\n");
+			break;
 		}
-		filp_close(fp, 0);
 
-		// now update uid list
-		struct uid_data *np;
-		struct uid_data *n;
+		u32 res;
+		if (kstrtou32(uid, 10, &res)) {
+			pr_err("update_uid: uid parse err\n");
+			break;
+		}
+		data->uid = res;
+		strncpy(data->package, package, KSU_MAX_PACKAGE_NAME);
+		list_add_tail(&data->list, &uid_list);
+		// reset line start
+		line_start = pos;
+	}
+	filp_close(fp, 0);
 
-    if (prune_only)
-        goto prune;
+	// now update uid list
+	struct uid_data *np;
+	struct uid_data *n;
 
-	// check if manager UID exists
-    bool manager_exist = false;
+	if (prune_only)
+		goto prune;
+
+	// first, check if manager_uid exist!
+	bool manager_exist = false;
 	list_for_each_entry (np, &uid_list, list) {
 		// if manager is installed in work profile, the uid in packages.list is still equals main profile
 		// don't delete it in this case!
-		int current_manager_uid = ksu_get_manager_uid() % 100000;
-		if (np->uid == current_manager_uid) {
+		int manager_uid = ksu_get_manager_uid() % 100000;
+		if (np->uid == manager_uid) {
 			manager_exist = true;
 			break;
 		}
 	}
 
-	if (!manager_exist && locked_manager_uid != KSU_INVALID_UID) {
+	if (!manager_exist) {
 		if (ksu_is_manager_uid_valid()) {
-			pr_info("Manager app removed, unlocking previous UID: %d\n", locked_manager_uid);
+			pr_info("manager is uninstalled, invalidate it!\n");
 			ksu_invalidate_manager_uid();
-			locked_manager_uid = KSU_INVALID_UID;
 			goto prune;
 		}
 		pr_info("Searching manager...\n");
