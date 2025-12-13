@@ -18,6 +18,7 @@ on:
       - 'kernel/**'
       - 'userspace/ksud/**'
   workflow_call:
+  workflow_dispatch:
 
 jobs:
   build-lkm:
