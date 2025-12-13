@@ -43,6 +43,6 @@ pub const KSU_BACKUP_DIR: &str = WORKING_DIR;
 pub const KSU_BACKUP_FILE_PREFIX: &str = "ksu_backup_";
 pub const BACKUP_FILENAME: &str = "stock_image.sha1";
 
-pub const MOUNT_SYSTEM: &str = "OverlayFS";
+pub const MOUNT_SYSTEM: &str = "Meta";
 
 pub const GLOBAL_NAMESPACE_FILE: &str = concatcp!(WORKING_DIR, ".global_mnt");
