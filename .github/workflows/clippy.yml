@@ -1,20 +1,18 @@
-name: Clippy Check
+name: Clippy check
 
 on:
   push:
     branches:
-      - next
+      - main
     paths:
       - '.github/workflows/clippy.yml'
-      - 'userspace/ksud_magic/**'
-      - 'userspace/ksud_overlayfs/**'
+      - 'userspace/ksud/**'
   pull_request:
     branches:
-      - next
+      - main
     paths:
       - '.github/workflows/clippy.yml'
-      - 'userspace/ksud_magic/**'
-      - 'userspace/ksud_overlayfs/**'
+      - 'userspace/ksud/**'
 
 env:
   RUSTFLAGS: '-Dwarnings'
@@ -23,32 +21,17 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Rust
-        run: rustup update stable
-
-      - name: Setup Cross
-        run: RUSTFLAGS="" cargo install cross
-
-      - name: Cache ksud_overlayfs
-        uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@v5
+      - run: rustup update stable
+      - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: userspace/ksud_overlayfs
+          workspaces: userspace/ksud
 
-      - name: Cache ksud_magic
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: userspace/ksud_magic
-
-      - name: Run Clippy
+      - name: Install cross
         run: |
-          cross clippy --manifest-path userspace/ksud_magic/Cargo.toml --target aarch64-linux-android --release
-          cross clippy --manifest-path userspace/ksud_overlayfs/Cargo.toml --target aarch64-linux-android --release
+          RUSTFLAGS="" cargo install cross --git https://github.com/cross-rs/cross --rev 66845c1
 
-          cross clippy --manifest-path userspace/ksud_magic/Cargo.toml --target armv7-linux-androideabi --release
-          cross clippy --manifest-path userspace/ksud_overlayfs/Cargo.toml --target armv7-linux-androideabi --release
-
-          cross clippy --manifest-path userspace/ksud_magic/Cargo.toml --target x86_64-linux-android --release
-          cross clippy --manifest-path userspace/ksud_overlayfs/Cargo.toml --target x86_64-linux-android --release
+      - name: Run clippy
+        run: |
+          cross clippy --manifest-path userspace/ksud/Cargo.toml --target aarch64-linux-android --release
+          cross clippy --manifest-path userspace/ksud/Cargo.toml --target x86_64-linux-android --release
