@@ -17,7 +17,7 @@ object Natives {
     // 10977: change groups_count and groups to avoid overflow write
     // 11071: Fix the issue of failing to set a custom SELinux type.
     // 12797: zygisk query and get manager uid.
-    const val MINIMAL_SUPPORTED_KERNEL = 12290
+    const val MINIMAL_SUPPORTED_KERNEL = 22000
 
     const val KERNEL_SU_DOMAIN = "u:r:su:s0"
 
