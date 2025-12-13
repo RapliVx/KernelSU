@@ -1,24 +1,26 @@
-name: Build Manager
+name: Build Manager CI Spoofed
 
 on:
   push:
-    branches: [ "next" ]
+    branches: [ "dev"]
     paths:
-      - '.github/workflows/build-manager.yml'
+      - '.github/workflows/build-manager-ci-spoofed.yml'
       - '.github/workflows/build-lkm.yml'
       - 'manager/**'
       - 'kernel/**'
       - 'userspace/ksud/**'
   pull_request:
-    branches: [ "next" ]
+    branches: [ "dev" ]
     paths:
-      - '.github/workflows/build-manager.yml'
+      - '.github/workflows/build-manager-ci-spoofed.yml'
       - '.github/workflows/build-lkm.yml'
       - 'manager/**'
       - 'kernel/**'
       - 'userspace/ksud/**'
   workflow_call:
   workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * *" # 6 PM UTC+6 | 12 PM UTC
 
 jobs:
   build-lkm:
@@ -71,6 +73,11 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Spoof Package ID
+        run: |
+          chmod +x spoof
+          ./spoof
 
       - name: Setup need_upload
         id: need_upload
@@ -161,7 +168,7 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           COMMIT_URL: ${{ github.event.head_commit.url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TITLE: Stable Manager Build (Normal)
+          TITLE: Dev Manager Build (Spoofed)
           BRANCH: ${{ github.ref_name }}
         run: |
           if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then

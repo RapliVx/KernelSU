@@ -1,10 +1,10 @@
-name: Build Manager
+name: Build Manager Spoofed
 
 on:
   push:
     branches: [ "next" ]
     paths:
-      - '.github/workflows/build-manager.yml'
+      - '.github/workflows/build-manager-spoofed.yml'
       - '.github/workflows/build-lkm.yml'
       - 'manager/**'
       - 'kernel/**'
@@ -12,7 +12,7 @@ on:
   pull_request:
     branches: [ "next" ]
     paths:
-      - '.github/workflows/build-manager.yml'
+      - '.github/workflows/build-manager-spoofed.yml'
       - '.github/workflows/build-lkm.yml'
       - 'manager/**'
       - 'kernel/**'
@@ -71,6 +71,11 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Spoof Package ID
+        run: |
+          chmod +x spoof
+          ./spoof
 
       - name: Setup need_upload
         id: need_upload
@@ -161,7 +166,7 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           COMMIT_URL: ${{ github.event.head_commit.url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TITLE: Stable Manager Build (Normal)
+          TITLE: Stable Manager Build (Spoofed)
           BRANCH: ${{ github.ref_name }}
         run: |
           if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then

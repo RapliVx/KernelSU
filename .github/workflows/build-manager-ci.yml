@@ -1,8 +1,8 @@
-name: Build Manager
+name: Build Manager CI
 
 on:
   push:
-    branches: [ "next" ]
+    branches: [ "dev" ]
     paths:
       - '.github/workflows/build-manager.yml'
       - '.github/workflows/build-lkm.yml'
@@ -10,9 +10,9 @@ on:
       - 'kernel/**'
       - 'userspace/ksud/**'
   pull_request:
-    branches: [ "next" ]
+    branches: [ "dev" ]
     paths:
-      - '.github/workflows/build-manager.yml'
+      - '.github/workflows/build-manager-ci.yml'
       - '.github/workflows/build-lkm.yml'
       - 'manager/**'
       - 'kernel/**'
@@ -161,7 +161,7 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           COMMIT_URL: ${{ github.event.head_commit.url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TITLE: Stable Manager Build (Normal)
+          TITLE: Dev Manager Build (Normal)
           BRANCH: ${{ github.ref_name }}
         run: |
           if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then
