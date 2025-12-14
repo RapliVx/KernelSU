@@ -28,8 +28,6 @@ import com.rifsxd.ksunext.Natives
 import com.rifsxd.ksunext.ui.screen.FlashIt
 import com.rifsxd.ksunext.ui.theme.KernelSUTheme
 import com.rifsxd.ksunext.ui.util.*
-import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
-import com.rifsxd.ksunext.ui.viewmodel.SuperUserViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -63,9 +61,6 @@ class MainActivity : ComponentActivity() {
             val prefs = getSharedPreferences("settings", MODE_PRIVATE)
             val amoledMode = prefs.getBoolean("enable_amoled", false)
 
-            val moduleViewModel: ModuleViewModel = viewModel()
-            val superUserViewModel: SuperUserViewModel = viewModel()
-
             KernelSUTheme(amoledMode = amoledMode) {
                 val navController = rememberNavController()
                 val snackBarHostState = remember { SnackbarHostState() }
@@ -79,15 +74,6 @@ class MainActivity : ComponentActivity() {
                                 finishIntent = true
                             )
                         )
-                    }
-                }
-
-                LaunchedEffect(Unit) {
-                    if (superUserViewModel.appList.isEmpty()) {
-                        superUserViewModel.fetchAppList()
-                    }
-                    if (moduleViewModel.moduleList.isEmpty()) {
-                        moduleViewModel.fetchModuleList()
                     }
                 }
 
