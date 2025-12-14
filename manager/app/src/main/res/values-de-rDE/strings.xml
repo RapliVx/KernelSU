@@ -25,6 +25,9 @@
   <string name="disable">Deaktivieren</string>
   <string name="enabled">Aktiviert</string>
   <string name="disabled">Deaktiviert</string>
+  <string name="susfs_supported">Unterstützt</string>
+  <string name="home_susfs">SuSFS: %s</string>
+  <string name="home_susfs_version">SuSFS-Version</string>
   <string name="home_android">Android-Version</string>
   <string name="home_manager_version">Manager-Version</string>
   <string name="home_abi">Application Binary Interface (ABI)</string>

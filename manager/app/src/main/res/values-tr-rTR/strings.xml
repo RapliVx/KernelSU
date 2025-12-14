@@ -25,6 +25,9 @@
   <string name="disable">Devre dışı bırak</string>
   <string name="enabled">Etkin</string>
   <string name="disabled">Devre dışı</string>
+  <string name="susfs_supported">Destekleniyor</string>
+  <string name="home_susfs">SuSFS: %s</string>
+  <string name="home_susfs_version">SuSFS sürümü</string>
   <string name="home_android">Android sürümü</string>
   <string name="home_manager_version">Yönetici sürümü</string>
   <string name="home_abi">ABI</string>
