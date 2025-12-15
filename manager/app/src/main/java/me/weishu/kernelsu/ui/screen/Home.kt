@@ -535,7 +535,7 @@ fun AboutHeaderCard() {
 
         // 🔹 Background image (optional, seperti foto anime)
         Image(
-            painter = painterResource(id = R.drawable.about_header_bg),
+            painter = painterResource(id = R.drawable.about_header),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.matchParentSize()
