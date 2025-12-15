@@ -87,6 +87,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.fillMaxSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>(start = true)
@@ -542,7 +543,6 @@ fun AboutHeaderCard() {
             .clip(RoundedCornerShape(28.dp))
     ) {
 
-        // 🔹 Background image (optional, seperti foto anime)
         Image(
             painter = painterResource(id = R.drawable.about_header),
             contentDescription = null,
@@ -550,13 +550,13 @@ fun AboutHeaderCard() {
             modifier = Modifier.fillMaxSize()
         )
 
-        // 🔹 Dark overlay biar teks kebaca
+        // ✅ OVERLAY AMAN
         Box(
             modifier = Modifier
-                .matchParentSize()
+                .fillMaxSize() // ← WAJIB INI
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
+                        listOf(
                             Color.Black.copy(alpha = 0.2f),
                             Color.Black.copy(alpha = 0.6f)
                         )
@@ -564,7 +564,6 @@ fun AboutHeaderCard() {
                 )
         )
 
-        // 🔹 Content
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
