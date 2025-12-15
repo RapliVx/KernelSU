@@ -226,4 +226,5 @@
     <string name="settings_disable_kernel_umount_summary">Temporarily disable kernel-level umount behavior controlled by KernelSU.</string>
     <string name="settings_enable_enhanced_security">Enable enhanced security</string>
     <string name="settings_enable_enhanced_security_summary">Enable stricter security policies.</string>
+    <string name="meta_module">Meta</string>
 </resources>

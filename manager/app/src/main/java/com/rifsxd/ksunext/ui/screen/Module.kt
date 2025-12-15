@@ -933,6 +933,15 @@ fun ModuleItem(
                                         )
                                     )
                                 }
+                                if (module.isMetaModule) {
+                                    LabelItem(
+                                        text = stringResource(R.string.meta_module),
+                                        style = LabelItemDefaults.style.copy(
+                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    )
+                                }
                                 if (!Natives.isZygiskEnabled() && module.zygiskRequired && !module.remove) {
                                     LabelItem(
                                         text = stringResource(R.string.zygisk_required),
@@ -1237,7 +1246,8 @@ fun ModuleItemPreview() {
         dirId = "dirId",
         size = 12345678L,
         banner = "",
-        zygiskRequired = false
+        zygiskRequired = false,
+        isMetaModule = false
     )
     ModuleItem(EmptyDestinationsNavigator, module, "", {}, {}, {}, {}, {}, false, {})
 }

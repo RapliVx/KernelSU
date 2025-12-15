@@ -46,7 +46,8 @@ class ModuleViewModel : ViewModel() {
         val dirId: String,
         val size: Long,
         val banner: String,
-        val zygiskRequired: Boolean
+        val zygiskRequired: Boolean,
+        val isMetaModule: Boolean
     )
 
     data class ModuleUpdateInfo(
@@ -132,6 +133,10 @@ class ModuleViewModel : ViewModel() {
                             val moduleDir = File("/data/adb/modules/$dirId")
                             val size = getModuleSize(moduleDir)
                             val zygiskRequired = zygiskRequired(moduleDir)
+                            val metaModule =
+                                obj.optInt("metamodule") != 0 ||
+                                obj.optBoolean("metamodule")
+
 
                             ModuleInfo(
                                 id,
@@ -149,7 +154,8 @@ class ModuleViewModel : ViewModel() {
                                 dirId,
                                 size,
                                 obj.optString("banner"),
-                                zygiskRequired
+                                zygiskRequired,
+                                metaModule
                             )
                         }.toList()
                     isNeedRefresh = false
