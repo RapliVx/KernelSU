@@ -82,7 +82,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.matchParentSize
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -548,7 +547,7 @@ fun AboutHeaderCard() {
             painter = painterResource(id = R.drawable.about_header),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.matchParentSize()
+            modifier = Modifier.fillMaxSize()
         )
 
         // 🔹 Dark overlay biar teks kebaca
