@@ -45,17 +45,34 @@ import me.weishu.kernelsu.R
 fun AboutCard() {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(24.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp)
-        ) {
-            AboutCardContent()
+        Column {
+
+            // Header image
+            AboutHeader()
+
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+
+                Text(
+                    text = "Active",
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                VersionChip()
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                AboutCardContent()
+            }
         }
     }
 }
+
 
 @Composable
 fun AboutDialog(dismiss: () -> Unit) {
@@ -67,70 +84,102 @@ fun AboutDialog(dismiss: () -> Unit) {
 }
 
 @Composable
+fun VersionChip() {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.primaryContainer
+    ) {
+        Text(
+            text = "KernelSU ${BuildConfig.VERSION_NAME}",
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    }
+}
+
+@Composable
+fun AboutHeader() {
+    Image(
+        painter = painterResource(id = R.drawable.about_header),
+        contentDescription = null,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(160.dp),
+        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+    )
+}
+
+@Composable
 private fun AboutCardContent() {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val isOfficial by remember { mutableStateOf(prefs.getBoolean("enable_official_launcher", false)) }
+    val isOfficial by remember {
+        mutableStateOf(prefs.getBoolean("enable_official_launcher", false))
+    }
 
-    Column(
+    Row(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row {
-            Surface(
-                modifier = Modifier.size(40.dp),
-                color = colorResource(id = R.color.ic_launcher_background),
-                shape = CircleShape
-            ) {
-                Image(
-                    painter = painterResource(if (isOfficial) R.drawable.ic_launcher_foreground else R.drawable.ic_launcher_kowsu),
-                    contentDescription = "icon",
-                    modifier = Modifier.scale(1.4f)
-                )
-            }
+        Surface(
+            modifier = Modifier.size(42.dp),
+            color = colorResource(id = R.color.ic_launcher_background),
+            shape = CircleShape
+        ) {
+            Image(
+                painter = painterResource(
+                    if (isOfficial)
+                        R.drawable.ic_launcher_foreground
+                    else
+                        R.drawable.ic_launcher_kowsu
+                ),
+                contentDescription = null,
+                modifier = Modifier.scale(1.3f)
+            )
+        }
 
-            Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(12.dp))
 
-            Column {
+        Column {
 
-                Text(
-                    stringResource(id = R.string.app_name),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontSize = 18.sp
-                )
-                Text(
-                    BuildConfig.VERSION_NAME,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
-                    fontSize = 14.sp
-                )
+            Text(
+                stringResource(id = R.string.app_name),
+                style = MaterialTheme.typography.titleSmall,
+                fontSize = 18.sp
+            )
 
-                Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                BuildConfig.VERSION_NAME,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                fontSize = 14.sp
+            )
 
-                val annotatedString = AnnotatedString.fromHtml(
-                    htmlString = stringResource(
-                        id = R.string.about_source_code,
-                        "<b><a href=\"https://github.com/KOWX712/KernelSU\">GitHub</a></b>",
-                        "<b><a href=\"https://t.me/kowsu_build\">Telegram</a></b>"
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val annotatedString = AnnotatedString.fromHtml(
+                htmlString = stringResource(
+                    id = R.string.about_source_code,
+                    "<b><a href=\"https://github.com/KOWX712/KernelSU\">GitHub</a></b>",
+                    "<b><a href=\"https://t.me/kowsu_build\">Telegram</a></b>"
+                ),
+                linkStyles = TextLinkStyles(
+                    style = SpanStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        textDecoration = TextDecoration.Underline
                     ),
-                    linkStyles = TextLinkStyles(
-                        style = SpanStyle(
-                            color = MaterialTheme.colorScheme.primary,
-                            textDecoration = TextDecoration.Underline
-                        ),
-                        pressedStyle = SpanStyle(
-                            color = MaterialTheme.colorScheme.primary,
-                            background = MaterialTheme.colorScheme.secondaryContainer,
-                            textDecoration = TextDecoration.Underline
-                        )
+                    pressedStyle = SpanStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        background = MaterialTheme.colorScheme.secondaryContainer,
+                        textDecoration = TextDecoration.Underline
                     )
                 )
-                Text(
-                    text = annotatedString,
-                    style = TextStyle(
-                        fontSize = 14.sp
-                    )
-                )
-            }
+            )
+
+            Text(
+                text = annotatedString,
+                style = TextStyle(fontSize = 14.sp)
+            )
         }
     }
 }
