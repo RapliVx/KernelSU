@@ -761,7 +761,7 @@ private fun InfoCard(autoExpand: Boolean = false) {
                     content = if (
                         developerOptionsEnabled
                     ) {
-                        "${managerVersion.first} (${managerVersion.second}) | UID: ${Natives.getManagerUid()}"
+                        "${managerVersion.first} (${managerVersion.second}) | UID: ${Natives.getManagerAppid()}"
                     } else {
                         "${managerVersion.first} (${managerVersion.second})"
                     },

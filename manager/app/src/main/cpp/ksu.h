@@ -102,6 +102,8 @@ const char* get_hook_mode(void);
 
 const char* get_version_tag(void);
 
+uid_t get_manager_appid(void);
+
 bool is_zygisk_enabled();
 
 struct ksu_become_daemon_cmd {

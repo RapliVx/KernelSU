@@ -28,6 +28,13 @@ Java_com_rifsxd_ksunext_Natives_getVersion(JNIEnv *env, jobject) {
 }
 
 extern "C"
+JNIEXPORT jint JNICALL
+Java_com_rifsxd_ksunext_Natives_getManagerAppid(JNIEnv *env, jobject) {
+    uid_t appid = get_manager_appid();
+    return (jint)appid;
+}
+
+extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_rifsxd_ksunext_Natives_getHookMode(JNIEnv *env, jobject) {
     const char* mode = get_hook_mode();

@@ -50,7 +50,7 @@ object Natives {
      * Get the UID of the current root manager.
      * @return manager UID, or 0 if unavailable.
      */
-    external fun getManagerUid(): Int
+    external fun getManagerAppid(): Int
 
     /**
      * Get a string indicating the SU hook mode enabled in kernel.

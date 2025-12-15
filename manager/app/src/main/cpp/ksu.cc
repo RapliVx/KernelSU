@@ -197,6 +197,16 @@ const char* get_hook_mode(void)
     return "Unknown";
 }
 
+uid_t get_manager_appid(void)
+{
+    static struct ksu_get_manager_appid_cmd cmd = {0};
+
+    if (ksuctl(KSU_IOCTL_GET_MANAGER_APPID, &cmd) == 0)
+        return cmd.appid;
+
+    return 0;
+}
+
 const char* get_version_tag(void)
 {
     static struct ksu_get_version_tag_cmd cmd = {0};
