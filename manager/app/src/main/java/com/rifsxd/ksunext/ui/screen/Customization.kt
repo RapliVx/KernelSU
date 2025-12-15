@@ -37,6 +37,7 @@ import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ksuApp
 import com.rifsxd.ksunext.ui.component.SwitchItem
 import com.rifsxd.ksunext.ui.component.rememberCustomDialog
+import com.rifsxd.ksunext.ui.util.restartActivity
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.LocaleHelper
 
@@ -285,12 +286,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                         confirmButton = {
                             TextButton(onClick = {
                                 showRestartDialog = false
-                                // Restart the app
-                                val packageManager = context.packageManager
-                                val intent = packageManager.getLaunchIntentForPackage(context.packageName)
-                                intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                context.startActivity(intent)
-                                Runtime.getRuntime().exit(0)
+                                restartActivity(context)
                             }) {
                                 Text(stringResource(R.string.restart_app))
                             }

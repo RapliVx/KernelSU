@@ -57,6 +57,7 @@ import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ui.component.rememberConfirmDialog
 import com.rifsxd.ksunext.ui.theme.ORANGE
 import com.rifsxd.ksunext.ui.util.*
+import com.rifsxd.ksunext.ui.util.restartActivity
 import com.rifsxd.ksunext.ui.util.module.LatestVersionInfo
 import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
 import kotlinx.coroutines.Dispatchers
@@ -141,11 +142,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 WarningCard(
                     stringResource(id = R.string.grant_root_failed),
                     onClick = {
-                        val pm = context.packageManager
-                        val intent = pm.getLaunchIntentForPackage(context.packageName)
-                        intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
-                        Runtime.getRuntime().exit(0)
+                        restartActivity(context)
                     }
                 )
             }

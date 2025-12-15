@@ -1,5 +1,7 @@
 package com.rifsxd.ksunext.ui.util
 
+import android.app.Activity
+import android.content.Intent
 import android.content.ContentResolver
 import android.content.Context
 import android.database.Cursor
@@ -560,6 +562,20 @@ fun getZygiskVersion(): String {
         } ?: "None"
     } catch (_: Exception) {
         "None"
+    }
+}
+
+fun restartActivity(context: Context) {
+    val packageManager = context.packageManager
+    val intent = packageManager.getLaunchIntentForPackage(context.packageName)
+    intent?.addFlags(
+        Intent.FLAG_ACTIVITY_NEW_TASK or
+        Intent.FLAG_ACTIVITY_CLEAR_TASK or
+        Intent.FLAG_ACTIVITY_CLEAR_TOP
+    )
+    context.startActivity(intent)
+    if (context is Activity) {
+        context.finish()
     }
 }
 
