@@ -890,7 +890,11 @@ fun ModuleItem(
                 }
 
                 val filterZygiskModules = Natives.isZygiskEnabled() || !module.zygiskRequired
-
+                
+                val zygiskImpl by produceState(key1 = module.id, initialValue = "") {
+                    value = withContext(Dispatchers.IO) { getZygiskImplementation() }
+                }
+                
                 LaunchedEffect(Unit) {
                     developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
                 }
@@ -933,9 +937,18 @@ fun ModuleItem(
                                         )
                                     )
                                 }
-                                if (module.isMetaModule) {
+                                if (module.isMetaModule && !module.remove) {
                                     LabelItem(
                                         text = stringResource(R.string.meta_module),
+                                        style = LabelItemDefaults.style.copy(
+                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    )
+                                }
+                                if (zygiskImpl.isNotBlank() && zygiskImpl != "None" && module.name == zygiskImpl && !module.remove) {
+                                    LabelItem(
+                                        text = stringResource(R.string.zygisk),
                                         style = LabelItemDefaults.style.copy(
                                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
