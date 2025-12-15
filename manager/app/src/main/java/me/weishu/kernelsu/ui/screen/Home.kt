@@ -105,6 +105,8 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             }
             val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
 
+            AboutHeaderCard()
+
             StatusCard(
                 kernelVersion,
                 ksuVersion,
@@ -516,6 +518,75 @@ private fun StatusCardPreview() {
         StatusCard(KernelVersion(5, 10, 101), 20000, true, true)
         StatusCard(KernelVersion(5, 10, 101), null, true, true)
         StatusCard(KernelVersion(4,10, 101), null, false, false)
+    }
+}
+
+@Composable
+fun AboutHeaderCard() {
+    val isManager = Natives.isManager
+    val ksuVersion = if (isManager) Natives.version else null
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clip(RoundedCornerShape(28.dp))
+    ) {
+
+        // 🔹 Background image (optional, seperti foto anime)
+        Image(
+            painter = painterResource(id = R.drawable.about_header_bg),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.matchParentSize()
+        )
+
+        // 🔹 Dark overlay biar teks kebaca
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.2f),
+                            Color.Black.copy(alpha = 0.6f)
+                        )
+                    )
+                )
+        )
+
+        // 🔹 Content
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(20.dp)
+        ) {
+            Text(
+                text = "Active",
+                style = MaterialTheme.typography.headlineMedium,
+                color = Color.White
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            KernelSUVersionChip(version = ksuVersion)
+        }
+    }
+}
+
+@Composable
+fun KernelSUVersionChip(version: Int?) {
+    Surface(
+        color = Color(0xFF40202A),
+        shape = RoundedCornerShape(50),
+        tonalElevation = 2.dp
+    ) {
+        Text(
+            text = version?.let { "KernelSU v$it" } ?: "KernelSU Not Installed",
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = Color(0xFFFF6B81)
+        )
     }
 }
 
