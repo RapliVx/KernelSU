@@ -188,8 +188,8 @@ private fun AppItem(
                         LabelItem(
                             text = "CUSTOM",
                             style = LabelItemDefaults.style.copy(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                containerColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.tertiaryContainer,
                             )
                         )
                     } else if (!app.allowSu && !Natives.uidShouldUmount(app.uid)) {

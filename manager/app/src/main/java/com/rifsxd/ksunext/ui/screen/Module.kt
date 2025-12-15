@@ -946,8 +946,8 @@ fun ModuleItem(
                                     LabelItem(
                                         text = stringResource(R.string.module_update_available),
                                         style = LabelItemDefaults.style.copy(
-                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                            containerColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.tertiaryContainer
                                         )
                                     )
                                 }
@@ -956,8 +956,8 @@ fun ModuleItem(
                                         LabelItem(
                                             text = stringResource(R.string.module_updated),
                                             style = LabelItemDefaults.style.copy(
-                                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                                containerColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.tertiaryContainer
                                             )
                                         )
                                     }
