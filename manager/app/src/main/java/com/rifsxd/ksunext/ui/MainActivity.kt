@@ -15,6 +15,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -114,27 +116,56 @@ class MainActivity : ComponentActivity() {
                             navGraph = NavGraphs.root,
                             navController = navController,
                             defaultTransitions = object : NavHostAnimatedDestinationStyle() {
+                                // smooth forward enter
                                 override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
                                     slideInHorizontally(
-                                        initialOffsetX = { it },
-                                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-                                    ) + fadeIn(animationSpec = tween(400))
+                                        initialOffsetX = { it }, // slide from right
+                                        animationSpec = tween(
+                                            durationMillis = 300,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    ) + fadeIn(
+                                        animationSpec = tween(300, easing = LinearOutSlowInEasing)
+                                    )
                                 }
 
+                                // smooth forward exit
                                 override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
                                     slideOutHorizontally(
-                                        targetOffsetX = { -it / 2 },
-                                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-                                    ) + fadeOut(animationSpec = tween(400))
+                                        targetOffsetX = { -it / 3 }, // subtle slide left
+                                        animationSpec = tween(
+                                            durationMillis = 300,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    ) + fadeOut(
+                                        animationSpec = tween(250, easing = LinearOutSlowInEasing)
+                                    )
                                 }
 
+                                // pop back enter (backward navigation)
                                 override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-                                    fadeIn(animationSpec = tween(340))
+                                    slideInHorizontally(
+                                        initialOffsetX = { -it / 3 }, // subtle from left
+                                        animationSpec = tween(
+                                            durationMillis = 280,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    ) + fadeIn(
+                                        animationSpec = tween(280, easing = LinearOutSlowInEasing)
+                                    )
                                 }
 
+                                // pop back exit
                                 override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-                                    scaleOut(targetScale = 0.85f, animationSpec = spring(stiffness = Spring.StiffnessLow)) +
-                                    fadeOut(animationSpec = tween(400))
+                                    slideOutHorizontally(
+                                        targetOffsetX = { it / 3 }, // subtle slide right
+                                        animationSpec = tween(
+                                            durationMillis = 280,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    ) + fadeOut(
+                                        animationSpec = tween(250, easing = LinearOutSlowInEasing)
+                                    )
                                 }
                             }
                         )
