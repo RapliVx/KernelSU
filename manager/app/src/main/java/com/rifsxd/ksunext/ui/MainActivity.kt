@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
 
     var zipUri: ArrayList<Uri>? = null
     var navigateLoc by mutableStateOf("")
+    var amoledModeState = mutableStateOf(false)
     private val handler = Handler(Looper.getMainLooper())
 
     override fun attachBaseContext(newBase: Context?) {
@@ -55,6 +56,11 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
+        try {
+            val prefsInit = getSharedPreferences("settings", MODE_PRIVATE)
+            amoledModeState.value = prefsInit.getBoolean("enable_amoled", false)
+        } catch (_: Exception) {}
+
         val isManager = Natives.isManager
         if (isManager) install()
 
@@ -67,10 +73,7 @@ class MainActivity : ComponentActivity() {
             handleIntent(intent)
 
         setContent {
-            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
-            val amoledMode = prefs.getBoolean("enable_amoled", false)
-
-            KernelSUTheme(amoledMode = amoledMode) {
+            KernelSUTheme(amoledMode = amoledModeState.value) {
                 val navController = rememberNavController()
                 val snackBarHostState = remember { SnackbarHostState() }
                 val navigator = navController.rememberDestinationsNavigator()
@@ -173,6 +176,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    fun setAmoledMode(enabled: Boolean) {
+        try {
+            val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+            prefs.edit().putBoolean("enable_amoled", enabled).apply()
+        } catch (_: Exception) {}
+        amoledModeState.value = enabled
     }
 
     override fun onNewIntent(intent: Intent) {
