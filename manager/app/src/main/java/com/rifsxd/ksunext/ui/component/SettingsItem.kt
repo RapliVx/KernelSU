@@ -11,6 +11,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.ListItemColors
 import com.dergoogler.mmrl.ui.component.LabelItem
 import com.dergoogler.mmrl.ui.component.text.TextRow
 
@@ -22,13 +25,15 @@ fun SwitchItem(
     checked: Boolean,
     enabled: Boolean = true,
     beta: Boolean = false,
+    modifier: Modifier = Modifier,
+    colors: ListItemColors = ListItemDefaults.colors(),
     onCheckedChange: (Boolean) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val stateAlpha = remember(checked, enabled) { Modifier.alpha(if (enabled) 1f else 0.5f) }
 
     ListItem(
-        modifier = Modifier
+        modifier = modifier.then(Modifier
             .toggleable(
                 value = checked,
                 interactionSource = interactionSource,
@@ -36,7 +41,8 @@ fun SwitchItem(
                 enabled = enabled,
                 indication = LocalIndication.current,
                 onValueChange = onCheckedChange
-            ),
+            )),
+        colors = colors,
         headlineContent = {
             TextRow(
                 leadingContent = if (beta) {
