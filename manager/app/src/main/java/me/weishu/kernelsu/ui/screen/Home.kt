@@ -66,6 +66,13 @@ import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDe
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
@@ -78,16 +85,6 @@ import me.weishu.kernelsu.ui.util.getSELinuxStatus
 import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.rootAvailable
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.matchParentSize
-import androidx.compose.material3.Surface
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.layout.fillMaxSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>(start = true)
@@ -114,8 +111,6 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 if (kernelVersion.isGKI()) Natives.isLkmMode else null
             }
             val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
-
-            AboutHeaderCard()
 
             StatusCard(
                 kernelVersion,
@@ -214,8 +209,6 @@ fun UpdateCard() {
     }
 }
 
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TopBar(
@@ -244,97 +237,117 @@ private fun StatusCard(
     onClickSuperuser: () -> Unit = {},
     onclickModule: () -> Unit = {},
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp),) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+
+        val workingMode = when (lkmMode) {
+            null -> "LEGACY"
+            true -> "LKM"
+            else -> "GKI"
+        }
+
         TonalCard(
-            containerColor = run {
-                if (ksuVersion != null) MaterialTheme.colorScheme.secondaryContainer
-                else MaterialTheme.colorScheme.errorContainer
-            }
+            containerColor = Color.Transparent // penting
         ) {
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 160.dp)
+                    .clip(RoundedCornerShape(24.dp))
                     .clickable {
-                        if (kernelVersion.isGKI()) {
+                        if (ksuVersion == null && kernelVersion.isGKI()) {
                             onClickInstall()
                         }
                     }
-                    .padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
-                when {
-                    ksuVersion != null -> {
-                        val safeMode = when {
-                            Natives.isSafeMode -> stringResource(id = R.string.safe_mode)
-                            else -> ""
-                        }
+            ) {
 
-                        val workingMode = when (lkmMode) {
-                            null -> "LEGACY"
-                            true -> "LKM"
-                            else -> "GKI"
-                        }
+                // 🔹 BACKGROUND IMAGE
+                Image(
+                    painter = painterResource(R.drawable.about_header), // image header
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize()
+                )
 
-                        val workingText = stringResource(id = R.string.home_working)
-
-                        Icon(Icons.Outlined.CheckCircle, stringResource(R.string.home_working))
-                        Column(Modifier.padding(start = 20.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = workingText,
-                                    style = MaterialTheme.typography.titleMedium
+                // 🔹 GRADIENT OVERLAY
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color.Black.copy(alpha = 0.65f),
+                                    Color.Transparent
                                 )
-                                if (workingMode.isNotEmpty()) {
-                                    Spacer(Modifier.width(8.dp))
-                                    LabelText(label = workingMode)
-                                }
-                                if (safeMode.isNotEmpty()) {
-                                    Spacer(Modifier.width(8.dp))
-                                    LabelText(
-                                        label = safeMode,
-                                        color = MaterialTheme.colorScheme.onErrorContainer,
-                                        containerColor = MaterialTheme.colorScheme.errorContainer
-                                    )
-                                }
+                            )
+                        )
+                )
+
+                // 🔹 CONTENT
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Icon(
+                        imageVector = when {
+                            ksuVersion != null -> Icons.Outlined.CheckCircle
+                            kernelVersion.isGKI() -> Icons.Outlined.Warning
+                            else -> Icons.Outlined.Block
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(52.dp),
+                        tint = Color.White
+                    )
+
+                    Spacer(Modifier.width(20.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = when {
+                                    ksuVersion != null -> stringResource(R.string.home_working)
+                                    kernelVersion.isGKI() -> stringResource(R.string.home_not_installed)
+                                    else -> stringResource(R.string.home_unsupported)
+                                },
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = Color.White
+                            )
+
+                            if (ksuVersion != null) {
+                                Spacer(Modifier.width(8.dp))
+                                LabelText(
+                                    label = workingMode,
+                                    containerColor = Color.Black.copy(alpha = 0.45f),
+                                    color = Color.White
+                                )
                             }
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(R.string.home_working_version, ksuVersion),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
                         }
-                    }
 
-                    kernelVersion.isGKI() -> {
-                        Icon(Icons.Outlined.Warning, stringResource(R.string.home_not_installed))
-                        Column(Modifier.padding(start = 20.dp)) {
-                            Text(
-                                text = stringResource(R.string.home_not_installed),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(R.string.home_click_to_install),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
+                        Spacer(Modifier.height(8.dp))
 
-                    else -> {
-                        Icon(Icons.Outlined.Block, stringResource(R.string.home_unsupported))
-                        Column(Modifier.padding(start = 20.dp)) {
-                            Text(
-                                text = stringResource(R.string.home_unsupported),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = stringResource(R.string.home_unsupported_reason),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+                        Text(
+                            text = when {
+                                ksuVersion != null ->
+                                    "Version: $ksuVersion - $workingMode"
+                                kernelVersion.isGKI() ->
+                                    stringResource(R.string.home_click_to_install)
+                                else ->
+                                    stringResource(R.string.home_unsupported_reason)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
                     }
                 }
             }
         }
+
+        // ==== CARD BAWAH TETAP ====
         if (fullFeatured == true) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -359,6 +372,7 @@ private fun StatusCard(
                         )
                     }
                 }
+
                 TonalCard(modifier = Modifier.weight(1f)) {
                     Column(
                         modifier = Modifier
@@ -528,73 +542,6 @@ private fun StatusCardPreview() {
         StatusCard(KernelVersion(5, 10, 101), 20000, true, true)
         StatusCard(KernelVersion(5, 10, 101), null, true, true)
         StatusCard(KernelVersion(4,10, 101), null, false, false)
-    }
-}
-
-@Composable
-fun AboutHeaderCard() {
-    val isManager = Natives.isManager
-    val ksuVersion = if (isManager) Natives.version else null
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(180.dp)
-            .clip(RoundedCornerShape(28.dp))
-    ) {
-
-        Image(
-            painter = painterResource(id = R.drawable.about_header),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // ✅ OVERLAY AMAN
-        Box(
-            modifier = Modifier
-                .fillMaxSize() // ← WAJIB INI
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            Color.Black.copy(alpha = 0.2f),
-                            Color.Black.copy(alpha = 0.6f)
-                        )
-                    )
-                )
-        )
-
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(20.dp)
-        ) {
-            Text(
-                text = "Active",
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.White
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            KernelSUVersionChip(version = ksuVersion)
-        }
-    }
-}
-
-@Composable
-fun KernelSUVersionChip(version: Int?) {
-    Surface(
-        color = Color(0xFF40202A),
-        shape = RoundedCornerShape(50),
-        tonalElevation = 2.dp
-    ) {
-        Text(
-            text = version?.let { "KernelSU v$it" } ?: "KernelSU Not Installed",
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = Color(0xFFFF6B81)
-        )
     }
 }
 
