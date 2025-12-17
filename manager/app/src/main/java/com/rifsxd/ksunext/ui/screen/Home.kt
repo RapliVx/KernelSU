@@ -783,10 +783,26 @@ private fun InfoCard(autoExpand: Boolean = false) {
 
                 if (ksuVersion != null) {
                     Spacer(Modifier.height(16.dp))
+                    
+                    val moduleViewModel: ModuleViewModel = viewModel()
+                    val meta = moduleViewModel.moduleList.firstOrNull {
+                        it.isMetaModule && it.enabled && !it.remove
+                    }
+
+                    val mountSystem = currentMountSystem()
+                        .ifBlank { stringResource(R.string.unavailable) }
+
+                    val content = listOfNotNull(
+                        mountSystem,
+                        meta?.name?.takeIf { it.isNotBlank() }
+                            ?: stringResource(R.string.home_not_installed),
+                        meta?.version?.takeIf { it.isNotBlank() }
+                    ).joinToString(" | ")
+
                     InfoCardItem(
                         label = stringResource(R.string.home_mount_system),
-                        content = currentMountSystem().ifEmpty { stringResource(R.string.unavailable) },
-                        icon = Icons.Filled.SettingsSuggest,
+                        content = content,
+                        icon = Icons.Filled.SettingsSuggest
                     )
 
                     if (Natives.isZygiskEnabled()) {
