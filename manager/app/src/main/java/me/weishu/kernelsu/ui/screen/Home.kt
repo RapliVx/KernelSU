@@ -76,6 +76,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.text.font.FontWeight
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
@@ -254,6 +256,8 @@ private fun StatusCard(
             else -> stringResource(R.string.home_unsupported)
         }
 
+        val cs = MaterialTheme.colorScheme
+
         TonalCard(containerColor = Color.Transparent) {
             Box(
                 modifier = Modifier
@@ -267,6 +271,7 @@ private fun StatusCard(
                     }
             ) {
 
+                // 🔹 Background image
                 Image(
                     painter = painterResource(R.drawable.about_header),
                     contentDescription = null,
@@ -274,19 +279,21 @@ private fun StatusCard(
                     modifier = Modifier.matchParentSize()
                 )
 
+                // 🔹 Gradient overlay (theme-aware)
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .background(
                             Brush.horizontalGradient(
                                 listOf(
-                                    Color.Black.copy(alpha = 0.7f),
+                                    cs.surface.copy(alpha = 0.75f),
                                     Color.Transparent
                                 )
                             )
                         )
                 )
 
+                // 🔹 CONTENT
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -294,35 +301,40 @@ private fun StatusCard(
                     verticalArrangement = Arrangement.Center
                 ) {
 
+                    // TITLE
                     Text(
                         text = if (ksuVersion != null)
                             stringResource(R.string.home_working)
                         else
                             stringResource(R.string.home_not_installed),
                         style = MaterialTheme.typography.headlineLarge,
-                        color = Color(0xFFFF6A9A)
+                        fontWeight = FontWeight.Bold,
+                        color = cs.primary
                     )
 
                     Spacer(Modifier.height(12.dp))
 
+                    // CHIP
                     Box(
                         modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .blur(16.dp) // 🔥 BLUR
                             .background(
-                                color = Color(0xFF3A1B26),
-                                shape = RoundedCornerShape(50)
+                                color = cs.secondaryContainer.copy(alpha = 0.6f)
                             )
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         Text(
                             text = versionText,
                             style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFFFFB6CC)
+                            color = cs.onSecondaryContainer
                         )
                     }
                 }
             }
         }
 
+        // ==== CARD BAWAH TETAP ====
         if (fullFeatured == true) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -343,7 +355,7 @@ private fun StatusCard(
                         Text(
                             text = getSuperuserCount().toString(),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.outline
+                            color = cs.onSurfaceVariant
                         )
                     }
                 }
@@ -363,7 +375,7 @@ private fun StatusCard(
                         Text(
                             text = getModuleCount().toString(),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.outline
+                            color = cs.onSurfaceVariant
                         )
                     }
                 }
