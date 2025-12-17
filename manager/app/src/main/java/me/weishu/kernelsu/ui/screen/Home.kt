@@ -225,7 +225,7 @@ private fun TopBar(
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val isOfficialEnabled = prefs.getBoolean("enable_official_launcher", false)
-    val appNameId = if (isOfficialEnabled) R.string.app_name else R.string.app_name_kowsu
+    val appNameId = if (isOfficialEnabled) R.string.app_name else R.string.app_name_mambo
 
     TopAppBar(
         title = { Text(stringResource(appNameId)) },

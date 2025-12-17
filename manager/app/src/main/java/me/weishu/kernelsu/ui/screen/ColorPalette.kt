@@ -287,7 +287,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                         .wrapContentSize(unbounded = true)
                                         .requiredSize(48.dp)
                                 )
-                                Text(if (isOfficial) stringResource(R.string.app_name) else stringResource(R.string.app_name_kowsu))
+                                Text(if (isOfficial) stringResource(R.string.app_name) else stringResource(R.string.app_name_mambo))
                             }
                         }
                     }
@@ -406,7 +406,7 @@ private fun ThemePreviewCard(keyColor: Int, isDark: Boolean, currentLauncherIcon
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (currentLauncherIcon) stringResource(R.string.app_name) else stringResource(R.string.app_name_kowsu),
+                            text = if (currentLauncherIcon) stringResource(R.string.app_name) else stringResource(R.string.app_name_mambo),
                             style = MaterialTheme.typography.bodyLarge,
                             color = colorScheme.onSurface
                         )
