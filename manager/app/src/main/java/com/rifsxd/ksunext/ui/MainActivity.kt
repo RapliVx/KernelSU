@@ -39,7 +39,7 @@ import com.rifsxd.ksunext.ui.util.*
 
 class MainActivity : ComponentActivity() {
 
-    var zipUri: ArrayList<Uri>? = null
+    var zipUri by mutableStateOf<ArrayList<Uri>?>(null)
     var navigateLoc by mutableStateOf("")
     var amoledModeState = mutableStateOf(false)
     private val handler = Handler(Looper.getMainLooper())
@@ -49,12 +49,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        
+        super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
-
-        super.onCreate(savedInstanceState)
 
         try {
             val prefsInit = getSharedPreferences("settings", MODE_PRIVATE)
@@ -82,8 +83,7 @@ class MainActivity : ComponentActivity() {
                     if (!zipUri.isNullOrEmpty()) {
                         navigator.navigate(
                             FlashScreenDestination(
-                                flashIt = FlashIt.FlashModules(zipUri!!),
-                                finishIntent = true
+                                flashIt = FlashIt.FlashModules(zipUri!!)
                             )
                         )
                         zipUri = null
@@ -188,34 +188,26 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // Handle cases where the app is already running when a shortcut is tapped
         handleIntent(intent)
+        setIntent(intent)
     }
 
     private fun handleIntent(intent: Intent) {
         when (intent.action) {
-            "com.rifsxd.ksunext.ACTION_SETTINGS" -> {
-                navigateLoc = "settings"
+            Intent.ACTION_VIEW -> {
+                zipUri =
+                    intent.data?.let { arrayListOf(it) }
+                        ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            intent.getParcelableArrayListExtra("uris", Uri::class.java)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            intent.getParcelableArrayListExtra("uris")
+                        }
             }
-            "com.rifsxd.ksunext.ACTION_SUPERUSER" -> {
-                navigateLoc = "superuser"
-            }
-            "com.rifsxd.ksunext.ACTION_MODULES" -> {
-                navigateLoc = "modules"
-            }
-            "android.intent.action.VIEW" -> {
-                zipUri = if (intent.data != null) {
-                    arrayListOf(intent.data!!)
-                } else {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        intent.getParcelableArrayListExtra("uris", Uri::class.java)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        intent.getParcelableArrayListExtra("uris")
-                    }
-                }
-            }
+
+            "com.rifsxd.ksunext.ACTION_SETTINGS" -> navigateLoc = "settings"
+            "com.rifsxd.ksunext.ACTION_SUPERUSER" -> navigateLoc = "superuser"
+            "com.rifsxd.ksunext.ACTION_MODULES" -> navigateLoc = "modules"
         }
-        setIntent(null)
     }
 }

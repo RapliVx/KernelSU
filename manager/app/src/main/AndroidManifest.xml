@@ -20,7 +20,8 @@
             android:name=".ui.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.KernelSU"
-            android:launchMode="singleTop">
+            android:launchMode="singleTask"
+            android:taskAffinity="">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -38,13 +39,6 @@
 
         <activity
             android:name=".ui.webui.WebUIActivity"
-            android:autoRemoveFromRecents="true"
-            android:documentLaunchMode="intoExisting"
-            android:exported="false"
-            android:theme="@style/Theme.KernelSU.WebUI" />
-
-        <activity
-            android:name=".ui.webui.WebUIXActivity"
             android:autoRemoveFromRecents="true"
             android:documentLaunchMode="intoExisting"
             android:exported="false"

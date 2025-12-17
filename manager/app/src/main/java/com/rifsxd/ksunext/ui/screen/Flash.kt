@@ -86,8 +86,7 @@ fun flashModulesSequentially(
 @Destination<RootGraph>
 fun FlashScreen(
     navigator: DestinationsNavigator,
-    flashIt: FlashIt,
-    finishIntent: Boolean = false
+    flashIt: FlashIt
 ) {
 
     var text by rememberSaveable { mutableStateOf("") }
@@ -124,7 +123,6 @@ fun FlashScreen(
 
     BackHandler(enabled = flashing != FlashingStatus.FLASHING) {
         navigator.popBackStack()
-        if (finishIntent) activity?.finish()
     }
 
     val confirmDialog = rememberConfirmDialog()
@@ -152,7 +150,6 @@ fun FlashScreen(
             } else {
                 // User cancelled, go back
                 navigator.popBackStack()
-                if (finishIntent) activity?.finish()
             }
         } else {
             confirmed = true
@@ -193,7 +190,6 @@ fun FlashScreen(
                 flashing,
                 onBack = dropUnlessResumed {
                     navigator.popBackStack()
-                    if (finishIntent) activity?.finish()
                 },
                 onSave = {
                     scope.launch {
@@ -233,7 +229,6 @@ fun FlashScreen(
                     icon = { Icon(Icons.Filled.Close, contentDescription = null) },
                     onClick = {
                         navigator.popBackStack()
-                        if (finishIntent) activity?.finish()
                     }
                 )
             }
