@@ -248,14 +248,18 @@ private fun StatusCard(
             else -> "GKI"
         }
 
-        TonalCard(
-            containerColor = Color.Transparent // penting
-        ) {
+        val versionText = when {
+            ksuVersion != null -> "Version: $ksuVersion - $workingMode"
+            kernelVersion.isGKI() -> stringResource(R.string.home_click_to_install)
+            else -> stringResource(R.string.home_unsupported)
+        }
+
+        TonalCard(containerColor = Color.Transparent) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 160.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .height(170.dp)
+                    .clip(RoundedCornerShape(28.dp))
                     .clickable {
                         if (ksuVersion == null && kernelVersion.isGKI()) {
                             onClickInstall()
@@ -263,94 +267,62 @@ private fun StatusCard(
                     }
             ) {
 
-                // 🔹 BACKGROUND IMAGE
                 Image(
-                    painter = painterResource(R.drawable.about_header), // image header
+                    painter = painterResource(R.drawable.about_header),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.matchParentSize()
                 )
 
-                // 🔹 GRADIENT OVERLAY
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .background(
                             Brush.horizontalGradient(
                                 listOf(
-                                    Color.Black.copy(alpha = 0.65f),
+                                    Color.Black.copy(alpha = 0.7f),
                                     Color.Transparent
                                 )
                             )
                         )
                 )
 
-                // 🔹 CONTENT
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.Center
                 ) {
 
-                    Icon(
-                        imageVector = when {
-                            ksuVersion != null -> Icons.Outlined.CheckCircle
-                            kernelVersion.isGKI() -> Icons.Outlined.Warning
-                            else -> Icons.Outlined.Block
-                        },
-                        contentDescription = null,
-                        modifier = Modifier.size(52.dp),
-                        tint = Color.White
+                    Text(
+                        text = if (ksuVersion != null)
+                            stringResource(R.string.home_working)
+                        else
+                            stringResource(R.string.home_not_installed),
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = Color(0xFFFF6A9A)
                     )
 
-                    Spacer(Modifier.width(20.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = when {
-                                    ksuVersion != null -> stringResource(R.string.home_working)
-                                    kernelVersion.isGKI() -> stringResource(R.string.home_not_installed)
-                                    else -> stringResource(R.string.home_unsupported)
-                                },
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = Color.White
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = Color(0xFF3A1B26),
+                                shape = RoundedCornerShape(50)
                             )
-
-                            if (ksuVersion != null) {
-                                Spacer(Modifier.width(8.dp))
-                                LabelText(
-                                    label = workingMode,
-                                    containerColor = Color.Black.copy(alpha = 0.45f),
-                                    color = Color.White
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.height(8.dp))
-
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
                         Text(
-                            text = when {
-                                ksuVersion != null ->
-                                    "Version: $ksuVersion - $workingMode"
-                                kernelVersion.isGKI() ->
-                                    stringResource(R.string.home_click_to_install)
-                                else ->
-                                    stringResource(R.string.home_unsupported_reason)
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.9f)
+                            text = versionText,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color(0xFFFFB6CC)
                         )
                     }
                 }
             }
         }
 
-        // ==== CARD BAWAH TETAP ====
         if (fullFeatured == true) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
