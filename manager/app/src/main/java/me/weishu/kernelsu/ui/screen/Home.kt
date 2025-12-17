@@ -80,6 +80,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.text.font.FontWeight
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
@@ -275,11 +276,14 @@ private fun StatusCard(
 
                 // 🔹 Background image
                 val context = LocalContext.current
-                val headerImageUri = remember { context.getHeaderImage() }
+                val headerImageUri = context.getHeaderImage()
 
                 if (headerImageUri != null) {
                     AsyncImage(
-                        model = headerImageUri,
+                        model = ImageRequest.Builder(context)
+                            .data(headerImageUri)
+                            .crossfade(false)
+                            .build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.matchParentSize()

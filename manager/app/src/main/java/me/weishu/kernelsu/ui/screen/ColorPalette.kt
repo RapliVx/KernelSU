@@ -92,16 +92,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Restore
-import androidx.compose.ui.platform.LocalContext
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Restore
 import me.weishu.kernelsu.ui.util.saveHeaderImage
 import me.weishu.kernelsu.ui.util.clearHeaderImage
 import me.weishu.kernelsu.ui.util.getHeaderImage
-import me.weishu.kernelsu.ui.util.saveHeaderImage
-import me.weishu.kernelsu.ui.util.clearHeaderImage
-import me.weishu.kernelsu.ui.util.getHeaderImage
+import androidx.compose.runtime.saveable.rememberSaveable
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
@@ -122,7 +116,7 @@ private val keyColorOptions = listOf(
 @Composable
 fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     val context = LocalContext.current
-    var hasCustomHeader by remember {
+    var hasCustomHeader by rememberSaveable {
         mutableStateOf(context.getHeaderImage() != null)
     }
     val imagePicker =
