@@ -119,6 +119,10 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 
             val profileTemplate = stringResource(id = R.string.settings_profile_template)
 
+            val avcSpoofStatus by produceState(initialValue = "") {
+                value = getFeatureStatus("avc_spoof")
+            }
+
             val elevatedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
 
             if (ksuVersion != null) {
@@ -209,6 +213,28 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                             val shouldEnable = !checked
                             if (Natives.setKernelUmountEnabled(shouldEnable)) {
                                 isKernelUmountDisabled = !shouldEnable
+                            }
+                        }
+
+                        if (avcSpoofStatus == "supported") {
+                            var isAvcSpoofDisabled by rememberSaveable {
+                                mutableStateOf(!Natives.isAvcSpoofEnabled())
+                            }
+
+                            SwitchItem(
+                                icon = Icons.Filled.Shield,
+                                title = stringResource(id = R.string.settings_disable_avc_spoof),
+                                summary = stringResource(id = R.string.settings_disable_avc_spoof_summary),
+                                checked = isAvcSpoofDisabled,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp)),
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                            ) { checked ->
+                                val shouldEnable = !checked
+                                if (Natives.setAvcSpoofEnabled(shouldEnable)) {
+                                    isAvcSpoofDisabled = !shouldEnable
+                                }
                             }
                         }
 
