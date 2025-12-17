@@ -95,6 +95,7 @@ import androidx.compose.material.icons.filled.Restore
 import me.weishu.kernelsu.ui.util.saveHeaderImage
 import me.weishu.kernelsu.ui.util.clearHeaderImage
 import me.weishu.kernelsu.ui.util.getHeaderImage
+import android.content.Intent
 import androidx.compose.runtime.saveable.rememberSaveable
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
@@ -121,11 +122,14 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     }
     val imagePicker =
         rememberLauncherForActivityResult(
-            ActivityResultContracts.GetContent()
+            ActivityResultContracts.OpenDocument()
         ) { uri ->
             uri?.let {
+                context.contentResolver.takePersistableUriPermission(
+                    it,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
                 context.saveHeaderImage(it.toString())
-                hasCustomHeader = true
             }
         }
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -319,7 +323,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                 if (!checked) return@ToggleButton
 
                                 if (isCustom) {
-                                    imagePicker.launch("image/*")
+                                    imagePicker.launch(arrayOf("image/*"))
                                 } else {
                                     context.clearHeaderImage()
                                     hasCustomHeader = false
