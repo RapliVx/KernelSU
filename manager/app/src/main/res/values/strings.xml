@@ -196,4 +196,7 @@
     <string name="tab_readme">README</string>
     <string name="tab_releases">Releases</string>
     <string name="tab_info">Info</string>
+    <string name="header_image">Header</string>
+    <string name="header_default">Default</string>
+    <string name="header_custom">Custom</string>
 </resources>

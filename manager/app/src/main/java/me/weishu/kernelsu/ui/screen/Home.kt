@@ -78,6 +78,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.text.font.FontWeight
+import me.weishu.kernelsu.ui.util.getHeaderImage
+import coil.compose.AsyncImage
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
@@ -272,12 +274,24 @@ private fun StatusCard(
             ) {
 
                 // 🔹 Background image
-                Image(
-                    painter = painterResource(R.drawable.about_header),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.matchParentSize()
-                )
+                val context = LocalContext.current
+                val headerImageUri = remember { context.getHeaderImage() }
+
+                if (headerImageUri != null) {
+                    AsyncImage(
+                        model = headerImageUri,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize()
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(R.drawable.header_bg),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
 
                 // 🔹 Gradient overlay (theme-aware)
                 Box(
@@ -318,16 +332,23 @@ private fun StatusCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .blur(16.dp) // 🔥 BLUR
-                            .background(
-                                color = cs.secondaryContainer.copy(alpha = 0.6f)
-                            )
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
+                        // 🔹 BLUR LAYER (BACKGROUND)
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .blur(16.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                                )
+                        )
+
+                        // 🔹 CONTENT LAYER (NO BLUR)
                         Text(
                             text = versionText,
                             style = MaterialTheme.typography.labelMedium,
-                            color = cs.onSecondaryContainer
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
                 }

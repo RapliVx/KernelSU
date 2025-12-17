@@ -88,6 +88,20 @@ import com.materialkolor.rememberDynamicColorScheme
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.result.ResultBackNavigator
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Restore
+import me.weishu.kernelsu.ui.util.saveHeaderImage
+import me.weishu.kernelsu.ui.util.clearHeaderImage
+import me.weishu.kernelsu.ui.util.getHeaderImage
+import me.weishu.kernelsu.ui.util.saveHeaderImage
+import me.weishu.kernelsu.ui.util.clearHeaderImage
+import me.weishu.kernelsu.ui.util.getHeaderImage
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
@@ -108,6 +122,18 @@ private val keyColorOptions = listOf(
 @Composable
 fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     val context = LocalContext.current
+    var hasCustomHeader by remember {
+        mutableStateOf(context.getHeaderImage() != null)
+    }
+    val imagePicker =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.GetContent()
+        ) { uri ->
+            uri?.let {
+                context.saveHeaderImage(it.toString())
+                hasCustomHeader = true
+            }
+        }
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     var appSettings by remember { mutableStateOf(ThemeController.getAppSettings(context)) }
     var currentColorMode by remember { mutableStateOf(appSettings.colorMode) }
@@ -264,6 +290,74 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                         .requiredSize(48.dp)
                                 )
                                 Text(if (isOfficial) stringResource(R.string.app_name) else stringResource(R.string.app_name_kowsu))
+                            }
+                        }
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+
+                Text(
+                    text = stringResource(R.string.header_image),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        ButtonGroupDefaults.ConnectedSpaceBetween
+                    )
+                ) {
+                    val headerOptions = listOf(false, true) // false = default, true = custom
+
+                    headerOptions.forEachIndexed { index, isCustom ->
+                        ToggleButton(
+                            checked = hasCustomHeader == isCustom,
+                            onCheckedChange = { checked ->
+                                if (!checked) return@ToggleButton
+
+                                if (isCustom) {
+                                    imagePicker.launch("image/*")
+                                } else {
+                                    context.clearHeaderImage()
+                                    hasCustomHeader = false
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics { role = Role.RadioButton },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                headerOptions.lastIndex ->
+                                    ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            }
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (isCustom)
+                                        Icons.Filled.Image
+                                    else
+                                        Icons.Filled.Restore,
+                                    contentDescription = null
+                                )
+                                Text(
+                                    text = if (isCustom)
+                                        stringResource(R.string.header_custom)
+                                    else
+                                        stringResource(R.string.header_default)
+                                )
                             }
                         }
                     }
