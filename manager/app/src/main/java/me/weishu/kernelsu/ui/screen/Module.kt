@@ -103,6 +103,9 @@ import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestin
 import com.ramcosta.composedestinations.generated.destinations.ModuleRepoScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -125,6 +128,7 @@ import me.weishu.kernelsu.ui.util.undoUninstallModule
 import me.weishu.kernelsu.ui.util.uninstallModule
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.webui.WebUIActivity
+import me.weishu.kernelsu.ui.util.resolveModuleBanner
 
 @SuppressLint("StringFormatInvalid")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -177,7 +181,7 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
             scope.launch { viewModel.syncModuleUpdateInfo(viewModel.moduleList) }
         }
     }
-    
+
     val scaleFraction = {
         if (viewModel.isRefreshing) 1f
         else LinearOutSlowInEasing.transform(pullToRefreshState.distanceFraction).coerceIn(0f, 1f)
@@ -335,6 +339,24 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
             }
         }
     }
+}
+
+@Composable
+fun ModuleBanner(
+    uri: Uri,
+    height: Dp = 120.dp
+) {
+    AsyncImage(
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(uri)
+            .crossfade(true)
+            .build(),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -590,6 +612,14 @@ fun ModuleItem(
         val interactionSource = remember { MutableInteractionSource() }
         val indication = LocalIndication.current
         val viewModel = viewModel<ModuleViewModel>()
+        val context = LocalContext.current
+        val bannerUri = remember(module.id, module.banner) {
+            resolveModuleBanner(context, module.id, module.banner)
+        }
+
+        bannerUri?.let {
+            ModuleBanner(uri = it)
+        }
 
         Column(
             modifier = Modifier
@@ -603,9 +633,7 @@ fun ModuleItem(
                             indication = indication,
                             onValueChange = { onClick(module) }
                         )
-                    } else {
-                        this
-                    }
+                    } else this
                 }
                 .padding(22.dp, 18.dp, 22.dp, 12.dp)
         ) {
