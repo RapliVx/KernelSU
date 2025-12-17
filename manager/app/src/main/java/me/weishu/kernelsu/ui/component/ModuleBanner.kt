@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -15,7 +14,7 @@ import coil.request.ImageRequest
 @Composable
 fun ModuleBanner(
     uri: Uri,
-    height: Dp = 120.dp
+    modifier: Modifier = Modifier
 ) {
     AsyncImage(
         model = ImageRequest.Builder(LocalContext.current)
@@ -23,9 +22,9 @@ fun ModuleBanner(
             .crossfade(true)
             .build(),
         contentDescription = null,
-        modifier = Modifier
+        contentScale = ContentScale.Crop,
+        modifier = modifier
             .fillMaxWidth()
-            .height(height),
-        contentScale = ContentScale.Crop
+            .height(140.dp)
     )
 }

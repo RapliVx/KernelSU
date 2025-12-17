@@ -80,6 +80,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -593,16 +594,20 @@ fun ModuleItem(
         val indication = LocalIndication.current
         val viewModel = viewModel<ModuleViewModel>()
         val context = LocalContext.current
+
         val bannerUri = remember(module.id, module.banner) {
             resolveModuleBanner(context, module.id, module.banner)
         }
 
         bannerUri?.let {
-            ModuleBanner(uri = it)
+            ModuleBanner(
+                uri = it,
+                modifier = Modifier.clip(MaterialTheme.shapes.large)
+            )
         }
 
         Column(
-            modifier = Modifier
+            modifier = Modifier.padding(16.dp)
                 .run {
                     if (module.hasWebUi) {
                         toggleable(
