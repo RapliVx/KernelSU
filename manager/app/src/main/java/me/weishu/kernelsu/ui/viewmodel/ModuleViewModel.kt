@@ -52,7 +52,8 @@ class ModuleViewModel : ViewModel() {
         val hasWebUi: Boolean,
         val hasActionScript: Boolean,
         val metamodule: Boolean,
-        val bannerPath: String? = null
+        val bannerPath: String? = null, // Tambahkan ini
+        val size: Long = 0 // Untuk sorting size
     )
 
     @Immutable
@@ -166,7 +167,8 @@ class ModuleViewModel : ViewModel() {
                                 obj.optBoolean("web"),
                                 obj.optBoolean("action"),
                                 (obj.optInt("metamodule") != 0) or obj.optBoolean("metamodule"),
-                                obj.optString("banner", null) // Tambahkan ini
+                                obj.optString("banner", null), // Baca banner
+                                0L // Default size
                             )
                         }.toList()
                 }.getOrElse {

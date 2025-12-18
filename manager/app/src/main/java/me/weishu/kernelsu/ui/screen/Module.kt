@@ -5,6 +5,7 @@ import android.app.Activity.RESULT_OK
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -94,6 +95,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.material3.TonalCard
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ramcosta.composedestinations.annotation.Destination
@@ -106,23 +109,6 @@ import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
-import coil.request.ImageRequest
-import java.io.File
-import kotlinx.coroutines.withContext
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import java.net.URL
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ksuApp
@@ -143,36 +129,77 @@ import me.weishu.kernelsu.ui.util.uninstallModule
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.webui.WebUIActivity
 
-// Fungsi untuk mendapatkan path banner yang benar
-fun getBannerPath(moduleId: String, bannerPath: String?): String? {
-    if (bannerPath.isNullOrEmpty()) return null
+// ================================
+// IMPORT UNTUK FITUR BANNER
+// ================================
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import java.io.File
 
+// ================================
+// FUNGSI UTILITAS BANNER
+// ================================
+
+/**
+ * Fungsi untuk membaca banner dari module.prop
+ */
+fun parseBannerFromModuleProp(moduleId: String): String? = try {
+    val prop = File("/data/adb/ksu/modules/$moduleId/module.prop")
+    prop.takeIf { it.exists() }
+        ?.readLines()
+        ?.firstOrNull { it.startsWith("banner=") }
+        ?.substringAfter("=")
+        ?.trim()
+} catch (e: Exception) {
+    Log.e("ModuleBanner", "parse error", e)
+    null
+}
+
+fun getModuleBannerPath(moduleId: String, banner: String?): String? {
+    if (banner.isNullOrBlank()) return null
     return when {
-        bannerPath.startsWith("http://") || bannerPath.startsWith("https://") -> {
-            // URL langsung
-            bannerPath
-        }
-        bannerPath.startsWith("/") -> {
-            // Path relatif dalam direktori modul
-            val moduleDir = File("/data/adb/ksu/modules/$moduleId")
-            val bannerFile = File(moduleDir, bannerPath.substring(1))
-            if (bannerFile.exists()) {
-                bannerFile.absolutePath
-            } else {
-                null
-            }
-        }
-        else -> {
-            // Path absolut atau tidak valid
-            val bannerFile = File(bannerPath)
-            if (bannerFile.exists()) {
-                bannerFile.absolutePath
-            } else {
-                null
-            }
-        }
+        banner.startsWith("http") -> banner
+        banner.startsWith("/") ->
+            File("/data/adb/ksu/modules/$moduleId/${banner.drop(1)}")
+                .takeIf { it.exists() }?.absolutePath
+        else ->
+            File(banner).takeIf { it.exists() }?.absolutePath
     }
 }
+
+// ================================
+// KOMPONEN LABEL CHIP
+// ================================
+
+@Composable
+fun LabelChip(
+    text: String,
+    backgroundColor: Color,
+    textColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .background(backgroundColor, MaterialTheme.shapes.small)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+// ================================
+// MODULE SCREEN (SAMA DENGAN STOCK)
+// ================================
 
 @SuppressLint("StringFormatInvalid")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -225,8 +252,8 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
             scope.launch { viewModel.syncModuleUpdateInfo(viewModel.moduleList) }
         }
     }
-    
-    val scaleFraction = {
+
+    val scaleFraction = remember(pullToRefreshState.distanceFraction) {
         if (viewModel.isRefreshing) 1f
         else LinearOutSlowInEasing.transform(pullToRefreshState.distanceFraction).coerceIn(0f, 1f)
     }
@@ -311,10 +338,10 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                     val uris = mutableListOf<Uri>()
                     if (clipData != null) {
                         for (i in 0 until clipData.itemCount) {
-                            clipData.getItemAt(i)?.uri?.let { uris.add(it) }
+                            clipData.getItemAt(i)?.uri?.let { uri -> uris.add(uri) }
                         }
                     } else {
-                        data.data?.let { uris.add(it) }
+                        data.data?.let { uri -> uris.add(uri) }
                     }
 
                     navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(uris), skipConfirmation = uris.size == 1))
@@ -356,12 +383,12 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
 
             else -> {
                 ModuleList(
-                    navigator,
+                    navigator = navigator,
                     viewModel = viewModel,
                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
                     boxModifier = Modifier.padding(innerPadding),
-                    onInstallModule = {
-                        navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(listOf(it)), skipConfirmation = true))
+                    onInstallModule = { uri ->
+                        navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(listOf(uri)), skipConfirmation = true))
                         viewModel.markNeedRefresh()
                     },
                     onClickModule = { id, name, hasWebUi ->
@@ -378,12 +405,228 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                     snackBarHost = snackBarHost,
                     pullToRefreshState = pullToRefreshState,
                     isRefreshing = viewModel.isRefreshing,
-                    scaleFraction = scaleFraction()
+                    scaleFraction = scaleFraction
                 )
             }
         }
     }
 }
+
+// ================================
+// MODULE ITEM DENGAN BANNER SUPPORT
+// ================================
+
+@Composable
+fun ModuleItem(
+    navigator: DestinationsNavigator,
+    module: ModuleViewModel.ModuleInfo,
+    updateUrl: String,
+    onUninstallClicked: (ModuleViewModel.ModuleInfo) -> Unit,
+    onCheckChanged: (Boolean) -> Unit,
+    onUpdate: (ModuleViewModel.ModuleInfo) -> Unit,
+    onClick: (ModuleViewModel.ModuleInfo) -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val context = LocalContext.current
+
+    val bannerPath = remember(module.id) {
+        module.bannerPath ?: parseBannerFromModuleProp(module.id)
+    }
+
+    val resolvedBanner = remember(bannerPath) {
+        getModuleBannerPath(module.id, bannerPath)
+    }
+
+    val textDecoration =
+        if (module.remove) TextDecoration.LineThrough else null
+
+    TonalCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+    ) {
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (module.hasWebUi) {
+                        Modifier.toggleable(
+                            value = module.enabled,
+                            enabled = !module.remove,
+                            role = Role.Button,
+                            interactionSource = interactionSource,
+                            indication = LocalIndication.current,
+                            onValueChange = { onClick(module) }
+                        )
+                    } else Modifier
+                )
+                .padding(16.dp)
+        ) {
+
+            /* ---------- BANNER ---------- */
+
+            resolvedBanner?.let { path ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(path)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, Color.Black.copy(0.4f))
+                                )
+                            )
+                    )
+
+                    Text(
+                        text = module.name,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(12.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+            }
+
+            /* ---------- HEADER ---------- */
+
+            if (resolvedBanner == null) {
+                Text(
+                    text = module.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    textDecoration = textDecoration
+                )
+            }
+
+            Text(
+                text = "v${module.version} • ${module.author}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textDecoration = textDecoration
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = module.description,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.outline,
+                textDecoration = textDecoration
+            )
+
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(thickness = Dp.Hairline)
+            Spacer(Modifier.height(8.dp))
+
+            /* ---------- ACTION ROW ---------- */
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+
+                Switch(
+                    checked = module.enabled,
+                    enabled = !module.remove,
+                    onCheckedChange = onCheckChanged
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                AnimatedVisibility(updateUrl.isNotEmpty()) {
+                    Button(onClick = { onUpdate(module) }) {
+                        Icon(Icons.Outlined.Download, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.module_update))
+                    }
+                }
+
+                Spacer(Modifier.width(8.dp))
+
+                FilledTonalButton(onClick = { onUninstallClicked(module) }) {
+                    Icon(
+                        if (module.remove) Icons.Outlined.Refresh else Icons.Outlined.Delete,
+                        null,
+                        modifier = if (module.remove) Modifier.rotate(180f) else Modifier
+                    )
+                }
+            }
+
+            AnimatedVisibility(module.hasActionScript || module.hasWebUi) {
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                    if (module.hasActionScript) {
+                        FilledTonalButton(
+                            onClick = {
+                                navigator.navigate(
+                                    ExecuteModuleActionScreenDestination(module.id)
+                                )
+                            }
+                        ) {
+                            Icon(Icons.Outlined.PlayArrow, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.action))
+                        }
+                    }
+
+                    if (module.hasWebUi) {
+                        FilledTonalButton(onClick = { onClick(module) }) {
+                            Icon(Icons.Outlined.Code, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.open))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Komponen Label yang sederhana
+@Composable
+fun SimpleLabelChip(
+    text: String,
+    backgroundColor: Color,
+    textColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .background(
+                backgroundColor,
+                androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+            )
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+// ================================
+// MODULE LIST (SAMA DENGAN STOCK)
+// ================================
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -529,6 +772,7 @@ private fun ModuleList(
             reboot()
         }
     }
+
     Box(modifier = boxModifier) {
         LazyColumn(
             modifier = modifier,
@@ -623,290 +867,9 @@ private fun ModuleList(
     }
 }
 
-@Composable
-fun ModuleItem(
-    navigator: DestinationsNavigator,
-    module: ModuleViewModel.ModuleInfo,
-    updateUrl: String,
-    onUninstallClicked: (ModuleViewModel.ModuleInfo) -> Unit,
-    onCheckChanged: (Boolean) -> Unit,
-    onUpdate: (ModuleViewModel.ModuleInfo) -> Unit,
-    onClick: (ModuleViewModel.ModuleInfo) -> Unit
-) {
-    // State untuk banner URL/path
-    val bannerPath = remember(module.id, module.bannerPath) {
-        getBannerPath(module.id, module.bannerPath)
-    }
-
-    TonalCard(modifier = Modifier.fillMaxWidth()) {
-        val textDecoration = if (!module.remove) null else TextDecoration.LineThrough
-        val interactionSource = remember { MutableInteractionSource() }
-        val indication = LocalIndication.current
-        val viewModel = viewModel<ModuleViewModel>()
-
-        Column(
-            modifier = Modifier
-                .run {
-                    if (module.hasWebUi) {
-                        toggleable(
-                            value = module.enabled,
-                            enabled = !module.remove && module.enabled,
-                            interactionSource = interactionSource,
-                            role = Role.Button,
-                            indication = indication,
-                            onValueChange = { onClick(module) }
-                        )
-                    } else {
-                        this
-                    }
-                }
-                .padding(22.dp, 18.dp, 22.dp, 12.dp)
-        ) {
-            // Tampilkan banner jika ada
-            bannerPath?.let { path ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(3f / 1f) // Rasio 3:1 untuk banner
-                        .padding(bottom = 12.dp)
-                ) {
-                    if (path.startsWith("http")) {
-                        // Untuk URL (gunakan Coil)
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(path)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "${module.name} banner",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        // Untuk file lokal
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(File(path))
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "${module.name} banner",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                val moduleVersion = stringResource(id = R.string.module_version)
-                val moduleAuthor = stringResource(id = R.string.module_author)
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(0.8f)
-                ) {
-                    Text(
-                        text = module.name,
-                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
-                        fontWeight = FontWeight.SemiBold,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
-                        textDecoration = textDecoration,
-                    )
-
-                    Text(
-                        text = "$moduleVersion: ${module.version}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                        textDecoration = textDecoration
-                    )
-
-                    Text(
-                        text = "$moduleAuthor: ${module.author}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                        textDecoration = textDecoration
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    Switch(
-                        enabled = !module.update,
-                        checked = module.enabled,
-                        onCheckedChange = onCheckChanged,
-                        interactionSource = if (!module.hasWebUi) interactionSource else null
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = module.description,
-                color = MaterialTheme.colorScheme.outline,
-                fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 4,
-                textDecoration = textDecoration
-            )
-
-            Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                if (module.metamodule) LabelText("META")
-            }
-
-            HorizontalDivider(thickness = Dp.Hairline)
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val hasUpdate by remember(updateUrl) { derivedStateOf { updateUrl.isNotEmpty() } }
-                val actionButtonsEnabled = !module.remove && module.enabled
-
-                AnimatedVisibility(
-                    visible = actionButtonsEnabled,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (module.hasActionScript) {
-                            FilledTonalButton(
-                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                ),
-                                onClick = {
-                                    navigator.navigate(ExecuteModuleActionScreenDestination(module.id))
-                                    viewModel.markNeedRefresh()
-                                },
-                                contentPadding = ButtonDefaults.TextButtonContentPadding
-                            ) {
-                                Icon(
-                                    modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.PlayArrow,
-                                    contentDescription = null
-                                )
-                                if (!module.hasWebUi && !hasUpdate) {
-                                    Text(
-                                        modifier = Modifier.padding(start = 7.dp),
-                                        text = stringResource(R.string.action),
-                                        fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                                        fontSize = MaterialTheme.typography.labelMedium.fontSize
-                                    )
-                                }
-                            }
-                        }
-
-                        if (module.hasWebUi) {
-                            FilledTonalButton(
-                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                ),
-                                onClick = { onClick(module) },
-                                interactionSource = interactionSource,
-                                contentPadding = ButtonDefaults.TextButtonContentPadding
-                            ) {
-                                Icon(
-                                    modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.Code,
-                                    contentDescription = null
-                                )
-                                if (!module.hasActionScript && !hasUpdate) {
-                                    Text(
-                                        modifier = Modifier.padding(start = 7.dp),
-                                        fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                                        fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                                        text = stringResource(R.string.open)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f, true))
-
-                AnimatedVisibility(
-                    visible = hasUpdate,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    Row {
-                        Button(
-                            modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                            enabled = !module.remove,
-                            onClick = { onUpdate(module) },
-                            shape = ButtonDefaults.textShape,
-                            contentPadding = ButtonDefaults.TextButtonContentPadding
-                        ) {
-                            Icon(
-                                modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Outlined.Download,
-                                contentDescription = null
-                            )
-                            if (!module.hasActionScript || !module.hasWebUi) {
-                                Text(
-                                    modifier = Modifier.padding(start = 7.dp),
-                                    fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                                    fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                                    text = stringResource(R.string.module_update)
-                                )
-                            }
-                        }
-
-                        Spacer(Modifier.width(12.dp))
-                    }
-                }
-
-                FilledTonalButton(
-                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                    onClick = { onUninstallClicked(module) },
-                    contentPadding = ButtonDefaults.TextButtonContentPadding
-                ) {
-                    if (!module.remove) {
-                        Icon(
-                            modifier = Modifier.size(20.dp),
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = null,
-                        )
-                    } else {
-                        Icon(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .rotate(180f),
-                            imageVector = Icons.Outlined.Refresh,
-                            contentDescription = null,
-                        )
-                    }
-                    if (!module.hasActionScript && !module.hasWebUi || !hasUpdate) {
-                        Text(
-                            modifier = Modifier.padding(start = 7.dp),
-                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                            fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                            text = stringResource(if (module.remove) R.string.undo else R.string.uninstall)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
+// ================================
+// PREVIEW FUNCTION
+// ================================
 
 @Preview
 @Composable
