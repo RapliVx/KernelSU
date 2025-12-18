@@ -52,7 +52,6 @@ class ModuleViewModel : ViewModel() {
         val hasWebUi: Boolean,
         val hasActionScript: Boolean,
         val metamodule: Boolean,
-        val banner: String = ""
     )
 
     @Immutable
