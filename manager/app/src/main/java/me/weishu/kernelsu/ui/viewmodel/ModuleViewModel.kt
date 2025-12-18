@@ -27,6 +27,7 @@ import me.weishu.kernelsu.ui.util.listModules
 import me.weishu.kernelsu.ui.util.module.sanitizeVersionString
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.text.Collator
 import java.util.Locale
 
@@ -52,6 +53,7 @@ class ModuleViewModel : ViewModel() {
         val hasWebUi: Boolean,
         val hasActionScript: Boolean,
         val metamodule: Boolean,
+        val bannerPath: String? = null
     )
 
     @Immutable
@@ -141,7 +143,6 @@ class ModuleViewModel : ViewModel() {
             val oldModuleList = modules
             val start = SystemClock.elapsedRealtime()
 
-
             val parsedModules = withContext(Dispatchers.IO) {
                 kotlin.runCatching {
                     val result = listModules()
@@ -151,20 +152,28 @@ class ModuleViewModel : ViewModel() {
                         .asSequence()
                         .map { array.getJSONObject(it) }
                         .map { obj ->
+                            val id = obj.getString("id")
+
+                            // ✅ FIX: gunakan 'id' bukan 'moduleId'
+                            val moduleRoot = File("/data/adb/modules", id)
+                            val props = loadModuleProp(moduleRoot)
+                            val bannerPath = resolveBannerPath(moduleRoot, props)
+
                             ModuleInfo(
-                                obj.getString("id"),
-                                obj.optString("name"),
-                                obj.optString("author", "Unknown"),
-                                obj.optString("version", "Unknown"),
-                                obj.optInt("versionCode", 0),
-                                obj.optString("description"),
-                                obj.getBoolean("enabled"),
-                                obj.optBoolean("update"),
-                                obj.getBoolean("remove"),
-                                obj.optString("updateJson"),
-                                obj.optBoolean("web"),
-                                obj.optBoolean("action"),
-                                (obj.optInt("metamodule") != 0) or obj.optBoolean("metamodule")
+                                id = id,
+                                name = obj.optString("name"),
+                                author = obj.optString("author", "Unknown"),
+                                version = obj.optString("version", "Unknown"),
+                                versionCode = obj.optInt("versionCode", 0),
+                                description = obj.optString("description"),
+                                enabled = obj.optBoolean("enabled"),
+                                update = obj.optBoolean("update"),
+                                remove = obj.optBoolean("remove"),
+                                updateJson = obj.optString("updateJson"),
+                                hasWebUi = obj.optBoolean("web"),
+                                hasActionScript = obj.optBoolean("action"),
+                                metamodule = (obj.optInt("metamodule") != 0) or obj.optBoolean("metamodule"),
+                                bannerPath = bannerPath // ← ini sekarang valid
                             )
                         }.toList()
                 }.getOrElse {
@@ -300,4 +309,20 @@ class ModuleViewModel : ViewModel() {
 
         return ModuleUpdateInfo(zipUrl, version, changelog)
     }
+}
+
+fun resolveBannerPath(moduleRoot: File, props: Map<String, String>): String? {
+    val banner = props["banner"] ?: return null
+    val relative = banner.removePrefix("/")
+    val file = File(moduleRoot, relative)
+    return if (file.exists() && file.isFile) file.absolutePath else null
+}
+
+fun loadModuleProp(moduleRoot: File): Map<String, String> {
+    val propFile = File(moduleRoot, "module.prop")
+    if (!propFile.exists()) return emptyMap()
+    return propFile.readLines().mapNotNull {
+        val parts = it.split("=", limit = 2)
+        if (parts.size == 2) parts[0].trim() to parts[1].trim() else null
+    }.toMap()
 }
