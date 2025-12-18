@@ -616,7 +616,7 @@ fun ModuleItem(
         val viewModel = viewModel<ModuleViewModel>()
 
         var expanded by rememberSaveable(module.id) { mutableStateOf(false) }
-        
+
         val cardHeight by animateDpAsState(
             targetValue = if (expanded) 280.dp else 170.dp,
             animationSpec = spring(
@@ -843,10 +843,11 @@ fun ModuleItem(
                             contentPadding = ButtonDefaults.TextButtonContentPadding
                         ) {
                             Icon(
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .then(if (!module.remove) Modifier else Modifier.rotate(180f)),
                                 imageVector = if (!module.remove) Icons.Outlined.Delete else Icons.Outlined.Refresh,
-                                contentDescription = null,
-                                modifier = if (!module.remove) Modifier else Modifier.rotate(180f)
+                                contentDescription = null
                             )
                             Text(
                                 modifier = Modifier.padding(start = 7.dp),
