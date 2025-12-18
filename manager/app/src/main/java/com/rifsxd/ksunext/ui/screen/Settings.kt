@@ -123,6 +123,18 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 value = getFeatureStatus("avc_spoof")
             }
 
+            val enhancedSecurityStatus by produceState(initialValue = "") {
+                value = getFeatureStatus("enhanced_security")
+            }
+
+            val suCompatStatus by produceState(initialValue = "") {
+                value = getFeatureStatus("su_compat")
+            }
+
+            val kernelUmountStatus by produceState(initialValue = "") {
+                value = getFeatureStatus("kernel_umount")
+            }
+
             val elevatedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
 
             if (ksuVersion != null) {
@@ -159,7 +171,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                             }
                         }
 
-                        if (ksuVersion != null) {
+                        if (suCompatStatus == "supported") {
                             var isSuDisabled by rememberSaveable {
                                 mutableStateOf(!Natives.isSuEnabled())
                             }
@@ -197,22 +209,24 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                             }
                         }
 
-                        var isKernelUmountDisabled by rememberSaveable {
-                            mutableStateOf(!Natives.isKernelUmountEnabled())
-                        }
-                        SwitchItem(
-                            icon = Icons.Filled.FolderDelete,
-                            title = stringResource(id = R.string.settings_disable_kernel_umount),
-                            summary = stringResource(id = R.string.settings_disable_kernel_umount_summary),
-                            checked = isKernelUmountDisabled,
-                            modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp)),
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        ) { checked ->
-                            val shouldEnable = !checked
-                            if (Natives.setKernelUmountEnabled(shouldEnable)) {
-                                isKernelUmountDisabled = !shouldEnable
+                        if (kernelUmountStatus == "supported") {
+                            var isKernelUmountDisabled by rememberSaveable {
+                                mutableStateOf(!Natives.isKernelUmountEnabled())
+                            }
+                            SwitchItem(
+                                icon = Icons.Filled.FolderDelete,
+                                title = stringResource(id = R.string.settings_disable_kernel_umount),
+                                summary = stringResource(id = R.string.settings_disable_kernel_umount_summary),
+                                checked = isKernelUmountDisabled,
+                                modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp)),
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                            ) { checked ->
+                                val shouldEnable = !checked
+                                if (Natives.setKernelUmountEnabled(shouldEnable)) {
+                                    isKernelUmountDisabled = !shouldEnable
+                                }
                             }
                         }
 
@@ -238,7 +252,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                             }
                         }
 
-                        if (ksuVersion != null) {
+                        if (enhancedSecurityStatus == "supported") {
                             var isEnhancedSecurityDisabled by rememberSaveable {
                                 mutableStateOf(!Natives.isEnhancedSecurityEnabled())
                             }
