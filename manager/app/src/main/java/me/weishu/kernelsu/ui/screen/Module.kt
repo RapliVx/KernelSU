@@ -142,12 +142,10 @@ import me.weishu.kernelsu.ui.webui.WebUIActivity
 // ================================
 // IMPORT UNTUK FITUR BANNER
 // ================================
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import java.io.File
 
@@ -159,16 +157,19 @@ import java.io.File
  * Fungsi untuk membaca banner dari module.prop
  */
 
+private const val MODULE_BASE = "/data/adb/modules"
+
 fun readModuleProp(moduleId: String): String? {
-    val file = File("/data/adb/modules/$moduleId/module.prop")
+    val file = File("$MODULE_BASE/$moduleId/module.prop")
 
     return try {
-        if (!file.exists()) {
-            Log.e("ModuleBanner", "module.prop NOT FOUND for $moduleId")
-            return null
+        if (file.exists()) {
+            Log.d("ModuleBanner", "Using module.prop: ${file.absolutePath}")
+            file.readText()
+        } else {
+            Log.e("ModuleBanner", "module.prop NOT FOUND: ${file.absolutePath}")
+            null
         }
-
-        file.readText()
     } catch (e: Exception) {
         Log.e("ModuleBanner", "read module.prop failed", e)
         null
@@ -178,13 +179,9 @@ fun readModuleProp(moduleId: String): String? {
 fun parseBannerFromModuleProp(prop: String?): String? {
     if (prop.isNullOrBlank()) return null
 
-    return prop
-        .lineSequence()
+    return prop.lineSequence()
         .map { it.trim() }
-        .firstOrNull {
-            it.startsWith("banner=") &&
-                    it.length > 7
-        }
+        .firstOrNull { it.startsWith("banner=") }
         ?.substringAfter("banner=")
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
@@ -196,19 +193,20 @@ fun getModuleBannerPath(
 ): String? {
     if (banner.isNullOrBlank()) return null
 
+    val baseDir = File("$MODULE_BASE/$moduleId")
+
     return when {
         banner.startsWith("http") -> banner
 
         banner.startsWith("/") ->
-            File("/data/adb/modules/$moduleId$banner")
+            File(baseDir, banner.removePrefix("/"))
                 .takeIf { it.exists() }?.absolutePath
 
         else ->
-            File("/data/adb/modules/$moduleId/$banner")
+            File(baseDir, banner)
                 .takeIf { it.exists() }?.absolutePath
     }
 }
-
 
 // ================================
 // KOMPONEN LABEL CHIP
@@ -482,13 +480,13 @@ fun ModuleItem(
     val textDecoration =
         if (module.remove) TextDecoration.LineThrough else null
 
-    LaunchedEffect(moduleProp) {
-        val file = File("/data/adb/modules/${module.id}/module.prop")
-        Log.d("ModuleBanner", "module.prop exists=${file.exists()}")
-        Log.d("ModuleBanner", "path=${file.absolutePath}")
-        Log.d("ModuleBanner", "module=${module.id}")
-        Log.d("ModuleBanner", "moduleProp=\n$moduleProp")
-        Log.d("ModuleBanner", "parsed banner=$bannerValue")
+    LaunchedEffect(module.id) {
+        val propFile = File("$MODULE_BASE/${module.id}/module.prop")
+
+        Log.d("ModuleBanner", "exists=${propFile.exists()}")
+        Log.d("ModuleBanner", "path=${propFile.absolutePath}")
+        Log.d("ModuleBanner", "bannerRaw=$bannerValue")
+        Log.d("ModuleBanner", "resolved=$resolvedBanner")
     }
 
 
