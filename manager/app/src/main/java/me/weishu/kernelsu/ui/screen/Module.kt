@@ -156,59 +156,49 @@ import java.io.File
 /**
  * Fungsi untuk membaca banner dari module.prop
  */
-fun getModuleBannerPath(
-    moduleId: String,
-    banner: String?
-): String? {
-    if (banner.isNullOrBlank()) return null
 
+fun readModuleProp(moduleId: String): String? {
     return runCatching {
-        when {
-            // Remote URL
-            banner.startsWith("http://") || banner.startsWith("https://") -> {
-                banner
-            }
-
-            // file:// URI
-            banner.startsWith("file://") -> {
-                val path = banner.removePrefix("file://")
-                File(path).takeIf { it.exists() }?.absolutePath
-            }
-
-            // banner=/banner.png  (root-relative inside module)
-            banner.startsWith("/") -> {
-                File("/data/adb/ksu/modules/$moduleId$banner")
-                    .takeIf { it.exists() }
-                    ?.absolutePath
-            }
-
-            // banner=banner.png (relative)
-            else -> {
-                File("/data/adb/ksu/modules/$moduleId/$banner")
-                    .takeIf { it.exists() }
-                    ?.absolutePath
-            }
-        }
-    }.onFailure {
-        Log.e("ModuleBanner", "Failed to resolve banner for $moduleId", it)
+        File("/data/adb/ksu/modules/$moduleId/module.prop")
+            .takeIf { it.exists() }
+            ?.readText()
     }.getOrNull()
 }
 
-fun parseBannerFromModuleProp(moduleProp: String?): String? {
-    if (moduleProp.isNullOrBlank()) return null
+fun parseBannerFromModuleProp(prop: String?): String? {
+    if (prop.isNullOrBlank()) return null
 
-    return moduleProp
+    return prop
         .lineSequence()
         .map { it.trim() }
         .firstOrNull {
             it.startsWith("banner=") &&
-                    !it.startsWith("banner=#") &&
                     it.length > 7
         }
         ?.substringAfter("banner=")
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
 }
+
+fun getModuleBannerPath(
+    moduleId: String,
+    banner: String?
+): String? {
+    if (banner.isNullOrBlank()) return null
+
+    return when {
+        banner.startsWith("http") -> banner
+
+        banner.startsWith("/") ->
+            File("/data/adb/ksu/modules/$moduleId$banner")
+                .takeIf { it.exists() }?.absolutePath
+
+        else ->
+            File("/data/adb/ksu/modules/$moduleId/$banner")
+                .takeIf { it.exists() }?.absolutePath
+    }
+}
+
 
 // ================================
 // KOMPONEN LABEL CHIP
@@ -467,14 +457,12 @@ fun ModuleItem(
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
 
-    val modulePropText = remember(module.id) {
-        File("/data/adb/ksu/modules/${module.id}/module.prop")
-            .takeIf { it.exists() }
-            ?.readText()
+    val moduleProp = remember(module.id) {
+        readModuleProp(module.id)
     }
 
-    val bannerValue = remember(modulePropText) {
-        parseBannerFromModuleProp(modulePropText)
+    val bannerValue = remember(moduleProp) {
+        parseBannerFromModuleProp(moduleProp)
     }
 
     val resolvedBanner = remember(bannerValue) {
@@ -484,42 +472,26 @@ fun ModuleItem(
     val textDecoration =
         if (module.remove) TextDecoration.LineThrough else null
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
+
+    TonalCard(
+        modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large
     ) {
+        Column {
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (module.hasWebUi) {
-                        Modifier.toggleable(
-                            value = module.enabled,
-                            enabled = !module.remove,
-                            role = Role.Button,
-                            interactionSource = interactionSource,
-                            indication = LocalIndication.current,
-                            onValueChange = { onClick(module) }
-                        )
-                    } else Modifier
-                )
-                .padding(16.dp)
-        ) {
-
-            /* ---------- BANNER ---------- */
+            /* ---------- BANNER (FULL BLEED) ---------- */
 
             resolvedBanner?.let { path ->
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp)
-                        .clip(MaterialTheme.shapes.large)
+                        .height(160.dp)
+                        .clip(
+                            RoundedCornerShape(
+                                topStart = MaterialTheme.shapes.large.topStart,
+                                topEnd = MaterialTheme.shapes.large.topEnd
+                            )
+                        )
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
@@ -531,15 +503,15 @@ fun ModuleItem(
                         modifier = Modifier.fillMaxSize()
                     )
 
-                    // Dark gradient overlay
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(
                                 Brush.verticalGradient(
-                                    colors = listOf(
+                                    listOf(
                                         Color.Transparent,
-                                        Color.Black.copy(alpha = 0.55f)
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
                                     )
                                 )
                             )
@@ -554,129 +526,144 @@ fun ModuleItem(
                             text = module.name,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = module.author,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.85f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            /* ---------- CONTENT ---------- */
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .then(
+                        if (module.hasWebUi) {
+                            Modifier.toggleable(
+                                value = module.enabled,
+                                enabled = !module.remove,
+                                role = Role.Button,
+                                interactionSource = interactionSource,
+                                indication = LocalIndication.current,
+                                onValueChange = { onClick(module) }
+                            )
+                        } else Modifier
+                    )
+            ) {
+
+                if (resolvedBanner == null) {
+                    Text(
+                        text = module.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        textDecoration = textDecoration
+                    )
+                }
+
+                Spacer(Modifier.height(2.dp))
+
+                Text(
+                    text = "${module.version} • ${module.author}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textDecoration = textDecoration
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = module.description,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    textDecoration = textDecoration
+                )
+
+                Spacer(Modifier.height(14.dp))
+                HorizontalDivider(thickness = Dp.Hairline)
+                Spacer(Modifier.height(10.dp))
+
+                /* ---------- ACTION ROW ---------- */
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+
+                    Switch(
+                        checked = module.enabled,
+                        enabled = !module.remove,
+                        onCheckedChange = onCheckChanged
+                    )
+
+                    Spacer(Modifier.weight(1f))
+
+                    AnimatedVisibility(updateUrl.isNotEmpty()) {
+                        FilledTonalButton(onClick = { onUpdate(module) }) {
+                            Icon(Icons.Outlined.Download, null)
+                            Spacer(Modifier.width(6.dp))
+                            Text(stringResource(R.string.module_update))
+                        }
+                    }
+
+                    Spacer(Modifier.width(8.dp))
+
+                    FilledTonalIconButton(
+                        onClick = { onUninstallClicked(module) },
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = if (module.remove)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.errorContainer,
+                            contentColor = if (module.remove)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else
+                                MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Icon(
+                            imageVector = if (module.remove)
+                                Icons.Outlined.Refresh
+                            else
+                                Icons.Outlined.Delete,
+                            contentDescription = null
                         )
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
-            }
+                AnimatedVisibility(module.hasActionScript || module.hasWebUi) {
+                    Spacer(Modifier.height(10.dp))
 
-            /* ---------- HEADER ---------- */
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
 
-            if (resolvedBanner == null) {
-                Text(
-                    text = module.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    textDecoration = textDecoration
-                )
-            }
-
-            Spacer(Modifier.height(2.dp))
-
-            Text(
-                text = "${module.version} • ${module.author}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textDecoration = textDecoration
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = module.description,
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-                textDecoration = textDecoration
-            )
-
-            Spacer(Modifier.height(14.dp))
-            HorizontalDivider(thickness = Dp.Hairline)
-            Spacer(Modifier.height(10.dp))
-
-            /* ---------- ACTION ROW ---------- */
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Switch(
-                    checked = module.enabled,
-                    enabled = !module.remove,
-                    onCheckedChange = onCheckChanged
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                AnimatedVisibility(updateUrl.isNotEmpty()) {
-                    FilledTonalButton(
-                        onClick = { onUpdate(module) }
-                    ) {
-                        Icon(Icons.Outlined.Download, null)
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.module_update))
-                    }
-                }
-
-                Spacer(Modifier.width(8.dp))
-
-                FilledTonalIconButton(
-                    onClick = { onUninstallClicked(module) },
-                    colors = IconButtonDefaults.filledTonalIconButtonColors(
-                        containerColor = if (module.remove)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.errorContainer,
-                        contentColor = if (module.remove)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onErrorContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = if (module.remove)
-                            Icons.Outlined.Refresh
-                        else
-                            Icons.Outlined.Delete,
-                        contentDescription = null
-                    )
-                }
-            }
-
-            AnimatedVisibility(module.hasActionScript || module.hasWebUi) {
-                Spacer(Modifier.height(10.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (module.hasActionScript) {
-                        FilledTonalButton(
-                            onClick = {
-                                navigator.navigate(
-                                    ExecuteModuleActionScreenDestination(module.id)
-                                )
+                        if (module.hasActionScript) {
+                            FilledTonalButton(
+                                onClick = {
+                                    navigator.navigate(
+                                        ExecuteModuleActionScreenDestination(module.id)
+                                    )
+                                }
+                            ) {
+                                Icon(Icons.Outlined.PlayArrow, null)
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.action))
                             }
-                        ) {
-                            Icon(Icons.Outlined.PlayArrow, null)
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.action))
                         }
-                    }
 
-                    if (module.hasWebUi) {
-                        FilledTonalButton(
-                            onClick = { onClick(module) }
-                        ) {
-                            Icon(Icons.Outlined.Code, null)
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.open))
+                        if (module.hasWebUi) {
+                            FilledTonalButton(onClick = { onClick(module) }) {
+                                Icon(Icons.Outlined.Code, null)
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.open))
+                            }
                         }
                     }
                 }
@@ -685,7 +672,6 @@ fun ModuleItem(
     }
 }
 
-// Komponen Label yang sederhana
 @Composable
 fun SimpleLabelChip(
     text: String,
