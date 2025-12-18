@@ -133,6 +133,21 @@ import me.weishu.kernelsu.ui.util.uninstallModule
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.webui.WebUIActivity
 
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+
 import com.topjohnwu.superuser.io.SuFile
 
 @SuppressLint("StringFormatInvalid")
@@ -600,6 +615,27 @@ fun ModuleItem(
         val indication = LocalIndication.current
         val viewModel = viewModel<ModuleViewModel>()
 
+        // Expand/collapse state + smooth animation values
+        var expanded by rememberSaveable(module.id) { mutableStateOf(false) }
+
+        val bannerHeight by animateDpAsState(
+            targetValue = if (expanded) 200.dp else 160.dp,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            ),
+            label = "bannerHeight"
+        )
+
+        val bannerAlpha by animateFloatAsState(
+            targetValue = if (expanded) 0.28f else 0.18f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "bannerAlpha"
+        )
+
         Column(
             modifier = Modifier
                 .run {
@@ -616,58 +652,181 @@ fun ModuleItem(
                         this
                     }
                 }
+                // Tap anywhere on item to expand/collapse (smooth)
+                .clickable { expanded = !expanded }
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
                 .padding(22.dp, 18.dp, 22.dp, 12.dp)
         ) {
             // ===== Banner Fullscreen Start =====
-            if (!module.banner.isNullOrEmpty()) {
-                val bannerModifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 160.dp)
-                    .clip(RoundedCornerShape(14.dp))
+            val bannerModifier = Modifier
+                .fillMaxWidth()
+                .height(bannerHeight)
+                .clip(RoundedCornerShape(14.dp))
 
-                val context = LocalContext.current
-                val bannerData = remember(module.banner) {
-                    try {
-                        val file = SuFile("/data/adb/modules/${module.id}${module.banner}")
-                        file.newInputStream().use { it.readBytes() }
-                    } catch (e: Exception) {
-                        null
-                    }
+            val scrim = remember {
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(alpha = 0.15f),
+                    1f to Color.Black.copy(alpha = 0.65f),
+                )
+            }
+
+            val context = LocalContext.current
+            val bannerData = remember(module.banner) {
+                try {
+                    // NOTE: path SuFile jangan diubah
+                    val file = SuFile("/data/adb/modules/${module.id}${module.banner}")
+                    file.newInputStream().use { it.readBytes() }
+                } catch (e: Exception) {
+                    null
                 }
+            }
 
-                if (bannerData != null) {
+            Box(modifier = bannerModifier) {
+                // Background image / fallback
+                if (!module.banner.isNullOrEmpty() && bannerData != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(context).data(bannerData).build(),
                         contentDescription = null,
-                        modifier = bannerModifier.fillMaxWidth(),
+                        modifier = Modifier.matchParentSize(),
                         contentScale = ContentScale.Crop,
-                        alpha = 0.18f
+                        alpha = bannerAlpha
                     )
                 } else {
                     Box(
-                        modifier = bannerModifier
-                            .fillMaxWidth()
+                        modifier = Modifier
+                            .matchParentSize()
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                     )
                 }
-            } else {
+
+                // Scrim/gradient biar teks kebaca & mirip foto
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .matchParentSize()
+                        .background(scrim)
                 )
+
+                // Pills kiri atas (tanpa Text label, sesuai request)
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // ukuran/label tidak dipakai, jadi chip dibuat “kosong”
+                    AssistChip(
+                        onClick = {},
+                        label = {},
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                            labelColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = null
+                    )
+                    if (module.hasWebUi) {
+                        AssistChip(
+                            onClick = {},
+                            label = {},
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                                labelColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            border = null
+                        )
+                    }
+                    if (module.hasActionScript) {
+                        AssistChip(
+                            onClick = {},
+                            label = {},
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                                labelColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            border = null
+                        )
+                    }
+                }
+
+                // Switch kanan atas (di atas banner)
+                Switch(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp),
+                    enabled = !module.update,
+                    checked = module.enabled,
+                    onCheckedChange = onCheckChanged,
+                    interactionSource = if (!module.hasWebUi) interactionSource else null,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
+                    )
+                )
+
+                // Teks di bagian bawah banner
+                val moduleVersion = stringResource(id = R.string.module_version)
+                val moduleAuthor = stringResource(id = R.string.module_author)
+
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(14.dp)
+                ) {
+                    Text(
+                        text = module.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        textDecoration = textDecoration,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Text(
+                        text = "$moduleVersion: ${module.version}",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        textDecoration = textDecoration
+                    )
+
+                    Text(
+                        text = "$moduleAuthor: ${module.author}",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        textDecoration = textDecoration
+                    )
+
+                    // Saat expanded, tampilkan sedikit deskripsi di dalam banner (mirip foto)
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(top = 10.dp),
+                            text = module.description,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                            fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                            fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
+                            overflow = TextOverflow.Ellipsis,
+                            maxLines = 2,
+                            textDecoration = textDecoration
+                        )
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(14.dp))
             // ===== Banner Fullscreen End =====
+
+            // Bagian bawah (kode asli kamu tetap, cuma disesuaikan karena moduleVersion/moduleAuthor sudah dipakai di banner)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                val moduleVersion = stringResource(id = R.string.module_version)
-                val moduleAuthor = stringResource(id = R.string.module_author)
-
                 Column(
                     modifier = Modifier.fillMaxWidth(0.8f)
                 ) {
@@ -681,7 +840,7 @@ fun ModuleItem(
                     )
 
                     Text(
-                        text = "$moduleVersion: ${module.version}",
+                        text = "${stringResource(id = R.string.module_version)}: ${module.version}",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
@@ -690,7 +849,7 @@ fun ModuleItem(
                     )
 
                     Text(
-                        text = "$moduleAuthor: ${module.author}",
+                        text = "${stringResource(id = R.string.module_author)}: ${module.author}",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
