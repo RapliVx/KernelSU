@@ -12,8 +12,9 @@ fun resolveModuleBanner(
     if (banner.isBlank()) return null
 
     return when {
-        banner.startsWith("http://") || banner.startsWith("https://") ->
+        banner.startsWith("http://") || banner.startsWith("https://") -> {
             Uri.parse(banner)
+        }
 
         banner.startsWith("/") -> {
             val file = File("/data/adb/ksu/$moduleId$banner")
