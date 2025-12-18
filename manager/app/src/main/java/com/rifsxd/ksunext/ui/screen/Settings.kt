@@ -245,8 +245,8 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 
                             SwitchItem(
                                 icon = Icons.Filled.EnhancedEncryption,
-                                title = stringResource(R.string.settings_enable_enhanced_security),
-                                summary = stringResource(R.string.settings_enable_enhanced_security_summary),
+                                title = stringResource(R.string.settings_disable_enhanced_security),
+                                summary = stringResource(R.string.settings_disable_enhanced_security_summary),
                                 checked = isEnhancedSecurityDisabled,
                                 modifier = Modifier
                                     .fillMaxWidth()
