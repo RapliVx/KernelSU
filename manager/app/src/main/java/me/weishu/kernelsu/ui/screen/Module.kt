@@ -20,6 +20,7 @@ import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.*
 import coil.compose.AsyncImage
 import androidx.compose.foundation.LocalIndication
@@ -494,9 +495,9 @@ fun ModuleItem(
                         .fillMaxWidth()
                         .height(160.dp)
                         .clip(
-                            RoundedCornerShape(
-                                topStart = MaterialTheme.shapes.large.topStart,
-                                topEnd = MaterialTheme.shapes.large.topEnd
+                            MaterialTheme.shapes.large.copy(
+                                bottomStart = CornerSize(0.dp),
+                                bottomEnd = CornerSize(0.dp)
                             )
                         )
                 ) {
