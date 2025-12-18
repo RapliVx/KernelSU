@@ -106,6 +106,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
@@ -471,6 +472,12 @@ fun ModuleItem(
 
     val textDecoration =
         if (module.remove) TextDecoration.LineThrough else null
+
+    LaunchedEffect(moduleProp) {
+        Log.d("ModuleBanner", "module=${module.id}")
+        Log.d("ModuleBanner", "moduleProp=\n$moduleProp")
+        Log.d("ModuleBanner", "parsed banner=$bannerValue")
+    }
 
 
     TonalCard(
