@@ -106,6 +106,23 @@ import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import java.io.File
+import kotlinx.coroutines.withContext
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.net.URL
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ksuApp
@@ -125,6 +142,37 @@ import me.weishu.kernelsu.ui.util.undoUninstallModule
 import me.weishu.kernelsu.ui.util.uninstallModule
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.webui.WebUIActivity
+
+// Fungsi untuk mendapatkan path banner yang benar
+fun getBannerPath(moduleId: String, bannerPath: String?): String? {
+    if (bannerPath.isNullOrEmpty()) return null
+
+    return when {
+        bannerPath.startsWith("http://") || bannerPath.startsWith("https://") -> {
+            // URL langsung
+            bannerPath
+        }
+        bannerPath.startsWith("/") -> {
+            // Path relatif dalam direktori modul
+            val moduleDir = File("/data/adb/ksu/modules/$moduleId")
+            val bannerFile = File(moduleDir, bannerPath.substring(1))
+            if (bannerFile.exists()) {
+                bannerFile.absolutePath
+            } else {
+                null
+            }
+        }
+        else -> {
+            // Path absolut atau tidak valid
+            val bannerFile = File(bannerPath)
+            if (bannerFile.exists()) {
+                bannerFile.absolutePath
+            } else {
+                null
+            }
+        }
+    }
+}
 
 @SuppressLint("StringFormatInvalid")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -585,6 +633,11 @@ fun ModuleItem(
     onUpdate: (ModuleViewModel.ModuleInfo) -> Unit,
     onClick: (ModuleViewModel.ModuleInfo) -> Unit
 ) {
+    // State untuk banner URL/path
+    val bannerPath = remember(module.id, module.bannerPath) {
+        getBannerPath(module.id, module.bannerPath)
+    }
+
     TonalCard(modifier = Modifier.fillMaxWidth()) {
         val textDecoration = if (!module.remove) null else TextDecoration.LineThrough
         val interactionSource = remember { MutableInteractionSource() }
@@ -609,6 +662,40 @@ fun ModuleItem(
                 }
                 .padding(22.dp, 18.dp, 22.dp, 12.dp)
         ) {
+            // Tampilkan banner jika ada
+            bannerPath?.let { path ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(3f / 1f) // Rasio 3:1 untuk banner
+                        .padding(bottom = 12.dp)
+                ) {
+                    if (path.startsWith("http")) {
+                        // Untuk URL (gunakan Coil)
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(path)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "${module.name} banner",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        // Untuk file lokal
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(File(path))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "${module.name} banner",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
