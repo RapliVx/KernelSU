@@ -313,8 +313,8 @@ class ModuleViewModel : ViewModel() {
 
 fun resolveBannerPath(moduleRoot: File, props: Map<String, String>): String? {
     val banner = props["banner"] ?: return null
-    val relative = banner.removePrefix("/")
-    val file = File(moduleRoot, relative)
+    val file = File(moduleRoot, banner.trimStart('/'))
+    Log.i("ModuleViewModel", "resolveBannerPath: checking ${file.absolutePath}, exists=${file.exists()}")
     return if (file.exists() && file.isFile) file.absolutePath else null
 }
 
