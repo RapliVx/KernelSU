@@ -12,7 +12,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -37,7 +36,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudDownload
@@ -88,7 +86,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -102,7 +99,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
@@ -113,8 +109,10 @@ import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import coil.compose.rememberAsyncImagePainter
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.layout.ContentScale
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ksuApp
@@ -134,8 +132,7 @@ import me.weishu.kernelsu.ui.util.undoUninstallModule
 import me.weishu.kernelsu.ui.util.uninstallModule
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.webui.WebUIActivity
-import coil.request.ImageRequest
-import kotlinx.coroutines.*
+
 import com.topjohnwu.superuser.io.SuFile
 
 @SuppressLint("StringFormatInvalid")
@@ -597,7 +594,6 @@ fun ModuleItem(
     onUpdate: (ModuleViewModel.ModuleInfo) -> Unit,
     onClick: (ModuleViewModel.ModuleInfo) -> Unit
 ) {
-    val context = LocalContext.current
     TonalCard(modifier = Modifier.fillMaxWidth()) {
         val textDecoration = if (!module.remove) null else TextDecoration.LineThrough
         val interactionSource = remember { MutableInteractionSource() }
@@ -616,62 +612,45 @@ fun ModuleItem(
                             indication = indication,
                             onValueChange = { onClick(module) }
                         )
-                    } else this
+                    } else {
+                        this
+                    }
                 }
                 .padding(22.dp, 18.dp, 22.dp, 12.dp)
         ) {
-            // Banner section
+            // ===== Banner Fullscreen Start =====
             if (!module.banner.isNullOrEmpty()) {
-                if (module.banner.startsWith("http", true)) {
-                    Log.i("ModuleItem", "Loading banner from URL for module '${module.name}': ${module.banner}")
+                val bannerModifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 160.dp)
+                    .clip(RoundedCornerShape(14.dp))
+
+                val context = LocalContext.current
+                val bannerData = remember(module.banner) {
+                    try {
+                        val file = SuFile("/data/adb/modules/${module.id}${module.banner}")
+                        file.newInputStream().use { it.readBytes() }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
+                if (bannerData != null) {
                     AsyncImage(
-                        model = module.banner,
+                        model = ImageRequest.Builder(context).data(bannerData).build(),
                         contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(160.dp)
-                            .clip(RoundedCornerShape(14.dp)),
+                        modifier = bannerModifier.fillMaxWidth(),
                         contentScale = ContentScale.Crop,
                         alpha = 0.18f
                     )
                 } else {
-                    val bannerData = remember(module.banner) {
-                        try {
-                            val file = SuFile("/data/adb/modules/${module.id}/${module.banner}")
-                            Log.i("ModuleItem", "Checking local banner file: ${file.absolutePath}, exists=${file.exists()}")
-                            file.newInputStream().use { it.readBytes() }
-                        } catch (e: Exception) {
-                            Log.e("ModuleItem", "Failed to load local banner for ${module.name}", e)
-                            null
-                        }
-                    }
-                    if (bannerData != null) {
-                        Log.i("ModuleItem", "Loading local banner for module '${module.name}'")
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(bannerData)
-                                .build(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(160.dp)
-                                .clip(RoundedCornerShape(14.dp)),
-                            contentScale = ContentScale.Crop,
-                            alpha = 0.18f
-                        )
-                    } else {
-                        Log.i("ModuleItem", "No banner found for module '${module.name}'")
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(160.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                        )
-                    }
+                    Box(
+                        modifier = bannerModifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    )
                 }
             } else {
-                Log.i("ModuleItem", "No banner defined for module '${module.name}'")
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -680,10 +659,8 @@ fun ModuleItem(
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
             }
-
             Spacer(modifier = Modifier.height(14.dp))
-        }
-
+            // ===== Banner Fullscreen End =====
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -894,6 +871,7 @@ fun ModuleItem(
             }
         }
     }
+}
 
 @Preview
 @Composable
@@ -904,7 +882,7 @@ fun ModuleItemPreview() {
         version = "version",
         versionCode = 1,
         author = "author",
-        description = "I am a test module and i do nothing but show a very long description",
+        description = "I am a test module and I do nothing but show a very long description",
         enabled = true,
         update = true,
         remove = false,
@@ -912,6 +890,7 @@ fun ModuleItemPreview() {
         hasWebUi = false,
         hasActionScript = false,
         metamodule = true,
+        banner = null
     )
     ModuleItem(EmptyDestinationsNavigator, module, "", {}, {}, {}, {})
 }
