@@ -102,6 +102,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
@@ -133,6 +134,9 @@ import me.weishu.kernelsu.ui.util.undoUninstallModule
 import me.weishu.kernelsu.ui.util.uninstallModule
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.webui.WebUIActivity
+import coil.request.ImageRequest
+import kotlinx.coroutines.*
+import com.topjohnwu.superuser.io.SuFile
 
 @SuppressLint("StringFormatInvalid")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -593,6 +597,7 @@ fun ModuleItem(
     onUpdate: (ModuleViewModel.ModuleInfo) -> Unit,
     onClick: (ModuleViewModel.ModuleInfo) -> Unit
 ) {
+    val context = LocalContext.current
     TonalCard(modifier = Modifier.fillMaxWidth()) {
         val textDecoration = if (!module.remove) null else TextDecoration.LineThrough
         val interactionSource = remember { MutableInteractionSource() }
@@ -611,25 +616,62 @@ fun ModuleItem(
                             indication = indication,
                             onValueChange = { onClick(module) }
                         )
-                    } else {
-                        this
-                    }
+                    } else this
                 }
                 .padding(22.dp, 18.dp, 22.dp, 12.dp)
         ) {
-            if (module.bannerPath != null) {
-                Log.i("ModuleItem", "Banner detected for module '${module.name}': ${module.bannerPath}")
-                Image(
-                    painter = rememberAsyncImagePainter(File(module.bannerPath)),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .clip(RoundedCornerShape(14.dp)),
-                    contentScale = ContentScale.Crop
-                )
+            // Banner section
+            if (!module.banner.isNullOrEmpty()) {
+                if (module.banner.startsWith("http", true)) {
+                    Log.i("ModuleItem", "Loading banner from URL for module '${module.name}': ${module.banner}")
+                    AsyncImage(
+                        model = module.banner,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                            .clip(RoundedCornerShape(14.dp)),
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.18f
+                    )
+                } else {
+                    val bannerData = remember(module.banner) {
+                        try {
+                            val file = SuFile("/data/adb/modules/${module.id}/${module.banner}")
+                            Log.i("ModuleItem", "Checking local banner file: ${file.absolutePath}, exists=${file.exists()}")
+                            file.newInputStream().use { it.readBytes() }
+                        } catch (e: Exception) {
+                            Log.e("ModuleItem", "Failed to load local banner for ${module.name}", e)
+                            null
+                        }
+                    }
+                    if (bannerData != null) {
+                        Log.i("ModuleItem", "Loading local banner for module '${module.name}'")
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(bannerData)
+                                .build(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(14.dp)),
+                            contentScale = ContentScale.Crop,
+                            alpha = 0.18f
+                        )
+                    } else {
+                        Log.i("ModuleItem", "No banner found for module '${module.name}'")
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        )
+                    }
+                }
             } else {
-                Log.i("ModuleItem", "No banner found for module '${module.name}'")
+                Log.i("ModuleItem", "No banner defined for module '${module.name}'")
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -639,7 +681,7 @@ fun ModuleItem(
                 )
             }
 
-                Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(14.dp))
         }
 
             Row(
