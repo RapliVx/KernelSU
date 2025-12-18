@@ -160,11 +160,19 @@ import java.io.File
  */
 
 fun readModuleProp(moduleId: String): String? {
-    return runCatching {
-        File("/data/adb/ksu/modules/$moduleId/module.prop")
-            .takeIf { it.exists() }
-            ?.readText()
-    }.getOrNull()
+    val file = File("/data/adb/ksu/modules/$moduleId/module.prop")
+
+    return try {
+        if (!file.exists()) {
+            Log.e("ModuleBanner", "module.prop NOT FOUND for $moduleId")
+            return null
+        }
+
+        file.readText()
+    } catch (e: Exception) {
+        Log.e("ModuleBanner", "read module.prop failed", e)
+        null
+    }
 }
 
 fun parseBannerFromModuleProp(prop: String?): String? {
@@ -475,6 +483,9 @@ fun ModuleItem(
         if (module.remove) TextDecoration.LineThrough else null
 
     LaunchedEffect(moduleProp) {
+        val file = File("/data/adb/ksu/modules/${module.id}/module.prop")
+        Log.d("ModuleBanner", "module.prop exists=${file.exists()}")
+        Log.d("ModuleBanner", "path=${file.absolutePath}")
         Log.d("ModuleBanner", "module=${module.id}")
         Log.d("ModuleBanner", "moduleProp=\n$moduleProp")
         Log.d("ModuleBanner", "parsed banner=$bannerValue")
