@@ -653,7 +653,8 @@ fun ModuleItem(
             }
         }
 
-        // Kontainer utama: banner jadi background full + overlay semua konten
+        val shape = RoundedCornerShape(14.dp)
+
         Box(
             modifier = Modifier
                 .run {
@@ -675,9 +676,9 @@ fun ModuleItem(
                         stiffness = Spring.StiffnessLow
                     )
                 )
+                .fillMaxWidth()
                 .heightIn(min = cardHeight)
-                .padding(22.dp, 18.dp, 22.dp, 12.dp)
-                .clip(RoundedCornerShape(14.dp))
+                .clip(shape)
         ) {
             // ===== Banner full-card background =====
             if (!module.banner.isNullOrEmpty() && bannerData != null) {
@@ -696,11 +697,16 @@ fun ModuleItem(
                 )
             }
 
-            // scrim overlay
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(scrim)
+            )
+
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(22.dp, 18.dp, 22.dp, 12.dp)
             )
 
             // ===== Konten overlay =====
