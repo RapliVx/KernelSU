@@ -465,15 +465,17 @@ fun ModuleItem(
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
 
-    val moduleProp = remember(module.id) {
-        readModuleProp(module.id)
+    val moduleProp by produceState<String?>(initialValue = null, module.id) {
+        value = withContext(Dispatchers.IO) {
+            readModuleProp(module.id)
+        }
     }
 
     val bannerValue = remember(moduleProp) {
         parseBannerFromModuleProp(moduleProp)
     }
 
-    val resolvedBanner = remember(bannerValue) {
+    val resolvedBanner = remember(module.id, bannerValue) {
         getModuleBannerPath(module.id, bannerValue)
     }
 
