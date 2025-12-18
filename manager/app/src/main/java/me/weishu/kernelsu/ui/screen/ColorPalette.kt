@@ -124,14 +124,20 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
         rememberLauncherForActivityResult(
             ActivityResultContracts.OpenDocument()
         ) { uri ->
-            uri?.let {
+            if (uri == null) {
+                // User cancel → revert toggle
+                hasCustomHeader = false
+            } else {
                 context.contentResolver.takePersistableUriPermission(
-                    it,
+                    uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
-                context.saveHeaderImage(it.toString())
+                context.saveHeaderImage(uri.toString())
+
+                hasCustomHeader = true
             }
         }
+
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     var appSettings by remember { mutableStateOf(ThemeController.getAppSettings(context)) }
     var currentColorMode by remember { mutableStateOf(appSettings.colorMode) }
@@ -323,6 +329,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                 if (!checked) return@ToggleButton
 
                                 if (isCustom) {
+                                    hasCustomHeader = true
                                     imagePicker.launch(arrayOf("image/*"))
                                 } else {
                                     context.clearHeaderImage()

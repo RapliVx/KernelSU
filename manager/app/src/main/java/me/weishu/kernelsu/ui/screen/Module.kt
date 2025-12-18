@@ -13,6 +13,15 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.*
+import coil.compose.AsyncImage
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -147,28 +156,58 @@ import java.io.File
 /**
  * Fungsi untuk membaca banner dari module.prop
  */
-fun parseBannerFromModuleProp(moduleId: String): String? = try {
-    val prop = File("/data/adb/ksu/modules/$moduleId/module.prop")
-    prop.takeIf { it.exists() }
-        ?.readLines()
-        ?.firstOrNull { it.startsWith("banner=") }
-        ?.substringAfter("=")
-        ?.trim()
-} catch (e: Exception) {
-    Log.e("ModuleBanner", "parse error", e)
-    null
+fun getModuleBannerPath(
+    moduleId: String,
+    banner: String?
+): String? {
+    if (banner.isNullOrBlank()) return null
+
+    return runCatching {
+        when {
+            // Remote URL
+            banner.startsWith("http://") || banner.startsWith("https://") -> {
+                banner
+            }
+
+            // file:// URI
+            banner.startsWith("file://") -> {
+                val path = banner.removePrefix("file://")
+                File(path).takeIf { it.exists() }?.absolutePath
+            }
+
+            // banner=/banner.png  (root-relative inside module)
+            banner.startsWith("/") -> {
+                File("/data/adb/ksu/modules/$moduleId$banner")
+                    .takeIf { it.exists() }
+                    ?.absolutePath
+            }
+
+            // banner=banner.png (relative)
+            else -> {
+                File("/data/adb/ksu/modules/$moduleId/$banner")
+                    .takeIf { it.exists() }
+                    ?.absolutePath
+            }
+        }
+    }.onFailure {
+        Log.e("ModuleBanner", "Failed to resolve banner for $moduleId", it)
+    }.getOrNull()
 }
 
-fun getModuleBannerPath(moduleId: String, banner: String?): String? {
-    if (banner.isNullOrBlank()) return null
-    return when {
-        banner.startsWith("http") -> banner
-        banner.startsWith("/") ->
-            File("/data/adb/ksu/modules/$moduleId/${banner.drop(1)}")
-                .takeIf { it.exists() }?.absolutePath
-        else ->
-            File(banner).takeIf { it.exists() }?.absolutePath
-    }
+fun parseBannerFromModuleProp(moduleProp: String?): String? {
+    if (moduleProp.isNullOrBlank()) return null
+
+    return moduleProp
+        .lineSequence()
+        .map { it.trim() }
+        .firstOrNull {
+            it.startsWith("banner=") &&
+                    !it.startsWith("banner=#") &&
+                    it.length > 7
+        }
+        ?.substringAfter("banner=")
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
 }
 
 // ================================
@@ -428,21 +467,31 @@ fun ModuleItem(
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
 
-    val bannerPath = remember(module.id) {
-        module.bannerPath ?: parseBannerFromModuleProp(module.id)
+    val modulePropText = remember(module.id) {
+        File("/data/adb/ksu/modules/${module.id}/module.prop")
+            .takeIf { it.exists() }
+            ?.readText()
     }
 
-    val resolvedBanner = remember(bannerPath) {
-        getModuleBannerPath(module.id, bannerPath)
+    val bannerValue = remember(modulePropText) {
+        parseBannerFromModuleProp(modulePropText)
+    }
+
+    val resolvedBanner = remember(bannerValue) {
+        getModuleBannerPath(module.id, bannerValue)
     }
 
     val textDecoration =
         if (module.remove) TextDecoration.LineThrough else null
 
-    TonalCard(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
+            .padding(vertical = 6.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        shape = MaterialTheme.shapes.large
     ) {
 
         Column(
@@ -469,7 +518,8 @@ fun ModuleItem(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
+                        .height(150.dp)
+                        .clip(MaterialTheme.shapes.large)
                 ) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
@@ -481,27 +531,40 @@ fun ModuleItem(
                         modifier = Modifier.fillMaxSize()
                     )
 
+                    // Dark gradient overlay
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(
                                 Brush.verticalGradient(
-                                    listOf(Color.Transparent, Color.Black.copy(0.4f))
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.55f)
+                                    )
                                 )
                             )
                     )
 
-                    Text(
-                        text = module.name,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
+                    Column(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(12.dp)
-                    )
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = module.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = module.author,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.85f)
+                        )
+                    }
                 }
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
             }
 
             /* ---------- HEADER ---------- */
@@ -509,14 +572,17 @@ fun ModuleItem(
             if (resolvedBanner == null) {
                 Text(
                     text = module.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
                     textDecoration = textDecoration
                 )
             }
 
+            Spacer(Modifier.height(2.dp))
+
             Text(
-                text = "v${module.version} • ${module.author}",
-                style = MaterialTheme.typography.bodySmall,
+                text = "${module.version} • ${module.author}",
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textDecoration = textDecoration
             )
@@ -527,19 +593,20 @@ fun ModuleItem(
                 text = module.description,
                 maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
-                fontSize = 13.sp,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
                 textDecoration = textDecoration
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
             HorizontalDivider(thickness = Dp.Hairline)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
 
             /* ---------- ACTION ROW ---------- */
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Switch(
                     checked = module.enabled,
                     enabled = !module.remove,
@@ -549,7 +616,9 @@ fun ModuleItem(
                 Spacer(Modifier.weight(1f))
 
                 AnimatedVisibility(updateUrl.isNotEmpty()) {
-                    Button(onClick = { onUpdate(module) }) {
+                    FilledTonalButton(
+                        onClick = { onUpdate(module) }
+                    ) {
                         Icon(Icons.Outlined.Download, null)
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.module_update))
@@ -558,19 +627,35 @@ fun ModuleItem(
 
                 Spacer(Modifier.width(8.dp))
 
-                FilledTonalButton(onClick = { onUninstallClicked(module) }) {
+                FilledTonalIconButton(
+                    onClick = { onUninstallClicked(module) },
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(
+                        containerColor = if (module.remove)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.errorContainer,
+                        contentColor = if (module.remove)
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        else
+                            MaterialTheme.colorScheme.onErrorContainer
+                    )
+                ) {
                     Icon(
-                        if (module.remove) Icons.Outlined.Refresh else Icons.Outlined.Delete,
-                        null,
-                        modifier = if (module.remove) Modifier.rotate(180f) else Modifier
+                        imageVector = if (module.remove)
+                            Icons.Outlined.Refresh
+                        else
+                            Icons.Outlined.Delete,
+                        contentDescription = null
                     )
                 }
             }
 
             AnimatedVisibility(module.hasActionScript || module.hasWebUi) {
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Spacer(Modifier.height(10.dp))
 
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     if (module.hasActionScript) {
                         FilledTonalButton(
                             onClick = {
@@ -586,7 +671,9 @@ fun ModuleItem(
                     }
 
                     if (module.hasWebUi) {
-                        FilledTonalButton(onClick = { onClick(module) }) {
+                        FilledTonalButton(
+                            onClick = { onClick(module) }
+                        ) {
                             Icon(Icons.Outlined.Code, null)
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.open))
