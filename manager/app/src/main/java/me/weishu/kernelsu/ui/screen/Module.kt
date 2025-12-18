@@ -160,7 +160,7 @@ import java.io.File
  */
 
 fun readModuleProp(moduleId: String): String? {
-    val file = File("/data/adb/ksu/modules/$moduleId/module.prop")
+    val file = File("/data/adb/modules/$moduleId/module.prop")
 
     return try {
         if (!file.exists()) {
@@ -200,11 +200,11 @@ fun getModuleBannerPath(
         banner.startsWith("http") -> banner
 
         banner.startsWith("/") ->
-            File("/data/adb/ksu/modules/$moduleId$banner")
+            File("/data/adb/modules/$moduleId$banner")
                 .takeIf { it.exists() }?.absolutePath
 
         else ->
-            File("/data/adb/ksu/modules/$moduleId/$banner")
+            File("/data/adb/modules/$moduleId/$banner")
                 .takeIf { it.exists() }?.absolutePath
     }
 }
@@ -483,7 +483,7 @@ fun ModuleItem(
         if (module.remove) TextDecoration.LineThrough else null
 
     LaunchedEffect(moduleProp) {
-        val file = File("/data/adb/ksu/modules/${module.id}/module.prop")
+        val file = File("/data/adb/modules/${module.id}/module.prop")
         Log.d("ModuleBanner", "module.prop exists=${file.exists()}")
         Log.d("ModuleBanner", "path=${file.absolutePath}")
         Log.d("ModuleBanner", "module=${module.id}")
