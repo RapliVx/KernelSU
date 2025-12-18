@@ -38,7 +38,7 @@ class ModuleViewModel : ViewModel() {
     }
 
     @Immutable
-    class ModuleInfo(
+    data class ModuleInfo(
         val id: String,
         val name: String,
         val author: String,
@@ -143,16 +143,35 @@ class ModuleViewModel : ViewModel() {
             val oldModuleList = modules
             val start = SystemClock.elapsedRealtime()
 
-
             val parsedModules = withContext(Dispatchers.IO) {
                 kotlin.runCatching {
                     val result = listModules()
-                    Log.i(TAG, "result: $result")
+                    Log.i(TAG, "Raw JSON result from listModules(): $result")
+
                     val array = JSONArray(result)
                     (0 until array.length())
                         .asSequence()
                         .map { array.getJSONObject(it) }
                         .map { obj ->
+                            // PERBAIKAN DI SINI: Handle banner parsing dengan benar
+                            val bannerValue = obj.optString("banner", "")
+                            val banner = if (bannerValue.isNotEmpty()) bannerValue else null
+
+                            // Debug logging untuk banner
+                            if (banner != null) {
+                                Log.d(TAG, "✓ Module ${obj.getString("id")} has banner: $banner")
+                            } else {
+                                Log.d(TAG, "✗ Module ${obj.getString("id")} has NO banner")
+                            }
+
+                            // Debug semua keys di JSON untuk verifikasi
+                            val keys = obj.keys()
+                            val keyList = mutableListOf<String>()
+                            while (keys.hasNext()) {
+                                keyList.add(keys.next())
+                            }
+                            Log.d(TAG, "JSON keys for ${obj.getString("id")}: ${keyList.joinToString(", ")}")
+
                             ModuleInfo(
                                 obj.getString("id"),
                                 obj.optString("name"),
@@ -167,12 +186,12 @@ class ModuleViewModel : ViewModel() {
                                 obj.optBoolean("web"),
                                 obj.optBoolean("action"),
                                 (obj.optInt("metamodule") != 0) or obj.optBoolean("metamodule"),
-                                obj.optString("banner", null), // Baca banner
+                                banner, // Sudah diperbaiki
                                 0L // Default size
                             )
                         }.toList()
                 }.getOrElse {
-                    Log.e(TAG, "fetchModuleList: ", it)
+                    Log.e(TAG, "fetchModuleList error: ", it)
                     emptyList()
                 }
             }
@@ -193,7 +212,8 @@ class ModuleViewModel : ViewModel() {
                 isRefreshing = false
             }
 
-            Log.i(TAG, "load cost: ${SystemClock.elapsedRealtime() - start}, modules: $modules")
+            Log.i(TAG, "Module load completed. Total modules: ${modules.size}")
+            Log.i(TAG, "Modules with banner: ${modules.count { it.bannerPath != null }}")
         }
     }
 

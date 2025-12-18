@@ -149,22 +149,21 @@ import androidx.compose.ui.layout.ContentScale
 import coil.request.ImageRequest
 import java.io.File
 
-/// ================================
+// ================================
 // FUNGSI UTILITAS BANNER YANG DIPERBAIKI
 // ================================
 
 private const val TAG = "ModuleBanner"
 
 /**
- * Fungsi utama untuk mendapatkan path banner dari module
- * Mencoba beberapa lokasi kemungkinan module directory
+ * Fungsi untuk resolve banner path dari banner property
+ * HANYA handle URL dan path resolution, TIDAK baca file
  */
-fun getModuleBannerPath(
+fun resolveBannerPath(
     moduleId: String,
     bannerPropValue: String?
 ): String? {
     if (bannerPropValue.isNullOrBlank()) {
-        Log.d(TAG, "No banner property for module: $moduleId")
         return null
     }
 
@@ -176,106 +175,26 @@ fun getModuleBannerPath(
                 bannerPropValue
             }
 
-            // Path relatif - cari di beberapa lokasi module
+            // Path relatif - asumsi sudah valid dari ModuleViewModel
             bannerPropValue.startsWith("/") -> {
-                val relativePath = bannerPropValue.substring(1)
-                findBannerInModulePaths(moduleId, relativePath)
+                // Untuk path relatif, kita asumsi ModuleViewModel sudah menyediakan path yang benar
+                // atau kita bisa coba construct path
+                "/data/adb/modules/$moduleId/${bannerPropValue.substring(1)}"
             }
 
-            // Path absolut - coba langsung
+            // Path absolut atau nama file
             else -> {
-                val bannerFile = File(bannerPropValue)
-                if (bannerFile.exists()) {
-                    bannerFile.absolutePath
-                } else {
-                    // Coba sebagai path relatif juga
-                    findBannerInModulePaths(moduleId, bannerPropValue)
-                }
+                bannerPropValue
             }
         }
     } catch (e: Exception) {
-        Log.e(TAG, "Error getting banner path for $moduleId: $bannerPropValue", e)
-        null
-    }
-}
-
-/**
- * Cari banner di beberapa kemungkinan lokasi module directory
- */
-private fun findBannerInModulePaths(moduleId: String, bannerFileName: String): String? {
-    val possiblePaths = listOf(
-        // Multi Path
-        "/data/adb/ksu/modules/$moduleId",
-        "/data/adb/modules/$moduleId",
-        "/data/adb/kernelsu/modules/$moduleId"
-    )
-
-    for (basePath in possiblePaths) {
-        val bannerFile = File(basePath, bannerFileName)
-        if (bannerFile.exists() && bannerFile.isFile) {
-            Log.d(TAG, "Found banner at: ${bannerFile.absolutePath}")
-            return bannerFile.absolutePath
-        }
-    }
-
-    Log.w(TAG, "Banner not found in any path: $bannerFileName for module: $moduleId")
-    Log.d(TAG, "Searched paths: $possiblePaths")
-    return null
-}
-
-/**
- * Baca module.prop dari beberapa kemungkinan lokasi
- */
-fun readModuleProp(moduleId: String): String? {
-    val possiblePaths = listOf(
-        "/data/adb/ksu/modules/$moduleId/module.prop",
-        "/data/adb/modules/$moduleId/module.prop",
-        "/data/adb/kernelsu/modules/$moduleId/module.prop"
-    )
-
-    for (path in possiblePaths) {
-        val file = File(path)
-        if (file.exists() && file.isFile) {
-            return try {
-                Log.d(TAG, "Reading module.prop from: $path")
-                file.readText()
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to read module.prop from $path", e)
-                null
-            }
-        }
-    }
-
-    Log.w(TAG, "module.prop not found for module: $moduleId")
-    Log.d(TAG, "Checked paths: $possiblePaths")
-    return null
-}
-
-/**
- * Parse banner value dari konten module.prop
- */
-fun parseBannerFromModuleProp(propContent: String?): String? {
-    if (propContent.isNullOrBlank()) return null
-
-    return try {
-        propContent.lineSequence()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() && !it.startsWith("#") }
-            .firstOrNull { it.startsWith("banner=") }
-            ?.substringAfter("banner=")
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
-            ?.also { banner ->
-                Log.d(TAG, "Parsed banner value: $banner")
-            }
-    } catch (e: Exception) {
-        Log.e(TAG, "Error parsing banner from module.prop", e)
+        Log.e(TAG, "Error resolving banner path for $moduleId", e)
         null
     }
 }
 
 // ================================
-// MODULE SCREEN (SAMA DENGAN STOCK)
+// MODULE SCREEN (TETAP SAMA)
 // ================================
 
 @SuppressLint("StringFormatInvalid")
@@ -490,7 +409,7 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
 }
 
 // ================================
-// MODULE ITEM DENGAN BANNER SUPPORT
+// MODULE ITEM DENGAN BANNER SUPPORT (DIPERBAIKI)
 // ================================
 
 @Composable
@@ -506,8 +425,18 @@ fun ModuleItem(
     val interactionSource = remember { MutableInteractionSource() }
     val context = LocalContext.current
 
-    // Baca dan parse module.prop secara async
-    val (moduleProp, bannerValue, resolvedBanner) = produceBannerState(module.id)
+    // AMBIL BANNER PATH LANGSUNG DARI MODULE INFO
+    // Asumsi: ModuleViewModel sudah membaca banner dari module.prop
+    val bannerPath = module.bannerPath
+
+    // Resolve path jika perlu
+    val resolvedBannerPath = remember(module.id, bannerPath) {
+        if (!bannerPath.isNullOrBlank()) {
+            resolveBannerPath(module.id, bannerPath)
+        } else {
+            null
+        }
+    }
 
     val textDecoration = if (module.remove) TextDecoration.LineThrough else null
 
@@ -517,10 +446,10 @@ fun ModuleItem(
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Column {
-            // Banner Section (jika ada)
-            resolvedBanner?.let { bannerPath ->
+            // Banner Section (jika ada banner)
+            resolvedBannerPath?.let { path ->
                 ModuleBannerSection(
-                    bannerPath = bannerPath,
+                    bannerPath = path,
                     moduleName = module.name,
                     moduleAuthor = module.author
                 )
@@ -545,7 +474,7 @@ fun ModuleItem(
                     )
             ) {
                 // Nama module (jika tidak ada banner)
-                if (resolvedBanner == null) {
+                if (resolvedBannerPath == null) {
                     Text(
                         text = module.name,
                         style = MaterialTheme.typography.titleLarge,
@@ -592,36 +521,6 @@ fun ModuleItem(
             }
         }
     }
-}
-
-/**
- * State untuk banner (dipisah untuk cleaner code)
- */
-@Composable
-private fun produceBannerState(moduleId: String): Triple<String?, String?, String?> {
-    val moduleProp by produceState<String?>(initialValue = null, moduleId) {
-        value = withContext(Dispatchers.IO) {
-            readModuleProp(moduleId)
-        }
-    }
-
-    val bannerValue = remember(moduleProp) {
-        parseBannerFromModuleProp(moduleProp)
-    }
-
-    val resolvedBanner = remember(moduleId, bannerValue) {
-        getModuleBannerPath(moduleId, bannerValue)
-    }
-
-    // Debug logging
-    LaunchedEffect(moduleId, moduleProp, bannerValue, resolvedBanner) {
-        Log.d(TAG, "Banner state for $moduleId:")
-        Log.d(TAG, "  - Module prop loaded: ${moduleProp != null}")
-        Log.d(TAG, "  - Banner value: $bannerValue")
-        Log.d(TAG, "  - Resolved path: $resolvedBanner")
-    }
-
-    return Triple(moduleProp, bannerValue, resolvedBanner)
 }
 
 /**
@@ -789,7 +688,7 @@ private fun ModuleActionRow(
 }
 
 // ================================
-// MODULE LIST (SAMA DENGAN STOCK)
+// MODULE LIST (TETAP SAMA)
 // ================================
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -1039,19 +938,20 @@ private fun ModuleList(
 @Composable
 fun ModuleItemPreview() {
     val module = ModuleViewModel.ModuleInfo(
-        id = "id",
-        name = "name",
-        version = "version",
+        id = "test-module",
+        name = "Test Module",
+        version = "1.0",
         versionCode = 1,
-        author = "author",
-        description = "I am a test module and i do nothing but show a very long description",
+        author = "Test Author",
+        description = "I am a test module",
         enabled = true,
-        update = true,
+        update = false,
         remove = false,
         updateJson = "",
         hasWebUi = false,
         hasActionScript = false,
-        metamodule = true,
+        metamodule = false,
+        bannerPath = "https://example.com/banner.jpg"
     )
     ModuleItem(EmptyDestinationsNavigator, module, "", {}, {}, {}, {})
 }
