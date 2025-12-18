@@ -616,9 +616,9 @@ fun ModuleItem(
         val viewModel = viewModel<ModuleViewModel>()
 
         var expanded by rememberSaveable(module.id) { mutableStateOf(false) }
-
+        
         val cardHeight by animateDpAsState(
-            targetValue = if (expanded) 260.dp else 190.dp,
+            targetValue = if (expanded) 280.dp else 170.dp,
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
                 stiffness = Spring.StiffnessLow
@@ -637,8 +637,8 @@ fun ModuleItem(
 
         val scrim = remember {
             Brush.verticalGradient(
-                0f to Color.Black.copy(alpha = 0.12f),
-                1f to Color.Black.copy(alpha = 0.70f),
+                0f to Color.Black.copy(alpha = 0.10f),
+                1f to Color.Black.copy(alpha = 0.70f)
             )
         }
 
@@ -654,33 +654,15 @@ fun ModuleItem(
         }
 
         val shape = RoundedCornerShape(14.dp)
+        val moduleVersion = stringResource(id = R.string.module_version)
+        val moduleAuthor = stringResource(id = R.string.module_author)
 
         Box(
             modifier = Modifier
-                .run {
-                    if (module.hasWebUi) {
-                        toggleable(
-                            value = module.enabled,
-                            enabled = !module.remove && module.enabled,
-                            interactionSource = interactionSource,
-                            role = Role.Button,
-                            indication = indication,
-                            onValueChange = { onClick(module) }
-                        )
-                    } else this
-                }
-                .clickable { expanded = !expanded }
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                )
                 .fillMaxWidth()
                 .heightIn(min = cardHeight)
                 .clip(shape)
         ) {
-            // ===== Banner full-card background =====
             if (!module.banner.isNullOrEmpty() && bannerData != null) {
                 AsyncImage(
                     model = ImageRequest.Builder(context).data(bannerData).build(),
@@ -697,6 +679,7 @@ fun ModuleItem(
                 )
             }
 
+            // Scrim full sekotak
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -706,207 +689,172 @@ fun ModuleItem(
             Box(
                 modifier = Modifier
                     .matchParentSize()
+                    .run {
+                        if (module.hasWebUi) {
+                            toggleable(
+                                value = module.enabled,
+                                enabled = !module.remove && module.enabled,
+                                interactionSource = interactionSource,
+                                role = Role.Button,
+                                indication = indication,
+                                onValueChange = { onClick(module) }
+                            )
+                        } else this
+                    }
+                    .clickable { expanded = !expanded }
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    )
                     .padding(22.dp, 18.dp, 22.dp, 12.dp)
-            )
-
-            // ===== Konten overlay =====
-            val moduleVersion = stringResource(id = R.string.module_version)
-            val moduleAuthor = stringResource(id = R.string.module_author)
-
-            // Header (title + version/author)
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(16.dp, 16.dp, 72.dp, 0.dp) // kanan dikasih ruang buat switch
             ) {
-                Text(
-                    text = module.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    textDecoration = textDecoration,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "$moduleVersion: ${module.version}",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
-                    textDecoration = textDecoration,
-                    fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight
-                )
-                Text(
-                    text = "$moduleAuthor: ${module.author}",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
-                    textDecoration = textDecoration,
-                    fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                // Header teks kiri atas
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(end = 64.dp) // space untuk switch
+                ) {
+                    Text(
+                        text = module.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        textDecoration = textDecoration,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "$moduleVersion: ${module.version}",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+                        textDecoration = textDecoration,
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                    )
+                    Text(
+                        text = "$moduleAuthor: ${module.author}",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+                        textDecoration = textDecoration,
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                    )
+
+                    // Deskripsi hanya saat membesar (area merah dihapus saat kecil)
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(top = 12.dp),
+                            text = module.description,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f),
+                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                            fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                            overflow = TextOverflow.Ellipsis,
+                            maxLines = 3,
+                            textDecoration = textDecoration
+                        )
+                    }
+                }
+
+                // Switch kanan atas (tetap)
+                Switch(
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    enabled = !module.update,
+                    checked = module.enabled,
+                    onCheckedChange = onCheckChanged,
+                    interactionSource = if (!module.hasWebUi) interactionSource else null
                 )
 
-                // Deskripsi hanya saat card membesar (menggantikan area merah)
+                // Tombol bawah: hanya saat membesar
                 AnimatedVisibility(
+                    modifier = Modifier.align(Alignment.BottomEnd),
                     visible = expanded,
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically()
                 ) {
-                    Text(
-                        modifier = Modifier.padding(top = 12.dp),
-                        text = module.description,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f),
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
-                        overflow = TextOverflow.Ellipsis,
-                        maxLines = 3,
-                        textDecoration = textDecoration
-                    )
-                }
-            }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val hasUpdate by remember(updateUrl) { derivedStateOf { updateUrl.isNotEmpty() } }
+                        val actionButtonsEnabled = !module.remove && module.enabled
 
-            // Switch pojok kanan atas
-            Switch(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(12.dp),
-                enabled = !module.update,
-                checked = module.enabled,
-                onCheckedChange = onCheckChanged,
-                interactionSource = if (!module.hasWebUi) interactionSource else null
-            )
+                        if (actionButtonsEnabled) {
+                            if (module.hasActionScript) {
+                                FilledTonalButton(
+                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                    ),
+                                    onClick = {
+                                        navigator.navigate(ExecuteModuleActionScreenDestination(module.id))
+                                        viewModel.markNeedRefresh()
+                                    },
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.Outlined.PlayArrow,
+                                        contentDescription = null
+                                    )
+                                }
+                            }
 
-            // META label (tetap, tapi tampil simple)
-            if (module.metamodule) {
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(16.dp, 0.dp, 16.dp, 56.dp)
-                ) {
-                    LabelText("META")
-                }
-            }
-
-            // ===== Tombol bawah: hanya saat expanded =====
-            AnimatedVisibility(
-                modifier = Modifier.align(Alignment.BottomEnd),
-                visible = expanded,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Row(
-                    modifier = Modifier.padding(0.dp, 0.dp, 8.dp, 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val hasUpdate by remember(updateUrl) { derivedStateOf { updateUrl.isNotEmpty() } }
-                    val actionButtonsEnabled = !module.remove && module.enabled
-
-                    if (actionButtonsEnabled) {
-                        if (module.hasActionScript) {
-                            FilledTonalButton(
-                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                ),
-                                onClick = {
-                                    navigator.navigate(ExecuteModuleActionScreenDestination(module.id))
-                                    viewModel.markNeedRefresh()
-                                },
-                                contentPadding = ButtonDefaults.TextButtonContentPadding
-                            ) {
-                                Icon(
-                                    modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.PlayArrow,
-                                    contentDescription = null
-                                )
-                                if (!module.hasWebUi && !hasUpdate) {
-                                    Text(
-                                        modifier = Modifier.padding(start = 7.dp),
-                                        text = stringResource(R.string.action),
-                                        fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                                        fontSize = MaterialTheme.typography.labelMedium.fontSize
+                            if (module.hasWebUi) {
+                                FilledTonalButton(
+                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                    ),
+                                    onClick = { onClick(module) },
+                                    interactionSource = interactionSource,
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.Outlined.Code,
+                                        contentDescription = null
                                     )
                                 }
                             }
                         }
 
-                        if (module.hasWebUi) {
-                            FilledTonalButton(
+                        if (hasUpdate) {
+                            Button(
                                 modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                ),
-                                onClick = { onClick(module) },
-                                interactionSource = interactionSource,
+                                enabled = !module.remove,
+                                onClick = { onUpdate(module) },
+                                shape = ButtonDefaults.textShape,
                                 contentPadding = ButtonDefaults.TextButtonContentPadding
                             ) {
                                 Icon(
                                     modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.Code,
+                                    imageVector = Icons.Outlined.Download,
                                     contentDescription = null
                                 )
-                                if (!module.hasActionScript && !hasUpdate) {
-                                    Text(
-                                        modifier = Modifier.padding(start = 7.dp),
-                                        fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                                        fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                                        text = stringResource(R.string.open)
-                                    )
-                                }
                             }
                         }
-                    }
 
-                    if (hasUpdate) {
-                        Button(
+                        FilledTonalButton(
                             modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                            enabled = !module.remove,
-                            onClick = { onUpdate(module) },
-                            shape = ButtonDefaults.textShape,
+                            onClick = { onUninstallClicked(module) },
                             contentPadding = ButtonDefaults.TextButtonContentPadding
                         ) {
                             Icon(
                                 modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Outlined.Download,
-                                contentDescription = null
-                            )
-                            if (!module.hasActionScript || !module.hasWebUi) {
-                                Text(
-                                    modifier = Modifier.padding(start = 7.dp),
-                                    fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                                    fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                                    text = stringResource(R.string.module_update)
-                                )
-                            }
-                        }
-                    }
-
-                    FilledTonalButton(
-                        modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                        onClick = { onUninstallClicked(module) },
-                        contentPadding = ButtonDefaults.TextButtonContentPadding
-                    ) {
-                        if (!module.remove) {
-                            Icon(
-                                modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Outlined.Delete,
+                                imageVector = if (!module.remove) Icons.Outlined.Delete else Icons.Outlined.Refresh,
                                 contentDescription = null,
+                                modifier = if (!module.remove) Modifier else Modifier.rotate(180f)
                             )
-                        } else {
-                            Icon(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .rotate(180f),
-                                imageVector = Icons.Outlined.Refresh,
-                                contentDescription = null,
+                            Text(
+                                modifier = Modifier.padding(start = 7.dp),
+                                fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+                                fontSize = MaterialTheme.typography.labelMedium.fontSize,
+                                text = stringResource(if (module.remove) R.string.undo else R.string.uninstall)
                             )
                         }
-                        Text(
-                            modifier = Modifier.padding(start = 7.dp),
-                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                            fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                            text = stringResource(if (module.remove) R.string.undo else R.string.uninstall)
-                        )
                     }
                 }
             }
