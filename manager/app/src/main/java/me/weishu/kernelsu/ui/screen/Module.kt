@@ -615,20 +615,19 @@ fun ModuleItem(
         val indication = LocalIndication.current
         val viewModel = viewModel<ModuleViewModel>()
 
-        // Expand/collapse state + smooth animation values
         var expanded by rememberSaveable(module.id) { mutableStateOf(false) }
 
-        val bannerHeight by animateDpAsState(
-            targetValue = if (expanded) 200.dp else 160.dp,
+        val cardHeight by animateDpAsState(
+            targetValue = if (expanded) 260.dp else 190.dp,
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
                 stiffness = Spring.StiffnessLow
             ),
-            label = "bannerHeight"
+            label = "cardHeight"
         )
 
         val bannerAlpha by animateFloatAsState(
-            targetValue = if (expanded) 0.28f else 0.18f,
+            targetValue = if (expanded) 0.30f else 0.20f,
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessMedium
@@ -636,7 +635,26 @@ fun ModuleItem(
             label = "bannerAlpha"
         )
 
-        Column(
+        val scrim = remember {
+            Brush.verticalGradient(
+                0f to Color.Black.copy(alpha = 0.12f),
+                1f to Color.Black.copy(alpha = 0.70f),
+            )
+        }
+
+        val context = LocalContext.current
+        val bannerData = remember(module.banner) {
+            try {
+                // Jangan ubah path ini
+                val file = SuFile("/data/adb/modules/${module.id}${module.banner}")
+                file.newInputStream().use { it.readBytes() }
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        // Kontainer utama: banner jadi background full + overlay semua konten
+        Box(
             modifier = Modifier
                 .run {
                     if (module.hasWebUi) {
@@ -648,11 +666,8 @@ fun ModuleItem(
                             indication = indication,
                             onValueChange = { onClick(module) }
                         )
-                    } else {
-                        this
-                    }
+                    } else this
                 }
-                // Tap anywhere on item to expand/collapse (smooth)
                 .clickable { expanded = !expanded }
                 .animateContentSize(
                     animationSpec = spring(
@@ -660,254 +675,127 @@ fun ModuleItem(
                         stiffness = Spring.StiffnessLow
                     )
                 )
+                .heightIn(min = cardHeight)
                 .padding(22.dp, 18.dp, 22.dp, 12.dp)
-        ) {
-            // ===== Banner Fullscreen Start =====
-            val bannerModifier = Modifier
-                .fillMaxWidth()
-                .height(bannerHeight)
                 .clip(RoundedCornerShape(14.dp))
-
-            val scrim = remember {
-                Brush.verticalGradient(
-                    0f to Color.Black.copy(alpha = 0.15f),
-                    1f to Color.Black.copy(alpha = 0.65f),
+        ) {
+            // ===== Banner full-card background =====
+            if (!module.banner.isNullOrEmpty() && bannerData != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context).data(bannerData).build(),
+                    contentDescription = null,
+                    modifier = Modifier.matchParentSize(),
+                    contentScale = ContentScale.Crop,
+                    alpha = bannerAlpha
                 )
-            }
-
-            val context = LocalContext.current
-            val bannerData = remember(module.banner) {
-                try {
-                    // NOTE: path SuFile jangan diubah
-                    val file = SuFile("/data/adb/modules/${module.id}${module.banner}")
-                    file.newInputStream().use { it.readBytes() }
-                } catch (e: Exception) {
-                    null
-                }
-            }
-
-            Box(modifier = bannerModifier) {
-                // Background image / fallback
-                if (!module.banner.isNullOrEmpty() && bannerData != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context).data(bannerData).build(),
-                        contentDescription = null,
-                        modifier = Modifier.matchParentSize(),
-                        contentScale = ContentScale.Crop,
-                        alpha = bannerAlpha
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    )
-                }
-
-                // Scrim/gradient biar teks kebaca & mirip foto
+            } else {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .background(scrim)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
-
-                // Pills kiri atas (tanpa Text label, sesuai request)
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // ukuran/label tidak dipakai, jadi chip dibuat “kosong”
-                    AssistChip(
-                        onClick = {},
-                        label = {},
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                            labelColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        border = null
-                    )
-                    if (module.hasWebUi) {
-                        AssistChip(
-                            onClick = {},
-                            label = {},
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                                labelColor = MaterialTheme.colorScheme.onSurface
-                            ),
-                            border = null
-                        )
-                    }
-                    if (module.hasActionScript) {
-                        AssistChip(
-                            onClick = {},
-                            label = {},
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                                labelColor = MaterialTheme.colorScheme.onSurface
-                            ),
-                            border = null
-                        )
-                    }
-                }
-
-                // Switch kanan atas (di atas banner)
-                Switch(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(12.dp),
-                    enabled = !module.update,
-                    checked = module.enabled,
-                    onCheckedChange = onCheckChanged,
-                    interactionSource = if (!module.hasWebUi) interactionSource else null,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
-                        uncheckedTrackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
-                    )
-                )
-
-                // Teks di bagian bawah banner
-                val moduleVersion = stringResource(id = R.string.module_version)
-                val moduleAuthor = stringResource(id = R.string.module_author)
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(14.dp)
-                ) {
-                    Text(
-                        text = module.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        textDecoration = textDecoration,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Text(
-                        text = "$moduleVersion: ${module.version}",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                        textDecoration = textDecoration
-                    )
-
-                    Text(
-                        text = "$moduleAuthor: ${module.author}",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                        textDecoration = textDecoration
-                    )
-
-                    // Saat expanded, tampilkan sedikit deskripsi di dalam banner (mirip foto)
-                    AnimatedVisibility(
-                        visible = expanded,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
-                    ) {
-                        Text(
-                            modifier = Modifier.padding(top = 10.dp),
-                            text = module.description,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                            fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                            fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
-                            overflow = TextOverflow.Ellipsis,
-                            maxLines = 2,
-                            textDecoration = textDecoration
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(14.dp))
-            // ===== Banner Fullscreen End =====
-
-            // Bagian bawah (kode asli kamu tetap, cuma disesuaikan karena moduleVersion/moduleAuthor sudah dipakai di banner)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(0.8f)
-                ) {
-                    Text(
-                        text = module.name,
-                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
-                        fontWeight = FontWeight.SemiBold,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
-                        textDecoration = textDecoration,
-                    )
-
-                    Text(
-                        text = "${stringResource(id = R.string.module_version)}: ${module.version}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                        textDecoration = textDecoration
-                    )
-
-                    Text(
-                        text = "${stringResource(id = R.string.module_author)}: ${module.author}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                        textDecoration = textDecoration
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    Switch(
-                        enabled = !module.update,
-                        checked = module.enabled,
-                        onCheckedChange = onCheckChanged,
-                        interactionSource = if (!module.hasWebUi) interactionSource else null
-                    )
-                }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = module.description,
-                color = MaterialTheme.colorScheme.outline,
-                fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 4,
-                textDecoration = textDecoration
+            // scrim overlay
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(scrim)
             )
 
-            Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                if (module.metamodule) LabelText("META")
+            // ===== Konten overlay =====
+            val moduleVersion = stringResource(id = R.string.module_version)
+            val moduleAuthor = stringResource(id = R.string.module_author)
+
+            // Header (title + version/author)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp, 16.dp, 72.dp, 0.dp) // kanan dikasih ruang buat switch
+            ) {
+                Text(
+                    text = module.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    textDecoration = textDecoration,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "$moduleVersion: ${module.version}",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+                    textDecoration = textDecoration,
+                    fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                )
+                Text(
+                    text = "$moduleAuthor: ${module.author}",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+                    textDecoration = textDecoration,
+                    fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                )
+
+                // Deskripsi hanya saat card membesar (menggantikan area merah)
+                AnimatedVisibility(
+                    visible = expanded,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Text(
+                        modifier = Modifier.padding(top = 12.dp),
+                        text = module.description,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f),
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                        fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
+                        overflow = TextOverflow.Ellipsis,
+                        maxLines = 3,
+                        textDecoration = textDecoration
+                    )
+                }
             }
 
-            HorizontalDivider(thickness = Dp.Hairline)
+            // Switch pojok kanan atas
+            Switch(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp),
+                enabled = !module.update,
+                checked = module.enabled,
+                onCheckedChange = onCheckChanged,
+                interactionSource = if (!module.hasWebUi) interactionSource else null
+            )
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val hasUpdate by remember(updateUrl) { derivedStateOf { updateUrl.isNotEmpty() } }
-                val actionButtonsEnabled = !module.remove && module.enabled
-
-                AnimatedVisibility(
-                    visible = actionButtonsEnabled,
-                    enter = fadeIn(),
-                    exit = fadeOut()
+            // META label (tetap, tapi tampil simple)
+            if (module.metamodule) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(16.dp, 0.dp, 16.dp, 56.dp)
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LabelText("META")
+                }
+            }
+
+            // ===== Tombol bawah: hanya saat expanded =====
+            AnimatedVisibility(
+                modifier = Modifier.align(Alignment.BottomEnd),
+                visible = expanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Row(
+                    modifier = Modifier.padding(0.dp, 0.dp, 8.dp, 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val hasUpdate by remember(updateUrl) { derivedStateOf { updateUrl.isNotEmpty() } }
+                    val actionButtonsEnabled = !module.remove && module.enabled
+
+                    if (actionButtonsEnabled) {
                         if (module.hasActionScript) {
                             FilledTonalButton(
                                 modifier = Modifier.defaultMinSize(52.dp, 32.dp),
@@ -962,16 +850,8 @@ fun ModuleItem(
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.weight(1f, true))
-
-                AnimatedVisibility(
-                    visible = hasUpdate,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    Row {
+                    if (hasUpdate) {
                         Button(
                             modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                             enabled = !module.remove,
@@ -993,32 +873,28 @@ fun ModuleItem(
                                 )
                             }
                         }
-
-                        Spacer(Modifier.width(12.dp))
                     }
-                }
 
-                FilledTonalButton(
-                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                    onClick = { onUninstallClicked(module) },
-                    contentPadding = ButtonDefaults.TextButtonContentPadding
-                ) {
-                    if (!module.remove) {
-                        Icon(
-                            modifier = Modifier.size(20.dp),
-                            imageVector = Icons.Outlined.Delete,
-                            contentDescription = null,
-                        )
-                    } else {
-                        Icon(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .rotate(180f),
-                            imageVector = Icons.Outlined.Refresh,
-                            contentDescription = null,
-                        )
-                    }
-                    if (!module.hasActionScript && !module.hasWebUi || !hasUpdate) {
+                    FilledTonalButton(
+                        modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                        onClick = { onUninstallClicked(module) },
+                        contentPadding = ButtonDefaults.TextButtonContentPadding
+                    ) {
+                        if (!module.remove) {
+                            Icon(
+                                modifier = Modifier.size(20.dp),
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = null,
+                            )
+                        } else {
+                            Icon(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .rotate(180f),
+                                imageVector = Icons.Outlined.Refresh,
+                                contentDescription = null,
+                            )
+                        }
                         Text(
                             modifier = Modifier.padding(start = 7.dp),
                             fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
