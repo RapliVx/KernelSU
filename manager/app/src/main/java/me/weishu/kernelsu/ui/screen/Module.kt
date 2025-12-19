@@ -685,7 +685,6 @@ fun ModuleItem(
                 )
             }
 
-            // Scrim full sekotak
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -716,11 +715,11 @@ fun ModuleItem(
                     )
                     .padding(22.dp, 18.dp, 22.dp, 12.dp)
             ) {
-                // Header teks kiri atas
+
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(end = 64.dp) // space untuk switch
+                        .padding(end = 64.dp)
                 ) {
                     Text(
                         text = module.name,
@@ -744,27 +743,31 @@ fun ModuleItem(
                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily
                     )
 
-                    // Deskripsi hanya saat membesar (area merah dihapus saat kecil)
-                    AnimatedVisibility(
-                        visible = expanded,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
-                    ) {
-                        Text(
-                            modifier = Modifier.padding(top = 12.dp),
-                            text = module.description,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f),
-                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                            fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                            overflow = TextOverflow.Ellipsis,
-                            maxLines = 3,
-                            textDecoration = textDecoration
-                        )
-                    }
-                }
+                    val descTop by animateDpAsState(
+                        targetValue = if (expanded) 12.dp else 6.dp,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        label = "descTop"
+                    )
 
-                // Switch kanan atas (tetap)
+                    val descMaxLines = if (expanded) 3 else 1
+
+                    Text(
+                        modifier = Modifier.padding(top = descTop),
+                        text = module.description,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f),
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                        overflow = TextOverflow.Ellipsis,
+                        maxLines = descMaxLines,
+                        textDecoration = textDecoration
+                    )
+                }
+            }
+
                 Switch(
                     modifier = Modifier.align(Alignment.TopEnd),
                     enabled = !module.update,
@@ -773,7 +776,6 @@ fun ModuleItem(
                     interactionSource = if (!module.hasWebUi) interactionSource else null
                 )
 
-                // Tombol bawah: hanya saat membesar
                 AnimatedVisibility(
                     modifier = Modifier.align(Alignment.BottomEnd),
                     visible = expanded,
@@ -867,7 +869,6 @@ fun ModuleItem(
             }
         }
     }
-}
 
 @Preview
 @Composable

@@ -306,11 +306,17 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     .padding(horizontal = 16.dp)
             ) {
 
-                Text(
-                    text = stringResource(R.string.header_image),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Text(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        text = stringResource(R.string.header_image),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
 
                 Spacer(Modifier.height(8.dp))
 
