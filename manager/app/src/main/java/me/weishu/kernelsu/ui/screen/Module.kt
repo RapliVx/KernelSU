@@ -631,9 +631,16 @@ fun ModuleItem(
             label = "cardHeight"
         )
 
-        // Banner lebih kelihatan
+        val cs = MaterialTheme.colorScheme
+        val isDark = isSystemInDarkTheme()
+
         val bannerAlpha by animateFloatAsState(
-            targetValue = if (expanded) 0.18f else 0.12f,
+            targetValue = when {
+                isDark && expanded -> 0.18f
+                isDark && !expanded -> 0.12f
+                !isDark && expanded -> 0.22f
+                else -> 0.16f
+            },
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessMedium
@@ -641,16 +648,13 @@ fun ModuleItem(
             label = "bannerAlpha"
         )
 
-        val cs = MaterialTheme.colorScheme
-        val isDark = isSystemInDarkTheme()
-
         val scrim = remember(cs, isDark) {
             Brush.verticalGradient(
                 0f to cs.surface.copy(
-                    alpha = if (isDark) 0.08f else 0.18f
+                    alpha = if (isDark) 0.08f else 0.10f
                 ),
                 1f to cs.surface.copy(
-                    alpha = if (isDark) 0.40f else 0.55f
+                    alpha = if (isDark) 0.40f else 0.32f
                 )
             )
         }
