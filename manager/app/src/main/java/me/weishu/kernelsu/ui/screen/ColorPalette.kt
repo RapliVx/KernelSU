@@ -307,21 +307,17 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-
-                AssistChip(
-                    onClick = {},
-                    label = {
-                        Text(
-                            text = stringResource(R.string.header_image),
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                        labelColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    border = null
-                )
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Text(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        text = stringResource(R.string.header_image),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
 
                 Spacer(Modifier.height(8.dp))
 
