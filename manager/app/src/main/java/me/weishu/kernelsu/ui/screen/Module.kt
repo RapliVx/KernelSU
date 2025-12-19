@@ -643,10 +643,16 @@ fun ModuleItem(
         }
 
         val context = LocalContext.current
-        val bannerData = remember(module.banner) {
+        val bannerData = remember(module.id, module.banner) {
             try {
-                // Jangan ubah path ini
-                val file = SuFile("/data/adb/modules/${module.id}${module.banner}")
+                val b = module.banner?.trim().orEmpty()
+                if (b.isEmpty()) return@remember null
+
+                val rel = b.removePrefix("/")
+                val p1 = "/data/adb/modules/${module.id}/$rel"
+                val p2 = b
+
+                val file = SuFile(if (SuFile(p1).exists()) p1 else p2)
                 file.newInputStream().use { it.readBytes() }
             } catch (e: Exception) {
                 null
