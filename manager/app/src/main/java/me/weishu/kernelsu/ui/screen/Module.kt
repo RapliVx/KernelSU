@@ -90,6 +90,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -143,6 +144,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.SwitchDefaults
@@ -612,6 +614,7 @@ fun ModuleItem(
     onClick: (ModuleViewModel.ModuleInfo) -> Unit
 ) {
     TonalCard(modifier = Modifier.fillMaxWidth()) {
+
         val textDecoration = if (!module.remove) null else TextDecoration.LineThrough
         val interactionSource = remember { MutableInteractionSource() }
         val indication = LocalIndication.current
@@ -628,8 +631,9 @@ fun ModuleItem(
             label = "cardHeight"
         )
 
+        // Banner lebih kelihatan
         val bannerAlpha by animateFloatAsState(
-            targetValue = if (expanded) 0.30f else 0.20f,
+            targetValue = if (expanded) 0.18f else 0.12f,
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessMedium
@@ -638,15 +642,25 @@ fun ModuleItem(
         )
 
         val cs = MaterialTheme.colorScheme
-        val scrim = remember(cs) {
+        val isDark = isSystemInDarkTheme()
+
+        val scrim = remember(cs, isDark) {
             Brush.verticalGradient(
-                0f to cs.scrim.copy(alpha = 0.05f),
-                1f to cs.scrim.copy(alpha = 0.45f)
+                0f to cs.surface.copy(
+                    alpha = if (isDark) 0.08f else 0.18f
+                ),
+                1f to cs.surface.copy(
+                    alpha = if (isDark) 0.40f else 0.55f
+                )
             )
         }
 
         val context = LocalContext.current
-        val bannerData by produceState<ByteArray?>(initialValue = null, module.id, module.banner) {
+        val bannerData by produceState<ByteArray?>(
+            initialValue = null,
+            module.id,
+            module.banner
+        ) {
             value = withContext(Dispatchers.IO) {
                 try {
                     val b = module.banner?.trim().orEmpty()
@@ -658,7 +672,7 @@ fun ModuleItem(
 
                     val file = SuFile(if (SuFile(p1).exists()) p1 else p2)
                     file.newInputStream().use { it.readBytes() }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     null
                 }
             }
@@ -674,6 +688,8 @@ fun ModuleItem(
                 .heightIn(min = cardHeight)
                 .clip(shape)
         ) {
+
+            // Banner
             if (!module.banner.isNullOrEmpty() && bannerData != null) {
                 val req = remember(bannerData, module.id, module.banner) {
                     ImageRequest.Builder(context)
@@ -694,16 +710,18 @@ fun ModuleItem(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .background(cs.surfaceContainerLow)
                 )
             }
 
+            // Fade overlay
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(scrim)
             )
 
+            // Clickable Content
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -738,170 +756,119 @@ fun ModuleItem(
                         text = module.name,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
-                        textDecoration = textDecoration,
-                        color = MaterialTheme.colorScheme.onSurface
+                        textDecoration = textDecoration
                     )
+
                     Text(
                         text = "$moduleVersion: ${module.version}",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+                        color = cs.onSurface.copy(alpha = 0.78f),
                         textDecoration = textDecoration,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize
                     )
+
                     Text(
                         text = "$moduleAuthor: ${module.author}",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+                        color = cs.onSurface.copy(alpha = 0.78f),
                         textDecoration = textDecoration,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize
                     )
 
                     val descTop by animateDpAsState(
                         targetValue = if (expanded) 12.dp else 6.dp,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        ),
                         label = "descTop"
                     )
 
                     val descMaxLines by animateIntAsState(
                         targetValue = if (expanded) 3 else 1,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        ),
                         label = "descMaxLines"
                     )
 
                     val descText = remember(module.description) {
-                        val s = module.description
-                        if (s.length > 300) s.take(300) + "…" else s
+                        if (module.description.length > 300)
+                            module.description.take(300) + "…"
+                        else module.description
                     }
 
                     Text(
-                        modifier = Modifier
-                            .padding(top = descTop)
-                            .animateContentSize(
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = Spring.StiffnessMedium
-                                )
-                            ),
+                        modifier = Modifier.padding(top = descTop),
                         text = descText,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f),
+                        color = cs.onSurface.copy(alpha = 0.80f),
                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                        overflow = TextOverflow.Ellipsis,
                         maxLines = descMaxLines,
-                        softWrap = true,
+                        overflow = TextOverflow.Ellipsis,
                         textDecoration = textDecoration
                     )
                 }
             }
 
-                Switch(
-                    modifier = Modifier.align(Alignment.TopEnd),
-                    enabled = !module.update,
-                    checked = module.enabled,
-                    onCheckedChange = onCheckChanged,
-                    interactionSource = if (!module.hasWebUi) interactionSource else null
-                )
+            Switch(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 6.dp, end = 6.dp)
+                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp),
+                enabled = !module.update,
+                checked = module.enabled,
+                onCheckedChange = onCheckChanged,
+                interactionSource = if (!module.hasWebUi) interactionSource else null
+            )
 
-                AnimatedVisibility(
-                    modifier = Modifier.align(Alignment.BottomEnd),
-                    visible = expanded,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
+            // Action Buttons
+            AnimatedVisibility(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(12.dp),
+                visible = expanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val hasUpdate by remember(updateUrl) { derivedStateOf { updateUrl.isNotEmpty() } }
-                        val actionButtonsEnabled = !module.remove && module.enabled
+                    val hasUpdate by remember(updateUrl) {
+                        derivedStateOf { updateUrl.isNotEmpty() }
+                    }
 
-                        if (actionButtonsEnabled) {
-                            if (module.hasActionScript) {
-                                FilledTonalButton(
-                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                    ),
-                                    onClick = {
-                                        navigator.navigate(ExecuteModuleActionScreenDestination(module.id))
-                                        viewModel.markNeedRefresh()
-                                    },
-                                    contentPadding = ButtonDefaults.TextButtonContentPadding
-                                ) {
-                                    Icon(
-                                        modifier = Modifier.size(20.dp),
-                                        imageVector = Icons.Outlined.PlayArrow,
-                                        contentDescription = null
-                                    )
-                                }
-                            }
+                    val actionButtonsEnabled = !module.remove && module.enabled
 
-                            if (module.hasWebUi) {
-                                FilledTonalButton(
-                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                    ),
-                                    onClick = { onClick(module) },
-                                    interactionSource = interactionSource,
-                                    contentPadding = ButtonDefaults.TextButtonContentPadding
-                                ) {
-                                    Icon(
-                                        modifier = Modifier.size(20.dp),
-                                        imageVector = Icons.Outlined.Code,
-                                        contentDescription = null
-                                    )
-                                }
-                            }
-                        }
-
-                        if (hasUpdate) {
-                            Button(
-                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                enabled = !module.remove,
-                                onClick = { onUpdate(module) },
-                                shape = ButtonDefaults.textShape,
-                                contentPadding = ButtonDefaults.TextButtonContentPadding
-                            ) {
-                                Icon(
-                                    modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.Download,
-                                    contentDescription = null
-                                )
-                            }
-                        }
-
+                    if (actionButtonsEnabled && module.hasWebUi) {
                         FilledTonalButton(
-                            modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                            onClick = { onUninstallClicked(module) },
-                            contentPadding = ButtonDefaults.TextButtonContentPadding
+                            onClick = { onClick(module) }
                         ) {
-                            Icon(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .then(if (!module.remove) Modifier else Modifier.rotate(180f)),
-                                imageVector = if (!module.remove) Icons.Outlined.Delete else Icons.Outlined.Refresh,
-                                contentDescription = null
-                            )
-                            Text(
-                                modifier = Modifier.padding(start = 7.dp),
-                                fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
-                                fontSize = MaterialTheme.typography.labelMedium.fontSize,
-                                text = stringResource(if (module.remove) R.string.undo else R.string.uninstall)
-                            )
+                            Icon(Icons.Outlined.Code, null)
                         }
+                    }
+
+                    if (hasUpdate) {
+                        Button(
+                            enabled = !module.remove,
+                            onClick = { onUpdate(module) }
+                        ) {
+                            Icon(Icons.Outlined.Download, null)
+                        }
+                    }
+
+                    FilledTonalButton(
+                        onClick = { onUninstallClicked(module) }
+                    ) {
+                        Icon(
+                            imageVector = if (!module.remove)
+                                Icons.Outlined.Delete
+                            else Icons.Outlined.Refresh,
+                            contentDescription = null
+                        )
+                        Text(
+                            modifier = Modifier.padding(start = 6.dp),
+                            text = stringResource(
+                                if (module.remove) R.string.undo else R.string.uninstall
+                            )
+                        )
                     }
                 }
             }
         }
     }
+}
 
 @Preview
 @Composable
