@@ -815,12 +815,12 @@ fun ModuleItem(
                 onCheckedChange = onCheckChanged,
                 interactionSource = if (!module.hasWebUi) interactionSource else null
             )
-
-            // Action Buttons
+// Action Buttons
             AnimatedVisibility(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(12.dp),
+                    .padding(12.dp)
+                    .zIndex(2f), // biar tidak ketutup scrim
                 visible = expanded,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
@@ -835,30 +835,74 @@ fun ModuleItem(
 
                     val actionButtonsEnabled = !module.remove && module.enabled
 
+                    if (actionButtonsEnabled && module.hasActionScript) {
+                        FilledTonalButton(
+                            modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            ),
+                            onClick = {
+                                navigator.navigate(
+                                    ExecuteModuleActionScreenDestination(module.id)
+                                )
+                                viewModel.markNeedRefresh()
+                            },
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
+                        ) {
+                            Icon(
+                                modifier = Modifier.size(20.dp),
+                                imageVector = Icons.Outlined.PlayArrow,
+                                contentDescription = null
+                            )
+                        }
+                    }
+
                     if (actionButtonsEnabled && module.hasWebUi) {
                         FilledTonalButton(
-                            onClick = { onClick(module) }
+                            modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            ),
+                            onClick = { onClick(module) },
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
                         ) {
-                            Icon(Icons.Outlined.Code, null)
+                            Icon(
+                                modifier = Modifier.size(20.dp),
+                                imageVector = Icons.Outlined.Code,
+                                contentDescription = null
+                            )
                         }
                     }
 
                     if (hasUpdate) {
                         Button(
+                            modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                             enabled = !module.remove,
-                            onClick = { onUpdate(module) }
+                            onClick = { onUpdate(module) },
+                            shape = ButtonDefaults.textShape,
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
                         ) {
-                            Icon(Icons.Outlined.Download, null)
+                            Icon(
+                                modifier = Modifier.size(20.dp),
+                                imageVector = Icons.Outlined.Download,
+                                contentDescription = null
+                            )
                         }
                     }
 
                     FilledTonalButton(
-                        onClick = { onUninstallClicked(module) }
+                        modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                        onClick = { onUninstallClicked(module) },
+                        contentPadding = ButtonDefaults.TextButtonContentPadding
                     ) {
                         Icon(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .then(if (!module.remove) Modifier else Modifier.rotate(180f)),
                             imageVector = if (!module.remove)
                                 Icons.Outlined.Delete
-                            else Icons.Outlined.Refresh,
+                            else
+                                Icons.Outlined.Refresh,
                             contentDescription = null
                         )
                         Text(
