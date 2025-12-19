@@ -151,6 +151,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.zIndex
 
 import com.topjohnwu.superuser.io.SuFile
 
