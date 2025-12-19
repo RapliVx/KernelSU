@@ -95,6 +95,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -751,18 +753,38 @@ fun ModuleItem(
                         ),
                         label = "descTop"
                     )
+                    
+                    val descMaxLines by animateIntAsState(
+                        targetValue = if (expanded) 3 else 1,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        label = "descMaxLines"
+                    )
 
-                    val descMaxLines = if (expanded) 3 else 1
+                    val descText = remember(module.description) {
+                        val s = module.description
+                        if (s.length > 300) s.take(300) + "…" else s
+                    }
 
                     Text(
-                        modifier = Modifier.padding(top = descTop),
-                        text = module.description,
+                        modifier = Modifier
+                            .padding(top = descTop)
+                            .animateContentSize(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                )
+                            ),
+                        text = descText,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.80f),
                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                         overflow = TextOverflow.Ellipsis,
                         maxLines = descMaxLines,
+                        softWrap = true,
                         textDecoration = textDecoration
                     )
                 }
