@@ -23,6 +23,11 @@
 #define EXPECTED_HASH_KOWX712                                                  \
 	"484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588"
 
+// raplivx/KernelSU
+#define EXPECTED_SIZE_MAMBO 0x384
+#define EXPECTED_HASH_MAMBO                                                  \
+	"a9462b8b98ea1ca7901b0cbdcebfaa35f0aa95e51b01d66e6b6d2c81b97746d8"
+
 typedef struct {
 	u32 size;
 	const char *sha256;
