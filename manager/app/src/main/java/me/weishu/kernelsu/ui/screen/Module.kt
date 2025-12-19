@@ -637,27 +637,30 @@ fun ModuleItem(
             label = "bannerAlpha"
         )
 
-        val scrim = remember {
+        val cs = MaterialTheme.colorScheme
+        val scrim = remember(cs) {
             Brush.verticalGradient(
-                0f to Color.Black.copy(alpha = 0.10f),
-                1f to Color.Black.copy(alpha = 0.70f)
+                0f to cs.scrim.copy(alpha = 0.05f),
+                1f to cs.scrim.copy(alpha = 0.45f)
             )
         }
 
         val context = LocalContext.current
-        val bannerData = remember(module.id, module.banner) {
-            try {
-                val b = module.banner?.trim().orEmpty()
-                if (b.isEmpty()) return@remember null
+        val bannerData by produceState<ByteArray?>(initialValue = null, module.id, module.banner) {
+            value = withContext(Dispatchers.IO) {
+                try {
+                    val b = module.banner?.trim().orEmpty()
+                    if (b.isEmpty()) return@withContext null
 
-                val rel = b.removePrefix("/")
-                val p1 = "/data/adb/modules/${module.id}/$rel"
-                val p2 = b
+                    val rel = b.removePrefix("/")
+                    val p1 = "/data/adb/modules/${module.id}/$rel"
+                    val p2 = b
 
-                val file = SuFile(if (SuFile(p1).exists()) p1 else p2)
-                file.newInputStream().use { it.readBytes() }
-            } catch (e: Exception) {
-                null
+                    val file = SuFile(if (SuFile(p1).exists()) p1 else p2)
+                    file.newInputStream().use { it.readBytes() }
+                } catch (e: Exception) {
+                    null
+                }
             }
         }
 
@@ -672,8 +675,16 @@ fun ModuleItem(
                 .clip(shape)
         ) {
             if (!module.banner.isNullOrEmpty() && bannerData != null) {
+                val req = remember(bannerData, module.id, module.banner) {
+                    ImageRequest.Builder(context)
+                        .data(bannerData)
+                        .memoryCacheKey("module-banner:${module.id}:${module.banner}")
+                        .crossfade(true)
+                        .build()
+                }
+
                 AsyncImage(
-                    model = ImageRequest.Builder(context).data(bannerData).build(),
+                    model = req,
                     contentDescription = null,
                     modifier = Modifier.matchParentSize(),
                     contentScale = ContentScale.Crop,
@@ -683,7 +694,7 @@ fun ModuleItem(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
                 )
             }
 
@@ -753,7 +764,7 @@ fun ModuleItem(
                         ),
                         label = "descTop"
                     )
-                    
+
                     val descMaxLines by animateIntAsState(
                         targetValue = if (expanded) 3 else 1,
                         animationSpec = spring(

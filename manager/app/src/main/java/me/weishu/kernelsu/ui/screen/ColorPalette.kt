@@ -81,6 +81,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.compose.dropUnlessResumed
@@ -306,17 +308,20 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     .padding(horizontal = 16.dp)
             ) {
 
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Text(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        text = stringResource(R.string.header_image),
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                }
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            text = stringResource(R.string.header_image),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                        labelColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    border = null
+                )
 
                 Spacer(Modifier.height(8.dp))
 
