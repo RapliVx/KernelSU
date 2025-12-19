@@ -312,11 +312,18 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
-                    Text(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        text = stringResource(R.string.header_image),
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                    Surface(
+                        modifier = Modifier.padding(4.dp),
+                        shape = RoundedCornerShape(999.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            text = stringResource(R.string.header_image),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(8.dp))
