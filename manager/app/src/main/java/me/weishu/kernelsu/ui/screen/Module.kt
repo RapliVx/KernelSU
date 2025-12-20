@@ -633,6 +633,15 @@ fun ModuleItem(
             label = "cardHeight"
         )
 
+        val contentTopPadding by animateDpAsState(
+            targetValue = if (expanded) 42.dp else 22.dp,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "contentTopPadding"
+        )
+
         val cs = MaterialTheme.colorScheme
         val isDark = isSystemInDarkTheme()
 
@@ -784,7 +793,12 @@ fun ModuleItem(
                             stiffness = Spring.StiffnessLow
                         )
                     )
-                    .padding(22.dp, 42.dp, 22.dp, 12.dp)
+                    .padding(
+                        start = 22.dp,
+                        top = contentTopPadding,
+                        end = 22.dp,
+                        bottom = 12.dp
+                    )
             ) {
 
                 Column(
