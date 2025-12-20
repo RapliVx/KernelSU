@@ -152,6 +152,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
+import androidx.compose.material3.Surface
 
 import com.topjohnwu.superuser.io.SuFile
 
@@ -661,6 +662,11 @@ fun ModuleItem(
         }
 
         val context = LocalContext.current
+        val moduleSizeMb by produceState<Float?>(initialValue = null, module.id) {
+            value = withContext(Dispatchers.IO) {
+                calculateModuleSizeMB(module.id)
+            }
+        }
         val bannerData by produceState<ByteArray?>(
             initialValue = null,
             module.id,
@@ -725,6 +731,35 @@ fun ModuleItem(
                     .matchParentSize()
                     .background(scrim)
             )
+
+            // Badges (Size / WebUI / Action)
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 12.dp, top = 12.dp)
+                    .zIndex(3f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+
+                // SIZE badge
+                if (moduleSizeMb != null && moduleSizeMb!! > 0f) {
+                    BadgeChip(
+                        text = String.format("%.2f MB", moduleSizeMb!!)
+                    )
+                }
+
+                // WEBUI badge
+                if (module.hasWebUi) {
+                    BadgeChip(text = "WEBUI")
+                }
+
+                // ACTION badge
+                if (module.hasActionScript) {
+                    BadgeChip(
+                        text = stringResource(R.string.action)
+                    )
+                }
+            }
 
             // Clickable Content
             Box(
@@ -916,6 +951,39 @@ fun ModuleItem(
                 }
             }
         }
+    }
+}
+
+fun calculateModuleSizeMB(moduleId: String): Float {
+    return try {
+        val dir = SuFile("/data/adb/modules/$moduleId")
+        if (!dir.exists()) return 0f
+
+        fun folderSize(file: SuFile): Long {
+            if (file.isFile) return file.length()
+            return file.listFiles()?.sumOf { folderSize(it) } ?: 0L
+        }
+
+        val bytes = folderSize(dir)
+        bytes / (1024f * 1024f)
+    } catch (_: Exception) {
+        0f
+    }
+}
+
+@Composable
+fun BadgeChip(text: String) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+        contentColor = MaterialTheme.colorScheme.onSurface
+    ) {
+        Text(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
