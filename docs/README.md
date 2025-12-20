@@ -39,7 +39,7 @@ The main features of KernelSU:
 
 - **main branch**
 ```
-curl -LSs "https://raw.githubusercontent.com/raplivx/raplivx/master/kernel/setup.sh" | bash -s master
+curl -LSs "https://raw.githubusercontent.com/raplivx/master/kernel/setup.sh" | bash -s master
 ```
 
 - **susfs branch**
