@@ -633,8 +633,13 @@ fun ModuleItem(
             label = "cardHeight"
         )
 
+        private val BadgeAreaHeight = 42.dp
+
         val contentTopPadding by animateDpAsState(
-            targetValue = if (expanded) 42.dp else 22.dp,
+            targetValue = if (expanded)
+                BadgeAreaHeight + 8.dp   // expanded
+            else
+                BadgeAreaHeight,        // collapsed
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessMedium
