@@ -784,7 +784,7 @@ fun ModuleItem(
                             stiffness = Spring.StiffnessLow
                         )
                     )
-                    .padding(22.dp, 18.dp, 22.dp, 12.dp)
+                    .padding(22.dp, 42.dp, 22.dp, 12.dp)
             ) {
 
                 Column(
@@ -960,8 +960,11 @@ fun calculateModuleSizeMB(moduleId: String): Float {
         if (!dir.exists()) return 0f
 
         fun folderSize(file: SuFile): Long {
-            if (file.isFile) return file.length()
-            return file.listFiles()?.sumOf { folderSize(it) } ?: 0L
+            return if (file.isFile) {
+                file.length()
+            } else {
+                file.listFiles()?.sumOf { folderSize(it) } ?: 0L
+            }
         }
 
         val bytes = folderSize(dir)
@@ -972,16 +975,21 @@ fun calculateModuleSizeMB(moduleId: String): Float {
 }
 
 @Composable
-fun BadgeChip(text: String) {
+fun BadgeChip(
+    text: String,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
-        contentColor = MaterialTheme.colorScheme.onSurface
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        tonalElevation = 0.dp
     ) {
         Text(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
             text = text,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Medium
         )
     }
