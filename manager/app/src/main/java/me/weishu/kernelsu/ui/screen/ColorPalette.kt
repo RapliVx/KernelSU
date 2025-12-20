@@ -408,86 +408,86 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     }
                 }
             }
-        }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        ) {
-            // === TITLE CHIP ===
-            Surface(
-                shape = RoundedCornerShape(999.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                contentColor = MaterialTheme.colorScheme.onSurface
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
             ) {
+                // === TITLE CHIP ===
                 Surface(
-                    modifier = Modifier.padding(4.dp),
                     shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 ) {
-                    Text(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        text = stringResource(R.string.background_image),
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // === TOGGLE GROUP ===
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(
-                    ButtonGroupDefaults.ConnectedSpaceBetween
-                )
-            ) {
-                val backgroundOptions = listOf(false, true) // false = default, true = custom
-
-                backgroundOptions.forEachIndexed { index, isCustom ->
-                    ToggleButton(
-                        checked = useCustomBackground == isCustom,
-                        onCheckedChange = { checked ->
-                            if (!checked) return@ToggleButton
-
-                            if (isCustom) {
-                                useCustomBackground = true
-                                backgroundImagePicker.launch(arrayOf("image/*"))
-                            } else {
-                                context.clearBackgroundImage()
-                                useCustomBackground = false
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .semantics { role = Role.RadioButton },
-                        shapes = when (index) {
-                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                            backgroundOptions.lastIndex ->
-                                ButtonGroupDefaults.connectedTrailingButtonShapes()
-                            else ->
-                                ButtonGroupDefaults.connectedMiddleButtonShapes()
-                        }
+                    Surface(
+                        modifier = Modifier.padding(4.dp),
+                        shape = RoundedCornerShape(999.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Text(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            text = stringResource(R.string.background_image),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // === TOGGLE GROUP ===
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        ButtonGroupDefaults.ConnectedSpaceBetween
+                    )
+                ) {
+                    val backgroundOptions = listOf(false, true) // false = default, true = custom
+
+                    backgroundOptions.forEachIndexed { index, isCustom ->
+                        ToggleButton(
+                            checked = useCustomBackground == isCustom,
+                            onCheckedChange = { checked ->
+                                if (!checked) return@ToggleButton
+
+                                if (isCustom) {
+                                    useCustomBackground = true
+                                    backgroundImagePicker.launch(arrayOf("image/*"))
+                                } else {
+                                    context.clearBackgroundImage()
+                                    useCustomBackground = false
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics { role = Role.RadioButton },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                backgroundOptions.lastIndex ->
+                                    ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else ->
+                                    ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            }
                         ) {
-                            Icon(
-                                imageVector = if (isCustom)
-                                    Icons.Filled.Image
-                                else
-                                    Icons.Filled.Restore,
-                                contentDescription = null
-                            )
-                            Text(
-                                text = if (isCustom)
-                                    stringResource(R.string.background_custom)
-                                else
-                                    stringResource(R.string.background_default)
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (isCustom)
+                                        Icons.Filled.Image
+                                    else
+                                        Icons.Filled.Restore,
+                                    contentDescription = null
+                                )
+                                Text(
+                                    text = if (isCustom)
+                                        stringResource(R.string.background_custom)
+                                    else
+                                        stringResource(R.string.background_default)
+                                )
+                            }
                         }
                     }
                 }
