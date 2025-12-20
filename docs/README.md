@@ -1,44 +1,94 @@
-**English** | [Español](README_ES.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [日本語](README_JP.md) | [한국어](README_KR.md) | [Polski](README_PL.md) | [Português (Brasil)](README_PT-BR.md) | [Türkçe](README_TR.md) | [Русский](README_RU.md) | [Tiếng Việt](README_VI.md) | [Indonesia](README_ID.md) | [עברית](README_IW.md) | [हिंदी](README_IN.md) | [Italiano](README_IT.md)
+<div align="center">
+  <img src="https://github.com/RapliVx/KernelSU/docs/mambo.jpg?raw=true" 
+       width="100%" 
+       style="border-radius: 15px;" 
+       alt="Mambo Banner" />
+       
+  <h1>KernelSU (Rapli's Fork)</h1>
+  
+  <p>
+    <a href="https://github.com/raplivx/KernelSU/actions/workflows/build-manager.yml"><img src="https://github.com/raplivx/KernelSU/actions/workflows/build-manager.yml/badge.svg" alt="Build Manager"></a>
+    <a href="https://github.com/raplivx/KernelSU/blob/main/LICENSE"><img src="https://img.shields.io/github/license/raplivx/KernelSU" alt="License"></a>
+  </p>
+  
+  <p>A Kernel-based root solution for Android devices.</p>
+</div>
 
-# My KernelSU
+<div align="center">
 
-<img src="https://kernelsu.org/logo.png" style="width: 96px;" alt="logo">
+> [!NOTE]
+> Official KernelSU support for Non-GKI kernels has been ended.
+>
+> This is unofficial KernelSU fork, all changes are not guaranteed stable!
+>
+> All rights reserved to [@tiann](https://github.com/tiann), the author of KernelSU.
 
-A [KernelSU](https://github.com/tiann/KernelSU/commit/c95c2d7956a23f4bf23713eb1a4ca86b8ad04569)-based root solution for Android devices.
+</div>
 
-[![Latest release](https://img.shields.io/github/v/release/tiann/KernelSU?label=Release&logo=github)](https://github.com/tiann/KernelSU/releases/latest)
-[![Weblate](https://img.shields.io/badge/Localization-Weblate-teal?logo=weblate)](https://hosted.weblate.org/engage/kernelsu)
-[![Channel](https://img.shields.io/badge/Follow-Telegram-blue.svg?logo=telegram)](https://t.me/KernelSU)
-[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-orange.svg?logo=gnu)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
-[![GitHub License](https://img.shields.io/github/license/tiann/KernelSU?logo=gnu)](/LICENSE)
+## Introduction
+
+KernelSU is a kernel-based root solution for Android GKI devices. It works in kernel mode and grants root permission to userspace applications directly in kernel space.
+
+The main features of KernelSU:
+
+1. **Kernel-based**: KernelSU works in kernel mode, which means it can provide more powerful features than userspace root solutions.
+2. **Module System**: KernelSU supports systemless modification through overlayfs, which allows you to modify the system without touching the read-only partitions.
+3. **App Profile**: You can control which apps have root permission, and you can also grant root permission to specific apps only.
+
+## How to add MamboSU kernel driver into your kernel source
+
+- **main branch**
+```
+curl -LSs "https://raw.githubusercontent.com/raplivx/raplivx/main/kernel/setup.sh" | bash -s main
+```
+
+- **susfs branch**
+
+> [!WARNING]
+> This branch is not always updated.
+>
+
+```
+curl -LSs "https://raw.githubusercontent.com/raplivx/KernelSU/main/kernel/setup.sh" | bash -s susfs-rksu-master
+```
+
+
+## Hook method
+
+1. **Syscall hook:**
+    - Used for Loadable Kernel Module (LKM) or GKI with this hook.
+    - Default hook method on GKI kernels.
+    - Does not support armv7l.
+    - Need `CONFIG_KSU_SYSCALL_HOOK=y` & `CONFIG_KPROBES=y`, `CONFIG_KRETPROBES=y`, `CONFIG_HAVE_SYSCALL_TRACEPOINTS=y`
+2. **Manual hook:**
+    - [See this repository for more information](https://github.com/rksuorg/kernel_patches)
+    - Default hook method on Non-GKI kernels, with condition that `CONFIG_KPROBES` off by default.
+    - Need `CONFIG_KSU_MANUAL_HOOK=y`
 
 ## Features
 
 1. Kernel-based `su` and root access management.
-2. Module system based on [metamodules](https://kernelsu.org/guide/metamodule.html): Pluggable infrastructure for systemless modifications.
+2. Module system based on [Metamodule](https://kernelsu.org/guide/metamodule.html)
 3. [App Profile](https://kernelsu.org/guide/app-profile.html): Lock up the root power in a cage.
 
-## Compatibility state
+## Compatibility State
 
-KernelSU officially supports Android GKI 2.0 devices (kernel 5.10+). Older kernels (4.14+) are also supported, but the kernel will need to be built manually.
-
-With this, WSA, ChromeOS, and container-based Android are all supported.
-
-Currently, only the `arm64-v8a` and `x86_64` architectures are supported.
+- **Kernel compatibility:**
+    - Android GKI 2.0 (5.10+): aarch64, armv8l, x86_64
+    - Android GKI 1.0 (5.4): aarch64, armv8l, armv7l
+    - Non-GKI (4.4-4.19): aarch64, armv8l, armv7l
+- **Application compaibility (ksud/manager):**
+    - arm64-v8a, armeabi-v7a, x86_64
 
 ## Usage
 
-- [Installation](https://kernelsu.org/guide/installation.html)
-- [How to build](https://kernelsu.org/guide/how-to-build.html)
-- [Official website](https://kernelsu.org/)
-
-## Translation
-
-To help translate KernelSU or improve existing translations, please use [Weblate](https://hosted.weblate.org/engage/kernelsu/). PR of Manager's translation is no longer accepted, because it will conflict with Weblate.
+- [Installation Instruction](https://kernelsu.org/guide/installation.html)
+- [How to build?](https://kernelsu.org/guide/how-to-build.html)
+- [Official Website](https://kernelsu.org/)
 
 ## Discussion
 
-- Telegram: [@KernelSU](https://t.me/KernelSU)
+- MamboSU Telegram Group: [@KamiSkizofrenia](https://t.me/KamiSkizofrenia)
 
 ## Security
 
@@ -51,7 +101,10 @@ For information on reporting security vulnerabilities in KernelSU, see [SECURITY
 
 ## Credits
 
-- [Kernel-Assisted Superuser](https://git.zx2c4.com/kernel-assisted-superuser/about/): The KernelSU idea.
-- [Magisk](https://github.com/topjohnwu/Magisk): The powerful root tool.
-- [genuine](https://github.com/brevent/genuine/): APK v2 signature validation.
-- [Diamorphine](https://github.com/m0nad/Diamorphine): Some rootkit skills.
+- [kernel-assisted-superuser](https://git.zx2c4.com/kernel-assisted-superuser/about/): the KernelSU idea.
+- [Rissu](https://github.com/rsuntk): Base KernelSU Source Driver
+- [Magisk](https://github.com/topjohnwu/Magisk): the powerful root tool.
+- [genuine](https://github.com/brevent/genuine/): apk v2 signature validation.
+- [Diamorphine](https://github.com/m0nad/Diamorphine): some rootkit skills.
+- [simonpunk](https://gitlab.com/simonpunk): susfs add-on.
+- [rifsxd](https://github.com/rifsxd): UI Design
