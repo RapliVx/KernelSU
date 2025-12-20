@@ -107,6 +107,7 @@ import me.weishu.kernelsu.ui.util.getBugreportFile
 import me.weishu.kernelsu.ui.util.getFeaturePersistValue
 import me.weishu.kernelsu.ui.util.isToolKitInstalled
 import me.weishu.kernelsu.ui.webui.WebUIActivity
+import me.weishu.kernelsu.ui.component.BackgroundImage
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.core.net.toUri
@@ -122,6 +123,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
 
+    BackgroundImage { containerColor ->
     Scaffold(
         topBar = {
             TopBar(
@@ -722,6 +724,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
             }
         }
     }
+}
 }
 
 enum class UninstallType(val title: Int, val message: Int, val icon: ImageVector) {

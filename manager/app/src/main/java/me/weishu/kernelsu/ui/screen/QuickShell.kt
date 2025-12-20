@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.annotation.RootGraph
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import me.weishu.kernelsu.ui.component.BackgroundImage
 
 // libsu
 import com.topjohnwu.superuser.CallbackList
@@ -87,71 +88,72 @@ fun QuickShellScreen() {
         if (logs.isNotEmpty()) listState.animateScrollToItem(logs.lastIndex)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("QuickShell") },
-                actions = {
-                    IconButton(onClick = { logs.clear() }) {
-                        Icon(Icons.Outlined.Delete, contentDescription = null)
+    BackgroundImage { containerColor ->
+        Scaffold(
+            containerColor = containerColor,
+            topBar = {
+                TopAppBar(
+                    title = { Text("QuickShell") },
+                    actions = {
+                        IconButton(onClick = { logs.clear() }) {
+                            Icon(Icons.Outlined.Delete, contentDescription = null)
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                TonalCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "Commands",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = cmd,
+                            onValueChange = { cmd = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 1,
+                            maxLines = 6,
+                            placeholder = { Text("Input Command") },
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = { runCommand() },
+                                    enabled = cmd.isNotBlank()
+                                ) {
+                                    Icon(Icons.Outlined.PlayArrow, contentDescription = null)
+                                }
+                            }
+                        )
                     }
                 }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-        ) {
-            TonalCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = "Commands",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
 
-                    Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
 
-                    OutlinedTextField(
-                        value = cmd,
-                        onValueChange = { cmd = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false,
-                        minLines = 1,
-                        maxLines = 6,
-                        placeholder = { Text("Input Command/Script…") },
-                        trailingIcon = {
-                            IconButton(
-                                onClick = { runCommand() },
-                                enabled = cmd.isNotBlank()
-                            ) {
-                                Icon(Icons.Outlined.PlayArrow, contentDescription = null)
-                            }
+                TonalCard(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(14.dp)
+                    ) {
+                        itemsIndexed(logs) { _, line ->
+                            Text(
+                                text = line,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                            )
                         }
-                    )
-
-                }
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            TonalCard(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(14.dp)
-                ) {
-                    itemsIndexed(logs) { _, line ->
-                        Text(
-                            text = line,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
-                        )
                     }
                 }
             }
