@@ -156,6 +156,8 @@ import androidx.compose.material3.Surface
 
 import com.topjohnwu.superuser.io.SuFile
 
+private val BadgeAreaHeight = 42.dp
+
 @SuppressLint("StringFormatInvalid")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Destination<RootGraph>
@@ -632,8 +634,6 @@ fun ModuleItem(
             ),
             label = "cardHeight"
         )
-
-        private val BadgeAreaHeight = 42.dp
 
         val contentTopPadding by animateDpAsState(
             targetValue = if (expanded)
