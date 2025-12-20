@@ -93,83 +93,80 @@ import me.weishu.kernelsu.ui.util.getSELinuxStatus
 import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.rootAvailable
+import me.weishu.kernelsu.ui.component.BackgroundImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>(start = true)
 @Composable
 fun HomeScreen(navigator: DestinationsNavigator) {
     val kernelVersion = getKernelVersion()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    val scrollBehavior =
+        TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
-    Scaffold(
-        topBar = { TopBar(scrollBehavior = scrollBehavior) },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            val isManager = Natives.isManager
-            val ksuVersion = if (isManager) Natives.version else null
-            val lkmMode = ksuVersion?.let {
-                if (kernelVersion.isGKI()) Natives.isLkmMode else null
-            }
-            val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
-
-            StatusCard(
-                kernelVersion,
-                ksuVersion,
-                lkmMode,
-                fullFeatured,
-                onClickInstall = { navigator.navigate(InstallScreenDestination) },
-                onClickSuperuser = {
-                    navigator.navigate(SuperUserScreenDestination) {
-                        popUpTo(NavGraphs.root) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                onclickModule = {
-                    navigator.navigate(ModuleScreenDestination) {
-                        popUpTo(NavGraphs.root) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                }
+    BackgroundImage { containerColor ->
+        Scaffold(
+            containerColor = containerColor,
+            topBar = { TopBar(scrollBehavior = scrollBehavior) },
+            contentWindowInsets = WindowInsets.safeDrawing.only(
+                WindowInsetsSides.Top + WindowInsetsSides.Horizontal
             )
-//            if (ksuVersion != null && !Natives.isLkmMode) {
-//                WarningCard(stringResource(id = R.string.home_gki_warning))
-//            }
-            if (isManager && Natives.requireNewKernel()) {
-                WarningCard(
-                    stringResource(id = R.string.require_kernel_version).format(
-                        ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                val isManager = Natives.isManager
+                val ksuVersion = if (isManager) Natives.version else null
+                val lkmMode = ksuVersion?.let {
+                    if (kernelVersion.isGKI()) Natives.isLkmMode else null
+                }
+                val fullFeatured =
+                    isManager && !Natives.requireNewKernel() && rootAvailable()
+
+                StatusCard(
+                    kernelVersion,
+                    ksuVersion,
+                    lkmMode,
+                    fullFeatured,
+                    onClickInstall = {
+                        navigator.navigate(InstallScreenDestination)
+                    },
+                    onClickSuperuser = {
+                        navigator.navigate(SuperUserScreenDestination) {
+                            popUpTo(NavGraphs.root) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onclickModule = {
+                        navigator.navigate(ModuleScreenDestination) {
+                            popUpTo(NavGraphs.root) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+
+                if (isManager && Natives.requireNewKernel()) {
+                    WarningCard(
+                        stringResource(R.string.require_kernel_version)
+                            .format(ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL)
                     )
-                )
+                }
+
+                if (ksuVersion != null && !rootAvailable()) {
+                    WarningCard(stringResource(R.string.grant_root_failed))
+                }
+
+                InfoCard()
+                DonateCard()
+                LearnMoreCard()
+                Spacer(Modifier)
             }
-            if (ksuVersion != null && !rootAvailable()) {
-                WarningCard(
-                    stringResource(id = R.string.grant_root_failed)
-                )
-            }
-//            val checkUpdate =
-//                LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
-//                    .getBoolean("check_update", true)
-//            if (checkUpdate) {
-//                UpdateCard()
-//            }
-            InfoCard()
-            DonateCard()
-            LearnMoreCard()
-            Spacer(Modifier)
         }
     }
 }

@@ -102,7 +102,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
-
+import me.weishu.kernelsu.ui.util.getBackgroundImage
+import me.weishu.kernelsu.ui.util.saveBackgroundImage
+import me.weishu.kernelsu.ui.util.clearBackgroundImage
 private val keyColorOptions = listOf(
     Color(0xFF1A73E8).toArgb(),
     Color(0xFFEA4335).toArgb(),
@@ -119,15 +121,16 @@ private val keyColorOptions = listOf(
 @Composable
 fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     val context = LocalContext.current
+
     var hasCustomHeader by rememberSaveable {
         mutableStateOf(context.getHeaderImage() != null)
     }
+
     val imagePicker =
         rememberLauncherForActivityResult(
             ActivityResultContracts.OpenDocument()
         ) { uri ->
             if (uri == null) {
-                // User cancel → revert toggle
                 hasCustomHeader = false
             } else {
                 context.contentResolver.takePersistableUriPermission(
@@ -135,8 +138,29 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
                 context.saveHeaderImage(uri.toString())
-
                 hasCustomHeader = true
+            }
+        }
+
+    /* ✅ FIX UTAMA DI SINI */
+    var useCustomBackground by rememberSaveable {
+        mutableStateOf(context.getBackgroundImage() != null)
+    }
+
+    val backgroundImagePicker =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            if (uri == null) {
+                context.clearBackgroundImage()
+                useCustomBackground = false
+            } else {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+                context.saveBackgroundImage(uri.toString())
+                useCustomBackground = true
             }
         }
 
@@ -144,7 +168,9 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     var appSettings by remember { mutableStateOf(ThemeController.getAppSettings(context)) }
     var currentColorMode by remember { mutableStateOf(appSettings.colorMode) }
     var currentKeyColor by remember { mutableIntStateOf(appSettings.keyColor) }
-    var currentLauncherIcon by remember { mutableStateOf(prefs.getBoolean("enable_official_launcher", false)) }
+    var currentLauncherIcon by remember {
+        mutableStateOf(prefs.getBoolean("enable_official_launcher", false))
+    }
 
     Scaffold(
         topBar = {
@@ -378,6 +404,90 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                         stringResource(R.string.header_default)
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        ) {
+            // === TITLE CHIP ===
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
+                Surface(
+                    modifier = Modifier.padding(4.dp),
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ) {
+                    Text(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        text = stringResource(R.string.background_image),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // === TOGGLE GROUP ===
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(
+                    ButtonGroupDefaults.ConnectedSpaceBetween
+                )
+            ) {
+                val backgroundOptions = listOf(false, true) // false = default, true = custom
+
+                backgroundOptions.forEachIndexed { index, isCustom ->
+                    ToggleButton(
+                        checked = useCustomBackground == isCustom,
+                        onCheckedChange = { checked ->
+                            if (!checked) return@ToggleButton
+
+                            if (isCustom) {
+                                useCustomBackground = true
+                                backgroundImagePicker.launch(arrayOf("image/*"))
+                            } else {
+                                context.clearBackgroundImage()
+                                useCustomBackground = false
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .semantics { role = Role.RadioButton },
+                        shapes = when (index) {
+                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                            backgroundOptions.lastIndex ->
+                                ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            else ->
+                                ButtonGroupDefaults.connectedMiddleButtonShapes()
+                        }
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (isCustom)
+                                    Icons.Filled.Image
+                                else
+                                    Icons.Filled.Restore,
+                                contentDescription = null
+                            )
+                            Text(
+                                text = if (isCustom)
+                                    stringResource(R.string.background_custom)
+                                else
+                                    stringResource(R.string.background_default)
+                            )
                         }
                     }
                 }
