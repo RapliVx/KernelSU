@@ -199,4 +199,5 @@
     <string name="header_image">Header</string>
     <string name="header_default">Default</string>
     <string name="header_custom">Custom</string>
+    <string name="quick_shell">QuickShell</string>
 </resources>

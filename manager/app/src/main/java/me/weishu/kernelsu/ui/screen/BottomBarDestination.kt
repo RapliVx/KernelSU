@@ -10,6 +10,7 @@ import com.ramcosta.composedestinations.generated.destinations.ModuleRepoScreenD
 import com.ramcosta.composedestinations.generated.destinations.ModuleScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
 import com.ramcosta.composedestinations.spec.DirectionDestinationSpec
 import me.weishu.kernelsu.R
 
@@ -24,5 +25,12 @@ enum class BottomBarDestination(
     SuperUser(SuperUserScreenDestination, R.string.superuser, Icons.Filled.Shield, Icons.Outlined.Shield, true),
     // ModuleRepo(ModuleRepoScreenDestination, R.string.module_repos, Icons.Filled.CloudDownload, Icons.Outlined.CloudDownload, true),
     Module(ModuleScreenDestination, R.string.module, Icons.Filled.Extension, Icons.Outlined.Extension, true),
+    QuickShell(
+        QuickShellScreenDestination,
+        R.string.quick_shell,
+        Icons.Filled.Code,
+        Icons.Outlined.Code,
+        true
+    ),
     Settings(SettingScreenDestination, R.string.settings, Icons.Filled.Settings, Icons.Outlined.Settings, false)
 }
