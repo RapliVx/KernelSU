@@ -61,10 +61,15 @@ public final class SuFilePathHandler implements WebViewAssetLoader.PathHandler {
     private final Shell mShell;
     private final Context mContext;
     private final InsetsSupplier mInsetsSupplier;
+    private final OnInsetsRequestedListener mOnInsetsRequestedListener;
 
     public interface InsetsSupplier {
         @NonNull
         Insets get();
+    }
+
+    public interface OnInsetsRequestedListener {
+        void onInsetsRequested(boolean enable);
     }
 
     /**
@@ -89,13 +94,15 @@ public final class SuFilePathHandler implements WebViewAssetLoader.PathHandler {
      *                  which files can be loaded.
      * @param rootShell {@link Shell} instance with root access to read files.
      * @param insetsSupplier {@link InsetsSupplier} to provide window insets for styling web content.
+     * @param onInsetsRequestedListener {@link OnInsetsRequestedListener} to notify when insets are requested.
      * @throws IllegalArgumentException if the directory is not allowed.
      */
 
-    public SuFilePathHandler(@NonNull Context context, @NonNull File directory, Shell rootShell, @NonNull InsetsSupplier insetsSupplier) {
+    public SuFilePathHandler(@NonNull Context context, @NonNull File directory, Shell rootShell, @NonNull InsetsSupplier insetsSupplier, OnInsetsRequestedListener onInsetsRequestedListener) {
         try {
             mContext = context;
             mInsetsSupplier = insetsSupplier;
+            mOnInsetsRequestedListener = onInsetsRequestedListener;
             mDirectory = new File(getCanonicalDirPath(directory));
             if (!isAllowedInternalStorageDir(context)) {
                 throw new IllegalArgumentException("The given directory \"" + directory
@@ -144,6 +151,9 @@ public final class SuFilePathHandler implements WebViewAssetLoader.PathHandler {
     @NonNull
     public WebResourceResponse handle(@NonNull String path) {
         if ("internal/insets.css".equals(path)) {
+            if (mOnInsetsRequestedListener != null) {
+                mOnInsetsRequestedListener.onInsetsRequested(true);
+            }
             String css = mInsetsSupplier.get().getCss();
             return new WebResourceResponse(
                     "text/css",
