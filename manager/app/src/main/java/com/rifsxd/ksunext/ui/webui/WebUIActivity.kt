@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -29,6 +30,8 @@ import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -245,10 +248,38 @@ class WebUIActivity : ComponentActivity() {
             }
 
             webViewClient = object : WebViewClient() {
+
                 override fun shouldInterceptRequest(
                     view: WebView,
                     request: WebResourceRequest
                 ): WebResourceResponse? {
+                    val url = request.url
+
+                    // Handle ksu://icon/<packageName>
+                    if (url.scheme.equals("ksu", true)
+                        && url.host.equals("icon", true)
+                    ) {
+                        val packageName = url.path?.removePrefix("/")
+                        if (!packageName.isNullOrEmpty()) {
+                            val icon = AppIconUtil.loadAppIconSync(
+                                this@WebUIActivity,
+                                packageName,
+                                512
+                            )
+
+                            if (icon != null) {
+                                val out = ByteArrayOutputStream()
+                                icon.compress(Bitmap.CompressFormat.PNG, 100, out)
+                                return WebResourceResponse(
+                                    "image/png",
+                                    null,
+                                    ByteArrayInputStream(out.toByteArray())
+                                )
+                            }
+                        }
+                    }
+
+                    // Fallback to asset loader
                     return assetLoader.shouldInterceptRequest(request.url)
                 }
 
