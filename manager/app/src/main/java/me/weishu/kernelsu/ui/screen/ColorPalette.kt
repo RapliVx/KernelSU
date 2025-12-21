@@ -105,6 +105,12 @@ import me.weishu.kernelsu.ui.theme.ThemeController
 import me.weishu.kernelsu.ui.util.getBackgroundImage
 import me.weishu.kernelsu.ui.util.saveBackgroundImage
 import me.weishu.kernelsu.ui.util.clearBackgroundImage
+import me.weishu.kernelsu.ui.util.getBoxOpacity
+import me.weishu.kernelsu.ui.util.saveBoxOpacity
+import androidx.compose.material.icons.filled.Opacity
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+
 private val keyColorOptions = listOf(
     Color(0xFF1A73E8).toArgb(),
     Color(0xFFEA4335).toArgb(),
@@ -142,7 +148,10 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             }
         }
 
-    /* ✅ FIX UTAMA DI SINI */
+    var boxOpacity by rememberSaveable {
+        mutableStateOf(context.getBoxOpacity())
+    }
+
     var useCustomBackground by rememberSaveable {
         mutableStateOf(context.getBackgroundImage() != null)
     }
@@ -489,6 +498,83 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                 )
                             }
                         }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+
+                // === TITLE CHIP ===
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    tonalElevation = 1.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.Opacity,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.box_opacity),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // === SLIDER CARD ===
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 2.dp
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = stringResource(R.string.opacity),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "${(boxOpacity * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Slider(
+                            value = boxOpacity,
+                            onValueChange = {
+                                boxOpacity = it
+                                context.saveBoxOpacity(it) // ✅ util kamu
+                            },
+                            valueRange = 0.1f..1f,
+                            steps = 8,
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        )
                     }
                 }
             }

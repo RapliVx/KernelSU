@@ -203,4 +203,6 @@
     <string name="background_image">Background Image</string>
     <string name="background_custom">Custom</string>
     <string name="background_default">Default</string>
+    <string name="box_opacity">Box Opacity</string>
+    <string name="opacity">Opacity</string>
 </resources>
