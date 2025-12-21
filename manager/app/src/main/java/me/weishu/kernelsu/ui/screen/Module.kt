@@ -157,7 +157,7 @@ import me.weishu.kernelsu.ui.component.BackgroundImage
 
 import com.topjohnwu.superuser.io.SuFile
 
-private val BadgeAreaHeight = 40.dp
+private val BadgeAreaHeight = 38.dp
 
 @SuppressLint("StringFormatInvalid")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -675,7 +675,10 @@ fun ModuleItem(
         )
 
         val contentTopPadding by animateDpAsState(
-            targetValue = if (expanded) 42.dp else 22.dp,
+            targetValue = if (expanded)
+                BadgeAreaHeight + 8.dp   // expanded
+            else
+                BadgeAreaHeight,        // collapsed
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessMedium
