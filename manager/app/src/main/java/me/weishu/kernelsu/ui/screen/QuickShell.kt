@@ -7,16 +7,20 @@ import androidx.compose.foundation.layout.Column
 import com.ramcosta.composedestinations.annotation.Destination
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +48,7 @@ import me.weishu.kernelsu.ui.component.BackgroundImage
 import me.weishu.kernelsu.ui.util.getBoxOpacity
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.material3.Surface
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 // libsu
@@ -114,9 +119,18 @@ fun QuickShellScreen() {
                         IconButton(onClick = { logs.clear() }) {
                             Icon(Icons.Outlined.Delete, contentDescription = null)
                         }
-                    }
+                    },
+                    // FIX BUG: TopBar transparan agar background image menyatu sampai atas
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    )
                 )
-            }
+            },
+            // FIX BUG: Mengatur insets agar konten digambar di area aman tapi background full
+            contentWindowInsets = WindowInsets.safeDrawing.only(
+                WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+            )
         ) { padding ->
 
             // SEMI-TRANSPARENT SURFACE CONTAINER DI ATAS BACKGROUND
@@ -132,7 +146,15 @@ fun QuickShellScreen() {
                         .fillMaxSize()
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
-                    TonalCard(modifier = Modifier.fillMaxWidth()) {
+
+                    // KARTU 1 (INPUT)
+                    // FIX BUG: Tambahkan colors transparan di TonalCard agar tidak solid menutupi background
+                    TonalCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.filledTonalCardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                        )
+                    ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Text(
                                 text = "Commands",
@@ -156,14 +178,26 @@ fun QuickShellScreen() {
                                     ) {
                                         Icon(Icons.Outlined.PlayArrow, contentDescription = null)
                                     }
-                                }
+                                },
+                                // Opsional: Textfield juga dibuat transparan agar elegan
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent
+                                )
                             )
                         }
                     }
 
                     Spacer(Modifier.height(10.dp))
 
-                    TonalCard(modifier = Modifier.fillMaxSize()) {
+                    // KARTU 2 (LOGS)
+                    // FIX BUG: Tambahkan colors transparan di TonalCard
+                    TonalCard(
+                        modifier = Modifier.fillMaxSize(),
+                        colors = CardDefaults.filledTonalCardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                        )
+                    ) {
                         LazyColumn(
                             state = listState,
                             modifier = Modifier

@@ -20,6 +20,7 @@ apksign = "1.4"
 cmaker = "1.2"
 material3 = "1.5.0-alpha10"
 foundation = "1.10.0"
+foundation-layout = "1.10.0"
 
 [plugins]
 agp-app = { id = "com.android.application", version.ref = "agp" }
@@ -78,3 +79,4 @@ sheet-compose-dialogs-input = { group = "com.maxkeppeler.sheets-compose-dialogs"
 
 lsposed-cxx = { module = "org.lsposed.libcxx:libcxx", version.ref = "ndk" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
+androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundation-layout" }
