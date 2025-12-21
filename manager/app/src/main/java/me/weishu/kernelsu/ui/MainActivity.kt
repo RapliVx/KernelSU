@@ -145,7 +145,7 @@ class MainActivity : ComponentActivity() {
                             AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
                         {
                             if (initialState.destination.route !in bottomBarRoutes) {
-                                scaleOut(0.9f) + fadeOut()
+                                scaleOut(targetScale = 0.9f) + fadeOut()
                             } else fadeOut(tween(340))
                         }
                 }
