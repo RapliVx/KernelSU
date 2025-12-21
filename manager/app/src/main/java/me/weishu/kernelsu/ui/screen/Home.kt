@@ -136,7 +136,6 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     .padding(innerPadding)
                     .fillMaxSize(),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = boxOpacity),
-                shape = RoundedCornerShape(24.dp)
             ) {
 
                 Column(

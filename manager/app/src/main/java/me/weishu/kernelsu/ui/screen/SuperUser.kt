@@ -75,6 +75,10 @@ import me.weishu.kernelsu.ui.util.ownerNameForUid
 import me.weishu.kernelsu.ui.util.pickPrimary
 import me.weishu.kernelsu.ui.viewmodel.SuperUserViewModel
 import me.weishu.kernelsu.ui.component.BackgroundImage
+import me.weishu.kernelsu.ui.util.getBoxOpacity
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.material3.Surface
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Destination<RootGraph>
@@ -88,6 +92,18 @@ fun SuperUserScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     val pullToRefreshState = rememberPullToRefreshState()
+
+    val context = LocalContext.current
+
+    // REACTIVE OPACITY STATE
+    var boxOpacity by remember {
+        mutableFloatStateOf(context.getBoxOpacity())
+    }
+
+    // listen when coming back from settings
+    LaunchedEffect(Unit) {
+        boxOpacity = context.getBoxOpacity()
+    }
 
     val onRefresh: () -> Unit = {
         scope.launch { viewModel.loadAppList() }
@@ -173,88 +189,97 @@ fun SuperUserScreen(
             )
         ) { innerPadding ->
 
-            Box(modifier = Modifier.padding(innerPadding)) {
+            // SEMI-TRANSPARENT SURFACE CONTAINER DI ATAS BACKGROUND
+            Surface(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = boxOpacity),
+            ) {
 
-                val filteredApps = remember(SuperUserViewModel.apps) {
-                    SuperUserViewModel.apps.filter {
-                        it.packageName != ksuApp.packageName
-                    }
-                }
+                Box(modifier = Modifier.fillMaxSize()) {
 
-                val allGroups = remember(filteredApps) {
-                    buildGroups(filteredApps)
-                }
-
-                val visibleUids = remember(viewModel.appList) {
-                    viewModel.appList.map { it.uid }.toSet()
-                }
-
-                val expandedSearchUids = remember { mutableStateOf(setOf<Int>()) }
-                val isSearching = viewModel.search.text.isNotEmpty()
-
-                val visibleGroups = remember(allGroups, visibleUids) {
-                    allGroups.filter { it.uid in visibleUids }
-                }
-
-                ExpressiveLazyList(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .nestedScroll(scrollBehavior.nestedScrollConnection),
-                    items = visibleGroups
-                ) { group ->
-                    val expanded =
-                        isSearching || expandedSearchUids.value.contains(group.uid)
-
-                    val onToggleExpand = {
-                        if (group.apps.size > 1) {
-                            expandedSearchUids.value =
-                                if (expandedSearchUids.value.contains(group.uid))
-                                    expandedSearchUids.value - group.uid
-                                else
-                                    expandedSearchUids.value + group.uid
+                    val filteredApps = remember(SuperUserViewModel.apps) {
+                        SuperUserViewModel.apps.filter {
+                            it.packageName != ksuApp.packageName
                         }
                     }
 
-                    Column {
-                        GroupItem(group, onToggleExpand) {
-                            navigator.navigate(
-                                AppProfileScreenDestination(group.primary)
-                            ) { launchSingleTop = true }
+                    val allGroups = remember(filteredApps) {
+                        buildGroups(filteredApps)
+                    }
+
+                    val visibleUids = remember(viewModel.appList) {
+                        viewModel.appList.map { it.uid }.toSet()
+                    }
+
+                    val expandedSearchUids = remember { mutableStateOf(setOf<Int>()) }
+                    val isSearching = viewModel.search.text.isNotEmpty()
+
+                    val visibleGroups = remember(allGroups, visibleUids) {
+                        allGroups.filter { it.uid in visibleUids }
+                    }
+
+                    ExpressiveLazyList(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .nestedScroll(scrollBehavior.nestedScrollConnection),
+                        items = visibleGroups
+                    ) { group ->
+                        val expanded =
+                            isSearching || expandedSearchUids.value.contains(group.uid)
+
+                        val onToggleExpand = {
+                            if (group.apps.size > 1) {
+                                expandedSearchUids.value =
+                                    if (expandedSearchUids.value.contains(group.uid))
+                                        expandedSearchUids.value - group.uid
+                                    else
+                                        expandedSearchUids.value + group.uid
+                            }
                         }
 
-                        AnimatedVisibility(
-                            visible = expanded && group.apps.size > 1,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            Column {
-                                group.apps
-                                    .filter { it in viewModel.appList }
-                                    .forEach { app ->
-                                        SimpleAppItem(app) {
-                                            navigator.navigate(
-                                                AppProfileScreenDestination(app)
-                                            ) { launchSingleTop = true }
+                        Column {
+                            GroupItem(group, onToggleExpand) {
+                                navigator.navigate(
+                                    AppProfileScreenDestination(group.primary)
+                                ) { launchSingleTop = true }
+                            }
+
+                            AnimatedVisibility(
+                                visible = expanded && group.apps.size > 1,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                Column {
+                                    group.apps
+                                        .filter { it in viewModel.appList }
+                                        .forEach { app ->
+                                            SimpleAppItem(app) {
+                                                navigator.navigate(
+                                                    AppProfileScreenDestination(app)
+                                                ) { launchSingleTop = true }
+                                            }
                                         }
-                                    }
+                                }
                             }
                         }
                     }
-                }
 
-                // Pull-to-refresh indicator
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .graphicsLayer {
-                            scaleX = scaleFraction()
-                            scaleY = scaleFraction()
-                        }
-                ) {
-                    PullToRefreshDefaults.LoadingIndicator(
-                        state = pullToRefreshState,
-                        isRefreshing = viewModel.isRefreshing
-                    )
+                    // Pull-to-refresh indicator
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .graphicsLayer {
+                                scaleX = scaleFraction()
+                                scaleY = scaleFraction()
+                            }
+                    ) {
+                        PullToRefreshDefaults.LoadingIndicator(
+                            state = pullToRefreshState,
+                            isRefreshing = viewModel.isRefreshing
+                        )
+                    }
                 }
             }
         }

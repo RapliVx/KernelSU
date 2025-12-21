@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -108,6 +110,9 @@ import me.weishu.kernelsu.ui.util.getFeaturePersistValue
 import me.weishu.kernelsu.ui.util.isToolKitInstalled
 import me.weishu.kernelsu.ui.webui.WebUIActivity
 import me.weishu.kernelsu.ui.component.BackgroundImage
+import me.weishu.kernelsu.ui.util.getBoxOpacity
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.material3.Surface
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.core.net.toUri
@@ -122,9 +127,21 @@ import androidx.core.net.toUri
 fun SettingScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
+    val context = LocalContext.current
+
+    // 1. Setup Opacity State
+    var boxOpacity by remember {
+        mutableFloatStateOf(context.getBoxOpacity())
+    }
+
+    // Update opacity saat masuk kembali ke screen ini
+    LaunchedEffect(Unit) {
+        boxOpacity = context.getBoxOpacity()
+    }
 
     BackgroundImage { containerColor ->
     Scaffold(
+        containerColor = containerColor, // Jangan lupa pasang containerColor ini
         topBar = {
             TopBar(
                 scrollBehavior = scrollBehavior
@@ -133,20 +150,27 @@ fun SettingScreen(navigator: DestinationsNavigator) {
         snackbarHost = { SnackbarHost(snackBarHost) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { paddingValues ->
-        val aboutDialog = rememberCustomDialog {
-            AboutDialog(it)
-        }
-        val loadingDialog = rememberLoadingDialog()
-        val uninstallConfirmDialog = rememberConfirmDialog()
 
-        Column(
+        Surface(
             modifier = Modifier
                 .padding(paddingValues)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(rememberScrollState())
+                .fillMaxSize(),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = boxOpacity) // <--- KUNCI OPACITY DISINI
         ) {
 
-            val context = LocalContext.current
+            val aboutDialog = rememberCustomDialog {
+                AboutDialog(it)
+            }
+            val loadingDialog = rememberLoadingDialog()
+            val uninstallConfirmDialog = rememberConfirmDialog()
+
+            Column(
+                modifier = Modifier
+                    // Hapus .padding(paddingValues) dari sini karena sudah di Surface
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .verticalScroll(rememberScrollState())
+            ) {
+
             val scope = rememberCoroutineScope()
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
@@ -193,23 +217,6 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 ExpressiveList(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     content = listOf(
-//                        {
-//                            var checkUpdate by rememberSaveable {
-//                                mutableStateOf(
-//                                    prefs.getBoolean("check_update", true)
-//                                )
-//                            }
-//                            ExpressiveSwitchItem(
-//                                icon = Icons.Filled.Update,
-//                                title = stringResource(id = R.string.settings_check_update),
-//                                summary = stringResource(id = R.string.settings_check_update_summary),
-//                                checked = checkUpdate,
-//                                onCheckedChange = { bool ->
-//                                    prefs.edit { putBoolean("check_update", bool)z }
-//                                    checkUpdate = bool
-//                                }
-//                            )
-//                        },
                         {
                             var checkModuleUpdate by rememberSaveable {
                                 mutableStateOf(prefs.getBoolean("module_check_update", true))
@@ -724,6 +731,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
             }
         }
     }
+}
 }
 }
 

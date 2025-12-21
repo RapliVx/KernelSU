@@ -154,6 +154,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import androidx.compose.material3.Surface
 import me.weishu.kernelsu.ui.component.BackgroundImage
+import me.weishu.kernelsu.ui.util.getBoxOpacity
+import androidx.compose.runtime.mutableFloatStateOf
 
 import com.topjohnwu.superuser.io.SuFile
 
@@ -173,7 +175,15 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
 
     val modules = viewModel.moduleList
 
+    // REACTIVE OPACITY STATE
+    var boxOpacity by remember {
+        mutableFloatStateOf(context.getBoxOpacity())
+    }
+
+    // listen when coming back from settings
     LaunchedEffect(Unit) {
+        boxOpacity = context.getBoxOpacity()
+
         viewModel.checkModuleUpdate = prefs.getBoolean("module_check_update", true)
         viewModel.sortEnabledFirst = prefs.getBoolean("module_sort_enabled_first", false)
         viewModel.sortActionFirst = prefs.getBoolean("module_sort_action_first", false)
@@ -355,53 +365,62 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
             }
         ) { innerPadding ->
 
-            when {
-                magiskInstalled -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.module_magisk_conflict),
-                            textAlign = TextAlign.Center
+            // SEMI-TRANSPARENT SURFACE CONTAINER DI ATAS BACKGROUND
+            Surface(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = boxOpacity),
+            ) {
+
+                when {
+                    magiskInstalled -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.module_magisk_conflict),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
+                    else -> {
+                        ModuleList(
+                            navigator = navigator,
+                            viewModel = viewModel,
+                            modifier = Modifier
+                                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                            boxModifier = Modifier.fillMaxSize(),
+                            onInstallModule = {
+                                navigator.navigate(
+                                    FlashScreenDestination(
+                                        flashIt = FlashIt.FlashModules(listOf(it)),
+                                        skipConfirmation = true
+                                    )
+                                )
+                                viewModel.markNeedRefresh()
+                            },
+                            onClickModule = { id, name, hasWebUi ->
+                                if (hasWebUi) {
+                                    webUILauncher.launch(
+                                        Intent(context, WebUIActivity::class.java)
+                                            .setData(Uri.parse("kernelsu://webui/$id"))
+                                            .putExtra("id", id)
+                                            .putExtra("name", name)
+                                    )
+                                }
+                            },
+                            context = context,
+                            snackBarHost = snackBarHost,
+                            pullToRefreshState = pullToRefreshState,
+                            isRefreshing = viewModel.isRefreshing,
+                            scaleFraction = scaleFraction()
                         )
                     }
-                }
-
-                else -> {
-                    ModuleList(
-                        navigator = navigator,
-                        viewModel = viewModel,
-                        modifier = Modifier
-                            .nestedScroll(scrollBehavior.nestedScrollConnection),
-                        boxModifier = Modifier.padding(innerPadding),
-                        onInstallModule = {
-                            navigator.navigate(
-                                FlashScreenDestination(
-                                    flashIt = FlashIt.FlashModules(listOf(it)),
-                                    skipConfirmation = true
-                                )
-                            )
-                            viewModel.markNeedRefresh()
-                        },
-                        onClickModule = { id, name, hasWebUi ->
-                            if (hasWebUi) {
-                                webUILauncher.launch(
-                                    Intent(context, WebUIActivity::class.java)
-                                        .setData(Uri.parse("kernelsu://webui/$id"))
-                                        .putExtra("id", id)
-                                        .putExtra("name", name)
-                                )
-                            }
-                        },
-                        context = context,
-                        snackBarHost = snackBarHost,
-                        pullToRefreshState = pullToRefreshState,
-                        isRefreshing = viewModel.isRefreshing,
-                        scaleFraction = scaleFraction()
-                    )
                 }
             }
         }
