@@ -76,6 +76,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Surface
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.text.font.FontWeight
 import me.weishu.kernelsu.ui.util.getHeaderImage
@@ -94,6 +95,11 @@ import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.rootAvailable
 import me.weishu.kernelsu.ui.component.BackgroundImage
+import me.weishu.kernelsu.ui.util.getBoxOpacity
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>(start = true)
@@ -103,6 +109,18 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val scrollBehavior =
         TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
+    val context = LocalContext.current
+
+    // REACTIVE OPACITY STATE
+    var boxOpacity by remember {
+        mutableFloatStateOf(context.getBoxOpacity())
+    }
+
+    // listen when coming back from settings
+    LaunchedEffect(Unit) {
+        boxOpacity = context.getBoxOpacity()
+    }
+
     BackgroundImage { containerColor ->
         Scaffold(
             containerColor = containerColor,
@@ -111,61 +129,71 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 WindowInsetsSides.Top + WindowInsetsSides.Horizontal
             )
         ) { innerPadding ->
-            Column(
+
+            // SEMI-TRANSPARENT SURFACE CONTAINER
+            Surface(
                 modifier = Modifier
                     .padding(innerPadding)
-                    .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = boxOpacity),
+                shape = RoundedCornerShape(24.dp)
             ) {
-                val isManager = Natives.isManager
-                val ksuVersion = if (isManager) Natives.version else null
-                val lkmMode = ksuVersion?.let {
-                    if (kernelVersion.isGKI()) Natives.isLkmMode else null
-                }
-                val fullFeatured =
-                    isManager && !Natives.requireNewKernel() && rootAvailable()
 
-                StatusCard(
-                    kernelVersion,
-                    ksuVersion,
-                    lkmMode,
-                    fullFeatured,
-                    onClickInstall = {
-                        navigator.navigate(InstallScreenDestination)
-                    },
-                    onClickSuperuser = {
-                        navigator.navigate(SuperUserScreenDestination) {
-                            popUpTo(NavGraphs.root) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    onclickModule = {
-                        navigator.navigate(ModuleScreenDestination) {
-                            popUpTo(NavGraphs.root) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                Column(
+                    modifier = Modifier
+                        .nestedScroll(scrollBehavior.nestedScrollConnection)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    val isManager = Natives.isManager
+                    val ksuVersion = if (isManager) Natives.version else null
+                    val lkmMode = ksuVersion?.let {
+                        if (kernelVersion.isGKI()) Natives.isLkmMode else null
                     }
-                )
+                    val fullFeatured =
+                        isManager && !Natives.requireNewKernel() && rootAvailable()
 
-                if (isManager && Natives.requireNewKernel()) {
-                    WarningCard(
-                        stringResource(R.string.require_kernel_version)
-                            .format(ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL)
+                    StatusCard(
+                        kernelVersion,
+                        ksuVersion,
+                        lkmMode,
+                        fullFeatured,
+                        onClickInstall = {
+                            navigator.navigate(InstallScreenDestination)
+                        },
+                        onClickSuperuser = {
+                            navigator.navigate(SuperUserScreenDestination) {
+                                popUpTo(NavGraphs.root) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        onclickModule = {
+                            navigator.navigate(ModuleScreenDestination) {
+                                popUpTo(NavGraphs.root) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                     )
-                }
 
-                if (ksuVersion != null && !rootAvailable()) {
-                    WarningCard(stringResource(R.string.grant_root_failed))
-                }
+                    if (isManager && Natives.requireNewKernel()) {
+                        WarningCard(
+                            stringResource(R.string.require_kernel_version)
+                                .format(ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL)
+                        )
+                    }
 
-                InfoCard()
-                DonateCard()
-                LearnMoreCard()
-                Spacer(Modifier)
+                    if (ksuVersion != null && !rootAvailable()) {
+                        WarningCard(stringResource(R.string.grant_root_failed))
+                    }
+
+                    InfoCard()
+                    DonateCard()
+                    LearnMoreCard()
+                    Spacer(Modifier)
+                }
             }
         }
     }
