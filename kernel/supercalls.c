@@ -698,6 +698,7 @@ static int reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
 	int magic2 = (int)PT_REGS_PARM2(real_regs);
 	unsigned int cmd = (unsigned int)PT_REGS_PARM3(real_regs);
 	unsigned long arg4 = (unsigned long)PT_REGS_SYSCALL_PARM4(real_regs);
+	unsigned long reply = (unsigned long)arg4;
 
 	/* Check if this is a request to install KSU fd */
 	if (magic1 == KSU_INSTALL_MAGIC1 && magic2 == KSU_INSTALL_MAGIC2) {
@@ -725,7 +726,6 @@ static int reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
 		ksu_set_manager_appid(cmd);
 
 		if (cmd == ksu_get_manager_appid()) {
-			unsigned long reply = (unsigned long)arg4;
 			if (copy_to_user((void __user *)arg4, &reply, sizeof(reply)))
 				pr_info("sys_reboot: reply fail\n");
 		}
@@ -733,12 +733,16 @@ static int reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
 		return 0;
 	}
 
-	if (magic2 == GET_SULOG_DUMP) {
+	if (magic2 == GET_SULOG_DUMP_V2) {
 		if (current_uid().val != 0)
 			return 0;
 
-		send_sulog_dump((void __user *)arg4);
-		return 0;
+		int ret = send_sulog_dump((void __user *)arg4);
+            if (ret)
+                return 0;
+
+        if (copy_to_user((void __user *)arg4, &reply, sizeof(reply) ))
+            return 0;
 	}
 
 	return 0;
@@ -765,6 +769,8 @@ void ksu_supercalls_init(void)
 	} else {
 		pr_info("reboot kprobe registered successfully\n");
 	}
+
+    sulog_init_heap(); // grab heap memory
 }
 
 void ksu_supercalls_exit(void)
