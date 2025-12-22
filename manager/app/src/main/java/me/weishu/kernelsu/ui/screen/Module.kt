@@ -751,7 +751,7 @@ fun ModuleItem(
             Row(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 12.dp, top = 12.dp)
+                    .padding(start = 16.dp, top = 16.dp)
                     .zIndex(3f),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -996,22 +996,17 @@ fun calculateModuleSizeMB(moduleId: String): Float {
 }
 
 @Composable
-fun BadgeChip(
-    text: String,
-    modifier: Modifier = Modifier
-) {
+fun BadgeChip(text: String) {
     Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        tonalElevation = 0.dp
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f),
+        shape = RoundedCornerShape(6.dp),
     ) {
         Text(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-            text = text,
+            text = text.uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

@@ -91,11 +91,13 @@ import androidx.compose.material.icons.filled.AutoAwesomeMotion
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Phishing
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.SettingsSuggest
-import androidx.compose.material.icons.filled.Vaccines
+import androidx.compose.ui.draw.rotate
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.animation.core.VisibilityThreshold
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -529,24 +531,30 @@ private fun InfoCard() {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
 
-    // Gunakan TonalCard (Solid/Default)
+    // Animasi Rotasi Panah yang Smooth
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessLow), // Slow smooth rotation
+        label = "arrowRotation"
+    )
+
     TonalCard(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(CardDefaults.shape)
+            .clickable { expanded = !expanded }
             .animateContentSize(
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioLowBouncy,
-                    stiffness = Spring.StiffnessLow
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow
                 )
             )
-            .clickable { expanded = !expanded }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(all = 24.dp)
+                .padding(24.dp)
         ) {
-            // Helper Item Baris
             @Composable
             fun InfoCardItem(label: String, content: String, icon: Any? = null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -574,8 +582,8 @@ private fun InfoCard() {
                 }
             }
 
+            // --- KONTEN SELALU MUNCUL ---
             Column {
-                // 1. MANAGER VERSION (Pasti Ada)
                 val managerVersion = getManagerVersion(context)
                 val uidText = if (developerOptionsEnabled) " | UID: ${android.os.Process.myUid()}" else ""
 
@@ -587,60 +595,75 @@ private fun InfoCard() {
 
                 Spacer(Modifier.height(16.dp))
 
-                // 2. KERNEL VERSION (Pasti Ada)
                 val uname = Os.uname()
                 InfoCardItem(
                     label = stringResource(R.string.home_kernel),
                     content = "${uname.release} (${uname.machine})",
                     icon = Icons.Filled.Memory,
                 )
+            }
 
-                // --- BAGIAN EXPANDABLE ---
-
-                if (!expanded) {
-                    Spacer(Modifier.height(16.dp))
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        IconButton(
-                            onClick = { expanded = true },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.KeyboardArrowDown,
-                                contentDescription = "Show more"
-                            )
-                        }
-                    }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "Show more",
+                        modifier = Modifier.rotate(arrowRotation) // Rotasi smooth
+                    )
                 }
+            }
 
-                AnimatedVisibility(visible = expanded) {
-                    Column {
-                        // 3. ANDROID VERSION
-                        Spacer(Modifier.height(16.dp))
-                        InfoCardItem(
-                            label = stringResource(R.string.home_android),
-                            content = "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})",
-                            icon = Icons.Filled.Android,
-                        )
+            // --- KONTEN EXPANDABLE ---
+            AnimatedVisibility(
+                visible = expanded,
+                enter = fadeIn(animationSpec = tween(300)) + expandVertically(
+                    animationSpec = spring(
+                        stiffness = Spring.StiffnessMediumLow,
+                        visibilityThreshold = IntSize.VisibilityThreshold
+                    )
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + shrinkVertically(
+                    animationSpec = spring(
+                        stiffness = Spring.StiffnessMediumLow,
+                        visibilityThreshold = IntSize.VisibilityThreshold
+                    )
+                )
+            ) {
 
-                        // 4. SELINUX STATUS
-                        Spacer(Modifier.height(16.dp))
-                        InfoCardItem(
-                            label = stringResource(R.string.home_selinux_status),
-                            content = getSELinuxStatus(), // Fungsi ini biasanya ada di Home.kt
-                            icon = Icons.Filled.Security,
-                        )
+                Column {
+                    Spacer(Modifier.height(8.dp))
 
-                        // 5. FINGERPRINT
-                        Spacer(Modifier.height(16.dp))
-                        InfoCardItem(
-                            label = stringResource(R.string.home_fingerprint),
-                            content = Build.FINGERPRINT,
-                            icon = Icons.Filled.Fingerprint, // Perlu import Icons.Filled.Fingerprint
-                        )
-                    }
+                    InfoCardItem(
+                        label = stringResource(R.string.home_android),
+                        content = "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})",
+                        icon = Icons.Filled.Android,
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    InfoCardItem(
+                        label = stringResource(R.string.home_selinux_status),
+                        content = getSELinuxStatus(),
+                        icon = Icons.Filled.Security,
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    InfoCardItem(
+                        label = stringResource(R.string.home_fingerprint),
+                        content = Build.FINGERPRINT,
+                        icon = Icons.Filled.Fingerprint,
+                    )
+
+                    Spacer(Modifier.height(8.dp))
                 }
             }
         }
