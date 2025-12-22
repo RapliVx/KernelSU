@@ -753,7 +753,8 @@ fun ModuleItem(
                     .align(Alignment.TopStart)
                     .padding(start = 12.dp, top = 12.dp)
                     .zIndex(3f),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
 
                 // SIZE badge
