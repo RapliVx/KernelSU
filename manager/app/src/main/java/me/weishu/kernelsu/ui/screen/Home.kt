@@ -269,6 +269,13 @@ private fun StatusCard(
     onClickSuperuser: () -> Unit = {},
     onclickModule: () -> Unit = {},
 ) {
+    val context = LocalContext.current
+    // Ambil nilai opacity dari setting user
+    val currentBoxOpacity = remember { context.getBoxOpacity() }
+
+    // Gunakan warna solid sesuai tema (tanpa transparansi custom)
+    val cardContainerColor = MaterialTheme.colorScheme.secondaryContainer
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
         val workingMode = when (lkmMode) {
@@ -285,7 +292,13 @@ private fun StatusCard(
 
         val cs = MaterialTheme.colorScheme
 
-        TonalCard(containerColor = Color.Transparent) {
+        // === CARD STATUS UTAMA ===
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.Transparent
+            )
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -298,8 +311,7 @@ private fun StatusCard(
                     }
             ) {
 
-                // 🔹 Background image
-                val context = LocalContext.current
+                // 🔹 Background image (Header Image)
                 val headerImageUri = context.getHeaderImage()
 
                 if (headerImageUri != null) {
@@ -356,12 +368,11 @@ private fun StatusCard(
 
                     Spacer(Modifier.height(12.dp))
 
-                    // CHIP
+                    // CHIP VERSION
                     Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
+                        modifier = Modifier.clip(RoundedCornerShape(50))
                     ) {
-                        // 🔹 BLUR LAYER (BACKGROUND)
+                        // 🔹 BLUR LAYER (BACKGROUND CHIP)
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
@@ -371,7 +382,7 @@ private fun StatusCard(
                                 )
                         )
 
-                        // 🔹 CONTENT LAYER (NO BLUR)
+                        // 🔹 CONTENT LAYER (TEXT)
                         Text(
                             text = versionText,
                             style = MaterialTheme.typography.labelMedium,
@@ -383,13 +394,17 @@ private fun StatusCard(
             }
         }
 
-        // ==== CARD BAWAH TETAP ====
+        // ==== CARD BAWAH (Superuser & Module) ====
         if (fullFeatured == true) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                TonalCard(modifier = Modifier.weight(1f)) {
+                // Card Superuser
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = cardContainerColor)
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -409,7 +424,11 @@ private fun StatusCard(
                     }
                 }
 
-                TonalCard(modifier = Modifier.weight(1f)) {
+                // Card Module
+                Card(
+                    modifier = Modifier.weight(1f),
+                    colors = CardDefaults.cardColors(containerColor = cardContainerColor)
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
