@@ -156,7 +156,7 @@ import androidx.compose.material3.Surface
 
 import com.topjohnwu.superuser.io.SuFile
 
-private val BadgeAreaHeight = 38.dp
+private val BadgeAreaHeight = 37.dp
 
 @SuppressLint("StringFormatInvalid")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -751,7 +751,7 @@ fun ModuleItem(
             Row(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 16.dp, top = 16.dp)
+                    .padding(start = 16.dp, top = 8.dp)
                     .zIndex(3f),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1005,7 +1005,7 @@ fun BadgeChip(text: String) {
             text = text.uppercase(),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 8.dp, top = 2.dp, end = 8.dp, bottom = 4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurface
         )
     }
