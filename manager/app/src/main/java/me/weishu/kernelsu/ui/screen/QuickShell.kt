@@ -51,6 +51,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+
 // libsu
 import com.topjohnwu.superuser.CallbackList
 import com.topjohnwu.superuser.Shell
@@ -148,10 +153,9 @@ fun QuickShellScreen() {
                 ) {
 
                     // KARTU 1 (INPUT)
-                    // FIX BUG: Tambahkan colors transparan di TonalCard agar tidak solid menutupi background
-                    TonalCard(
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.filledTonalCardColors(
+                        colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
                         )
                     ) {
@@ -190,11 +194,9 @@ fun QuickShellScreen() {
 
                     Spacer(Modifier.height(10.dp))
 
-                    // KARTU 2 (LOGS)
-                    // FIX BUG: Tambahkan colors transparan di TonalCard
-                    TonalCard(
-                        modifier = Modifier.fillMaxSize(),
-                        colors = CardDefaults.filledTonalCardColors(
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
                         )
                     ) {
