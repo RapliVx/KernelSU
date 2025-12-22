@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.system.Os
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -78,6 +79,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.AutoAwesomeMotion
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Phishing
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SettingsSuggest
+import androidx.compose.material.icons.filled.Vaccines
+import androidx.compose.ui.graphics.vector.ImageVector
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -501,41 +519,130 @@ fun DonateCard() {
 @Composable
 private fun InfoCard() {
     val context = LocalContext.current
+    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    TonalCard {
+    // Deteksi versi
+    val isManager = Natives.isManager
+    val ksuVersion = if (isManager) Natives.version else null
+
+    // State expand
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+
+    // Gunakan TonalCard (Solid/Default)
+    TonalCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+            .clickable { expanded = !expanded }
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 16.dp)
+                .padding(all = 24.dp)
         ) {
-            val contents = StringBuilder()
-            val uname = Os.uname()
-
+            // Helper Item Baris
             @Composable
-            fun InfoCardItem(label: String, content: String) {
-                contents.appendLine(label).appendLine(content).appendLine()
-                Text(text = label, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    text = content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.outline
-                )
+            fun InfoCardItem(label: String, content: String, icon: Any? = null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (icon != null) {
+                        val modifier = Modifier.padding(end = 20.dp)
+                        val tint = MaterialTheme.colorScheme.primary
+                        when (icon) {
+                            is ImageVector -> Icon(icon, null, modifier, tint = tint)
+                            is Painter -> Icon(icon, null, modifier, tint = tint)
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = content,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp),
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                }
             }
 
-            InfoCardItem(stringResource(R.string.home_kernel), uname.release)
+            Column {
+                // 1. MANAGER VERSION (Pasti Ada)
+                val managerVersion = getManagerVersion(context)
+                val uidText = if (developerOptionsEnabled) " | UID: ${android.os.Process.myUid()}" else ""
 
-            Spacer(Modifier.height(16.dp))
-            val managerVersion = getManagerVersion(context)
-            InfoCardItem(
-                stringResource(R.string.home_manager_version),
-                "${managerVersion.first} (${managerVersion.second})"
-            )
+                InfoCardItem(
+                    label = stringResource(R.string.home_manager_version),
+                    content = "${managerVersion.first} (${managerVersion.second})$uidText",
+                    icon = Icons.Filled.AutoAwesomeMotion,
+                )
 
-            Spacer(Modifier.height(16.dp))
-            InfoCardItem(stringResource(R.string.home_fingerprint), Build.FINGERPRINT)
+                Spacer(Modifier.height(16.dp))
 
-            Spacer(Modifier.height(16.dp))
-            InfoCardItem(stringResource(R.string.home_selinux_status), getSELinuxStatus())
+                // 2. KERNEL VERSION (Pasti Ada)
+                val uname = Os.uname()
+                InfoCardItem(
+                    label = stringResource(R.string.home_kernel),
+                    content = "${uname.release} (${uname.machine})",
+                    icon = Icons.Filled.Memory,
+                )
+
+                // --- BAGIAN EXPANDABLE ---
+
+                if (!expanded) {
+                    Spacer(Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        IconButton(
+                            onClick = { expanded = true },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowDown,
+                                contentDescription = "Show more"
+                            )
+                        }
+                    }
+                }
+
+                AnimatedVisibility(visible = expanded) {
+                    Column {
+                        // 3. ANDROID VERSION
+                        Spacer(Modifier.height(16.dp))
+                        InfoCardItem(
+                            label = stringResource(R.string.home_android),
+                            content = "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})",
+                            icon = Icons.Filled.Android,
+                        )
+
+                        // 4. SELINUX STATUS
+                        Spacer(Modifier.height(16.dp))
+                        InfoCardItem(
+                            label = stringResource(R.string.home_selinux_status),
+                            content = getSELinuxStatus(), // Fungsi ini biasanya ada di Home.kt
+                            icon = Icons.Filled.Security,
+                        )
+
+                        // 5. FINGERPRINT
+                        Spacer(Modifier.height(16.dp))
+                        InfoCardItem(
+                            label = stringResource(R.string.home_fingerprint),
+                            content = Build.FINGERPRINT,
+                            icon = Icons.Filled.Fingerprint, // Perlu import Icons.Filled.Fingerprint
+                        )
+                    }
+                }
+            }
         }
     }
 }

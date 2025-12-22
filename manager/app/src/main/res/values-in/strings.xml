@@ -153,4 +153,5 @@
     <string name="refresh_release">Lepaskan untuk menyegarkan</string>
     <string name="refresh_refresh">Menyegarkan…</string>
     <string name="refresh_complete">Penyegaran berhasil</string>
+    <string name="home_android">Versi Android</string>
 </resources>
