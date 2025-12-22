@@ -11,6 +11,8 @@
 
 // Toolkit extensions
 #define CHANGE_MANAGER_UID 10006
+#define KSU_UMOUNT_GETSIZE 107
+#define KSU_UMOUNT_GETLIST 108
 #define GET_SULOG_DUMP_V2 10010
 
 // Command structures for ioctl
