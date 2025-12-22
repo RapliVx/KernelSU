@@ -1005,7 +1005,7 @@ fun BadgeChip(text: String) {
             text = text.uppercase(),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier = Modifier.padding(start = 8.dp, top = 2.dp, end = 8.dp, bottom = 4.dp),
             color = MaterialTheme.colorScheme.onSurface
         )
     }
