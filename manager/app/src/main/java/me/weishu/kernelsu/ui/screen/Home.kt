@@ -526,8 +526,15 @@ private fun InfoCard() {
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
 
+    // State expand
     var expanded by rememberSaveable { mutableStateOf(false) }
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessLow), // Putaran smooth pelan
+        label = "arrowRotation"
+    )
 
     TonalCard(
         modifier = Modifier
@@ -594,37 +601,16 @@ private fun InfoCard() {
             }
 
             AnimatedVisibility(
-                visible = !expanded,
-                enter = fadeIn(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    IconButton(
-                        onClick = { expanded = true },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.KeyboardArrowDown,
-                            contentDescription = "Show more"
-                        )
-                    }
-                }
-            }
-
-            AnimatedVisibility(
                 visible = expanded,
-                enter = fadeIn(animationSpec = tween(300)) + expandVertically(
+                enter = fadeIn(animationSpec = tween(400)) + expandVertically(
                     animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
                         stiffness = Spring.StiffnessMediumLow
                     )
                 ),
-                exit = fadeOut(animationSpec = tween(300)) + shrinkVertically(
+                exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(
                     animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
                         stiffness = Spring.StiffnessMediumLow
                     )
                 )
@@ -653,8 +639,24 @@ private fun InfoCard() {
                         content = Build.FINGERPRINT,
                         icon = Icons.Filled.Fingerprint,
                     )
+                }
+            }
 
-                    Spacer(Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "Show more",
+                        modifier = Modifier.rotate(arrowRotation) // Rotasi Smooth
+                    )
                 }
             }
         }
