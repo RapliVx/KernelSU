@@ -288,7 +288,7 @@ private fun StatusCard(
                     .height(170.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .clickable {
-                        if (ksuVersion == null && kernelVersion.isGKI()) {
+                        if (kernelVersion.isGKI()) {
                             onClickInstall()
                         }
                     }
@@ -523,20 +523,11 @@ private fun InfoCard() {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    // Deteksi versi
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
 
-    // State expand
     var expanded by rememberSaveable { mutableStateOf(false) }
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
-
-    // Animasi Rotasi Panah yang Smooth
-    val arrowRotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow), // Slow smooth rotation
-        label = "arrowRotation"
-    )
 
     TonalCard(
         modifier = Modifier
@@ -582,7 +573,6 @@ private fun InfoCard() {
                 }
             }
 
-            // --- KONTEN SELALU MUNCUL ---
             Column {
                 val managerVersion = getManagerVersion(context)
                 val uidText = if (developerOptionsEnabled) " | UID: ${android.os.Process.myUid()}" else ""
@@ -603,43 +593,44 @@ private fun InfoCard() {
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                contentAlignment = Alignment.Center
+            AnimatedVisibility(
+                visible = !expanded,
+                enter = fadeIn(),
+                exit = fadeOut() + shrinkVertically()
             ) {
-                IconButton(
-                    onClick = { expanded = !expanded },
-                    modifier = Modifier.size(36.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = "Show more",
-                        modifier = Modifier.rotate(arrowRotation) // Rotasi smooth
-                    )
+                    IconButton(
+                        onClick = { expanded = true },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = "Show more"
+                        )
+                    }
                 }
             }
 
-            // --- KONTEN EXPANDABLE ---
             AnimatedVisibility(
                 visible = expanded,
                 enter = fadeIn(animationSpec = tween(300)) + expandVertically(
                     animationSpec = spring(
-                        stiffness = Spring.StiffnessMediumLow,
-                        visibilityThreshold = IntSize.VisibilityThreshold
+                        stiffness = Spring.StiffnessMediumLow
                     )
                 ),
                 exit = fadeOut(animationSpec = tween(300)) + shrinkVertically(
                     animationSpec = spring(
-                        stiffness = Spring.StiffnessMediumLow,
-                        visibilityThreshold = IntSize.VisibilityThreshold
+                        stiffness = Spring.StiffnessMediumLow
                     )
                 )
             ) {
-
                 Column {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
 
                     InfoCardItem(
                         label = stringResource(R.string.home_android),
