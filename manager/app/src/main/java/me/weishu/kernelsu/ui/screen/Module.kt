@@ -153,9 +153,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import androidx.compose.material3.Surface
-import me.weishu.kernelsu.ui.component.BackgroundImage
-import me.weishu.kernelsu.ui.util.getBoxOpacity
-import androidx.compose.runtime.mutableFloatStateOf
 
 import com.topjohnwu.superuser.io.SuFile
 
@@ -175,22 +172,16 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
 
     val modules = viewModel.moduleList
 
-    // REACTIVE OPACITY STATE
-    var boxOpacity by remember {
-        mutableFloatStateOf(context.getBoxOpacity())
-    }
-
-    // listen when coming back from settings
     LaunchedEffect(Unit) {
-        boxOpacity = context.getBoxOpacity()
-
         viewModel.checkModuleUpdate = prefs.getBoolean("module_check_update", true)
         viewModel.sortEnabledFirst = prefs.getBoolean("module_sort_enabled_first", false)
         viewModel.sortActionFirst = prefs.getBoolean("module_sort_action_first", false)
 
-        if (viewModel.moduleList.isEmpty() || viewModel.isNeedRefresh) {
-            viewModel.fetchModuleList()
-            scope.launch { viewModel.syncModuleUpdateInfo(viewModel.moduleList) }
+        when {
+            viewModel.moduleList.isEmpty() || viewModel.isNeedRefresh -> {
+                viewModel.fetchModuleList()
+                scope.launch { viewModel.syncModuleUpdateInfo(viewModel.moduleList) }
+            }
         }
     }
 
@@ -208,220 +199,171 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     }
     val hideInstallButton = isSafeMode || magiskInstalled
 
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(
-        rememberTopAppBarState()
-    )
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
     val pullToRefreshState = rememberPullToRefreshState()
 
     val onRefresh: () -> Unit = {
         scope.launch {
             viewModel.fetchModuleList()
-            viewModel.syncModuleUpdateInfo(viewModel.moduleList)
+            scope.launch { viewModel.syncModuleUpdateInfo(viewModel.moduleList) }
         }
     }
 
     val scaleFraction = {
         if (viewModel.isRefreshing) 1f
-        else LinearOutSlowInEasing
-            .transform(pullToRefreshState.distanceFraction)
-            .coerceIn(0f, 1f)
+        else LinearOutSlowInEasing.transform(pullToRefreshState.distanceFraction).coerceIn(0f, 1f)
     }
 
-    BackgroundImage { containerColor ->
-
-        Scaffold(
-            modifier = Modifier.pullToRefresh(
-                state = pullToRefreshState,
-                isRefreshing = viewModel.isRefreshing,
-                onRefresh = onRefresh,
-            ),
-            containerColor = containerColor,
-
-            topBar = {
-                SearchAppBar(
-                    title = { Text(stringResource(R.string.module)) },
-                    searchText = viewModel.search,
-                    onSearchTextChange = { viewModel.search = it },
-                    onClearClick = {
-                        viewModel.search = TextFieldValue("")
-                    },
-                    actionsContent = {
-                        IconButton(
-                            onClick = {
-                                navigator.navigate(ModuleRepoScreenDestination)
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.CloudDownload,
-                                contentDescription = stringResource(R.string.module_repos)
-                            )
-                        }
-                        RebootListPopup()
-                    },
-                    dropdownContent = {
-                        var showDropdown by remember { mutableStateOf(false) }
-
-                        IconButton(onClick = { showDropdown = true }) {
-                            Icon(
-                                imageVector = Icons.Filled.MoreVert,
-                                contentDescription = stringResource(R.string.settings)
-                            )
-                        }
-
-                        DropdownMenu(
-                            expanded = showDropdown,
-                            onDismissRequest = { showDropdown = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.module_sort_action_first)) },
-                                trailingIcon = {
-                                    Checkbox(viewModel.sortActionFirst, null)
-                                },
-                                onClick = {
-                                    viewModel.sortActionFirst = !viewModel.sortActionFirst
-                                    prefs.edit {
-                                        putBoolean(
-                                            "module_sort_action_first",
-                                            viewModel.sortActionFirst
-                                        )
-                                    }
-                                    scope.launch { viewModel.fetchModuleList() }
-                                    showDropdown = false
-                                }
-                            )
-
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.module_sort_enabled_first)) },
-                                trailingIcon = {
-                                    Checkbox(viewModel.sortEnabledFirst, null)
-                                },
-                                onClick = {
-                                    viewModel.sortEnabledFirst = !viewModel.sortEnabledFirst
-                                    prefs.edit {
-                                        putBoolean(
-                                            "module_sort_enabled_first",
-                                            viewModel.sortEnabledFirst
-                                        )
-                                    }
-                                    scope.launch { viewModel.fetchModuleList() }
-                                    showDropdown = false
-                                }
-                            )
-                        }
-                    },
-                    scrollBehavior = scrollBehavior
-                )
-            },
-
-            floatingActionButton = {
-                if (!hideInstallButton) {
-                    val moduleInstall = stringResource(R.string.module_install)
-
-                    val selectZipLauncher =
-                        rememberLauncherForActivityResult(
-                            contract = ActivityResultContracts.StartActivityForResult()
-                        ) {
-                            if (it.resultCode != RESULT_OK) return@rememberLauncherForActivityResult
-                            val data = it.data ?: return@rememberLauncherForActivityResult
-
-                            val uris = mutableListOf<Uri>()
-                            data.clipData?.let { clip ->
-                                for (i in 0 until clip.itemCount) {
-                                    clip.getItemAt(i)?.uri?.let(uris::add)
-                                }
-                            } ?: data.data?.let(uris::add)
-
-                            navigator.navigate(
-                                FlashScreenDestination(
-                                    flashIt = FlashIt.FlashModules(uris),
-                                    skipConfirmation = uris.size == 1
-                                )
-                            )
-                            viewModel.markNeedRefresh()
-                        }
-
-                    ExtendedFloatingActionButton(
-                        onClick = {
-                            selectZipLauncher.launch(
-                                Intent(Intent.ACTION_GET_CONTENT).apply {
-                                    type = "application/zip"
-                                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                                }
-                            )
-                        },
-                        icon = { Icon(Icons.Filled.Add, moduleInstall) },
-                        text = { Text(moduleInstall) }
-                    )
-                }
-            },
-
-            contentWindowInsets = WindowInsets.safeDrawing.only(
-                WindowInsetsSides.Top + WindowInsetsSides.Horizontal
-            ),
-
-            snackbarHost = {
-                SnackbarHost(hostState = snackBarHost)
-            }
-        ) { innerPadding ->
-
-            // SEMI-TRANSPARENT SURFACE CONTAINER DI ATAS BACKGROUND
-            Surface(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = boxOpacity),
-            ) {
-
-                when {
-                    magiskInstalled -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.module_magisk_conflict),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-
-                    else -> {
-                        ModuleList(
-                            navigator = navigator,
-                            viewModel = viewModel,
-                            modifier = Modifier
-                                .nestedScroll(scrollBehavior.nestedScrollConnection),
-                            boxModifier = Modifier.fillMaxSize(),
-                            onInstallModule = {
-                                navigator.navigate(
-                                    FlashScreenDestination(
-                                        flashIt = FlashIt.FlashModules(listOf(it)),
-                                        skipConfirmation = true
-                                    )
-                                )
-                                viewModel.markNeedRefresh()
-                            },
-                            onClickModule = { id, name, hasWebUi ->
-                                if (hasWebUi) {
-                                    webUILauncher.launch(
-                                        Intent(context, WebUIActivity::class.java)
-                                            .setData(Uri.parse("kernelsu://webui/$id"))
-                                            .putExtra("id", id)
-                                            .putExtra("name", name)
-                                    )
-                                }
-                            },
-                            context = context,
-                            snackBarHost = snackBarHost,
-                            pullToRefreshState = pullToRefreshState,
-                            isRefreshing = viewModel.isRefreshing,
-                            scaleFraction = scaleFraction()
+    Scaffold(
+        modifier = Modifier.pullToRefresh(
+            state = pullToRefreshState,
+            isRefreshing = viewModel.isRefreshing,
+            onRefresh = onRefresh,
+        ),
+        topBar = {
+            SearchAppBar(
+                title = { Text(stringResource(R.string.module)) },
+                searchText = viewModel.search,
+                onSearchTextChange = { viewModel.search = it },
+                onClearClick = { viewModel.search = TextFieldValue("") },
+                actionsContent = {
+                    IconButton(
+                        onClick = { navigator.navigate(ModuleRepoScreenDestination) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CloudDownload,
+                            contentDescription = stringResource(id = R.string.module_repos)
                         )
                     }
+                    RebootListPopup()
+                },
+                dropdownContent = {
+                    var showDropdown by remember { mutableStateOf(false) }
+
+                    IconButton(
+                        onClick = { showDropdown = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreVert,
+                            contentDescription = stringResource(id = R.string.settings)
+                        )
+
+                        DropdownMenu(expanded = showDropdown, onDismissRequest = {
+                            showDropdown = false
+                        }) {
+                            DropdownMenuItem(text = {
+                                Text(stringResource(R.string.module_sort_action_first))
+                            }, trailingIcon = {
+                                Checkbox(viewModel.sortActionFirst, null)
+                            }, onClick = {
+                                viewModel.sortActionFirst = !viewModel.sortActionFirst
+                                prefs.edit {
+                                    putBoolean("module_sort_action_first", viewModel.sortActionFirst)
+                                }
+                                scope.launch { viewModel.fetchModuleList() }
+                            })
+                            DropdownMenuItem(text = {
+                                Text(stringResource(R.string.module_sort_enabled_first))
+                            }, trailingIcon = {
+                                Checkbox(viewModel.sortEnabledFirst, null)
+                            }, onClick = {
+                                viewModel.sortEnabledFirst = !viewModel.sortEnabledFirst
+                                prefs.edit {
+                                    putBoolean("module_sort_enabled_first", viewModel.sortEnabledFirst)
+                                }
+                                scope.launch { viewModel.fetchModuleList() }
+                            })
+                        }
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+            )
+        },
+        floatingActionButton = {
+            if (!hideInstallButton) {
+                val moduleInstall = stringResource(id = R.string.module_install)
+                val selectZipLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.StartActivityForResult()
+                ) {
+                    if (it.resultCode != RESULT_OK) {
+                        return@rememberLauncherForActivityResult
+                    }
+                    val data = it.data ?: return@rememberLauncherForActivityResult
+                    val clipData = data.clipData
+
+                    val uris = mutableListOf<Uri>()
+                    if (clipData != null) {
+                        for (i in 0 until clipData.itemCount) {
+                            clipData.getItemAt(i)?.uri?.let { uris.add(it) }
+                        }
+                    } else {
+                        data.data?.let { uris.add(it) }
+                    }
+
+                    navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(uris), skipConfirmation = uris.size == 1))
+                    viewModel.markNeedRefresh()
                 }
+
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        // Select the zip files to install
+                        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                            type = "application/zip"
+                            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                        }
+                        selectZipLauncher.launch(intent)
+                    },
+                    icon = { Icon(Icons.Filled.Add, moduleInstall) },
+                    text = { Text(text = moduleInstall) },
+                )
+            }
+        },
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+        snackbarHost = { SnackbarHost(hostState = snackBarHost) }
+    ) { innerPadding ->
+
+        when {
+            magiskInstalled -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        stringResource(R.string.module_magisk_conflict),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+
+            else -> {
+                ModuleList(
+                    navigator,
+                    viewModel = viewModel,
+                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                    boxModifier = Modifier.padding(innerPadding),
+                    onInstallModule = {
+                        navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(listOf(it)), skipConfirmation = true))
+                        viewModel.markNeedRefresh()
+                    },
+                    onClickModule = { id, name, hasWebUi ->
+                        if (hasWebUi) {
+                            webUILauncher.launch(
+                                Intent(context, WebUIActivity::class.java)
+                                    .setData(Uri.parse("kernelsu://webui/$id"))
+                                    .putExtra("id", id)
+                                    .putExtra("name", name)
+                            )
+                        }
+                    },
+                    context = context,
+                    snackBarHost = snackBarHost,
+                    pullToRefreshState = pullToRefreshState,
+                    isRefreshing = viewModel.isRefreshing,
+                    scaleFraction = scaleFraction()
+                )
             }
         }
     }
@@ -694,6 +636,7 @@ fun ModuleItem(
         )
 
         val contentTopPadding by animateDpAsState(
+
             targetValue = if (expanded)
                 BadgeAreaHeight + 8.dp   // expanded
             else

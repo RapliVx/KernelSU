@@ -76,7 +76,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Surface
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.text.font.FontWeight
 import me.weishu.kernelsu.ui.util.getHeaderImage
@@ -94,106 +93,83 @@ import me.weishu.kernelsu.ui.util.getSELinuxStatus
 import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.rootAvailable
-import me.weishu.kernelsu.ui.component.BackgroundImage
-import me.weishu.kernelsu.ui.util.getBoxOpacity
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>(start = true)
 @Composable
 fun HomeScreen(navigator: DestinationsNavigator) {
     val kernelVersion = getKernelVersion()
-    val scrollBehavior =
-        TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
-    val context = LocalContext.current
-
-    // REACTIVE OPACITY STATE
-    var boxOpacity by remember {
-        mutableFloatStateOf(context.getBoxOpacity())
-    }
-
-    // listen when coming back from settings
-    LaunchedEffect(Unit) {
-        boxOpacity = context.getBoxOpacity()
-    }
-
-    BackgroundImage { containerColor ->
-        Scaffold(
-            containerColor = containerColor,
-            topBar = { TopBar(scrollBehavior = scrollBehavior) },
-            contentWindowInsets = WindowInsets.safeDrawing.only(
-                WindowInsetsSides.Top + WindowInsetsSides.Horizontal
-            )
-        ) { innerPadding ->
-
-            // SEMI-TRANSPARENT SURFACE CONTAINER
-            Surface(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = boxOpacity),
-            ) {
-
-                Column(
-                    modifier = Modifier
-                        .nestedScroll(scrollBehavior.nestedScrollConnection)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    val isManager = Natives.isManager
-                    val ksuVersion = if (isManager) Natives.version else null
-                    val lkmMode = ksuVersion?.let {
-                        if (kernelVersion.isGKI()) Natives.isLkmMode else null
-                    }
-                    val fullFeatured =
-                        isManager && !Natives.requireNewKernel() && rootAvailable()
-
-                    StatusCard(
-                        kernelVersion,
-                        ksuVersion,
-                        lkmMode,
-                        fullFeatured,
-                        onClickInstall = {
-                            navigator.navigate(InstallScreenDestination)
-                        },
-                        onClickSuperuser = {
-                            navigator.navigate(SuperUserScreenDestination) {
-                                popUpTo(NavGraphs.root) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        onclickModule = {
-                            navigator.navigate(ModuleScreenDestination) {
-                                popUpTo(NavGraphs.root) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
-
-                    if (isManager && Natives.requireNewKernel()) {
-                        WarningCard(
-                            stringResource(R.string.require_kernel_version)
-                                .format(ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL)
-                        )
-                    }
-
-                    if (ksuVersion != null && !rootAvailable()) {
-                        WarningCard(stringResource(R.string.grant_root_failed))
-                    }
-
-                    InfoCard()
-                    DonateCard()
-                    LearnMoreCard()
-                    Spacer(Modifier)
-                }
+    Scaffold(
+        topBar = { TopBar(scrollBehavior = scrollBehavior) },
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            val isManager = Natives.isManager
+            val ksuVersion = if (isManager) Natives.version else null
+            val lkmMode = ksuVersion?.let {
+                if (kernelVersion.isGKI()) Natives.isLkmMode else null
             }
+            val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
+
+            StatusCard(
+                kernelVersion,
+                ksuVersion,
+                lkmMode,
+                fullFeatured,
+                onClickInstall = { navigator.navigate(InstallScreenDestination) },
+                onClickSuperuser = {
+                    navigator.navigate(SuperUserScreenDestination) {
+                        popUpTo(NavGraphs.root) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onclickModule = {
+                    navigator.navigate(ModuleScreenDestination) {
+                        popUpTo(NavGraphs.root) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            )
+//            if (ksuVersion != null && !Natives.isLkmMode) {
+//                WarningCard(stringResource(id = R.string.home_gki_warning))
+//            }
+            if (isManager && Natives.requireNewKernel()) {
+                WarningCard(
+                    stringResource(id = R.string.require_kernel_version).format(
+                        ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL
+                    )
+                )
+            }
+            if (ksuVersion != null && !rootAvailable()) {
+                WarningCard(
+                    stringResource(id = R.string.grant_root_failed)
+                )
+            }
+//            val checkUpdate =
+//                LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
+//                    .getBoolean("check_update", true)
+//            if (checkUpdate) {
+//                UpdateCard()
+//            }
+            InfoCard()
+            DonateCard()
+            LearnMoreCard()
+            Spacer(Modifier)
         }
     }
 }
@@ -269,13 +245,6 @@ private fun StatusCard(
     onClickSuperuser: () -> Unit = {},
     onclickModule: () -> Unit = {},
 ) {
-    val context = LocalContext.current
-    // Ambil nilai opacity dari setting user
-    val currentBoxOpacity = remember { context.getBoxOpacity() }
-
-    // Gunakan warna solid sesuai tema (tanpa transparansi custom)
-    val cardContainerColor = MaterialTheme.colorScheme.secondaryContainer
-
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
         val workingMode = when (lkmMode) {
@@ -292,13 +261,7 @@ private fun StatusCard(
 
         val cs = MaterialTheme.colorScheme
 
-        // === CARD STATUS UTAMA ===
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.Transparent
-            )
-        ) {
+        TonalCard(containerColor = Color.Transparent) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -311,7 +274,8 @@ private fun StatusCard(
                     }
             ) {
 
-                // 🔹 Background image (Header Image)
+                // 🔹 Background image
+                val context = LocalContext.current
                 val headerImageUri = context.getHeaderImage()
 
                 if (headerImageUri != null) {
@@ -368,11 +332,12 @@ private fun StatusCard(
 
                     Spacer(Modifier.height(12.dp))
 
-                    // CHIP VERSION
+                    // CHIP
                     Box(
-                        modifier = Modifier.clip(RoundedCornerShape(50))
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
                     ) {
-                        // 🔹 BLUR LAYER (BACKGROUND CHIP)
+                        // 🔹 BLUR LAYER (BACKGROUND)
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
@@ -382,7 +347,7 @@ private fun StatusCard(
                                 )
                         )
 
-                        // 🔹 CONTENT LAYER (TEXT)
+                        // 🔹 CONTENT LAYER (NO BLUR)
                         Text(
                             text = versionText,
                             style = MaterialTheme.typography.labelMedium,
@@ -394,17 +359,13 @@ private fun StatusCard(
             }
         }
 
-        // ==== CARD BAWAH (Superuser & Module) ====
+        // ==== CARD BAWAH TETAP ====
         if (fullFeatured == true) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Card Superuser
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = cardContainerColor)
-                ) {
+                TonalCard(modifier = Modifier.weight(1f)) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -424,11 +385,7 @@ private fun StatusCard(
                     }
                 }
 
-                // Card Module
-                Card(
-                    modifier = Modifier.weight(1f),
-                    colors = CardDefaults.cardColors(containerColor = cardContainerColor)
-                ) {
+                TonalCard(modifier = Modifier.weight(1f)) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()

@@ -102,14 +102,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
-import me.weishu.kernelsu.ui.util.getBackgroundImage
-import me.weishu.kernelsu.ui.util.saveBackgroundImage
-import me.weishu.kernelsu.ui.util.clearBackgroundImage
-import me.weishu.kernelsu.ui.util.getBoxOpacity
-import me.weishu.kernelsu.ui.util.saveBoxOpacity
-import androidx.compose.material.icons.filled.Opacity
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 
 private val keyColorOptions = listOf(
     Color(0xFF1A73E8).toArgb(),
@@ -127,16 +119,15 @@ private val keyColorOptions = listOf(
 @Composable
 fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     val context = LocalContext.current
-
     var hasCustomHeader by rememberSaveable {
         mutableStateOf(context.getHeaderImage() != null)
     }
-
     val imagePicker =
         rememberLauncherForActivityResult(
             ActivityResultContracts.OpenDocument()
         ) { uri ->
             if (uri == null) {
+                // User cancel → revert toggle
                 hasCustomHeader = false
             } else {
                 context.contentResolver.takePersistableUriPermission(
@@ -144,32 +135,8 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
                 context.saveHeaderImage(uri.toString())
+
                 hasCustomHeader = true
-            }
-        }
-
-    var boxOpacity by rememberSaveable {
-        mutableStateOf(context.getBoxOpacity())
-    }
-
-    var useCustomBackground by rememberSaveable {
-        mutableStateOf(context.getBackgroundImage() != null)
-    }
-
-    val backgroundImagePicker =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.OpenDocument()
-        ) { uri ->
-            if (uri == null) {
-                context.clearBackgroundImage()
-                useCustomBackground = false
-            } else {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-                context.saveBackgroundImage(uri.toString())
-                useCustomBackground = true
             }
         }
 
@@ -177,9 +144,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     var appSettings by remember { mutableStateOf(ThemeController.getAppSettings(context)) }
     var currentColorMode by remember { mutableStateOf(appSettings.colorMode) }
     var currentKeyColor by remember { mutableIntStateOf(appSettings.keyColor) }
-    var currentLauncherIcon by remember {
-        mutableStateOf(prefs.getBoolean("enable_official_launcher", false))
-    }
+    var currentLauncherIcon by remember { mutableStateOf(prefs.getBoolean("enable_official_launcher", false)) }
 
     Scaffold(
         topBar = {
@@ -417,167 +382,6 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     }
                 }
             }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                // === TITLE CHIP ===
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Surface(
-                        modifier = Modifier.padding(4.dp),
-                        shape = RoundedCornerShape(999.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ) {
-                        Text(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            text = stringResource(R.string.background_image),
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // === TOGGLE GROUP ===
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(
-                        ButtonGroupDefaults.ConnectedSpaceBetween
-                    )
-                ) {
-                    val backgroundOptions = listOf(false, true) // false = default, true = custom
-
-                    backgroundOptions.forEachIndexed { index, isCustom ->
-                        ToggleButton(
-                            checked = useCustomBackground == isCustom,
-                            onCheckedChange = { checked ->
-                                if (!checked) return@ToggleButton
-
-                                if (isCustom) {
-                                    useCustomBackground = true
-                                    backgroundImagePicker.launch(arrayOf("image/*"))
-                                } else {
-                                    context.clearBackgroundImage()
-                                    useCustomBackground = false
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                backgroundOptions.lastIndex ->
-                                    ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else ->
-                                    ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            }
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = if (isCustom)
-                                        Icons.Filled.Image
-                                    else
-                                        Icons.Filled.Restore,
-                                    contentDescription = null
-                                )
-                                Text(
-                                    text = if (isCustom)
-                                        stringResource(R.string.background_custom)
-                                    else
-                                        stringResource(R.string.background_default)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-
-                // === TITLE CHIP ===
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                    tonalElevation = 1.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Filled.Opacity,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.box_opacity),
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                // === SLIDER CARD ===
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 2.dp
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = stringResource(R.string.opacity),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = "${(boxOpacity * 100).toInt()}%",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        Spacer(Modifier.height(8.dp))
-
-                        Slider(
-                            value = boxOpacity,
-                            onValueChange = {
-                                boxOpacity = it
-                                context.saveBoxOpacity(it) // ✅ util kamu
-                            },
-                            valueRange = 0.1f..1f,
-                            steps = 8,
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -678,16 +482,16 @@ private fun ThemePreviewCard(keyColor: Int, isDark: Boolean, currentLauncherIcon
 private fun ColorButton(color: Color, isSelected: Boolean, isDark: Boolean, onClick: () -> Unit) {
     val context = LocalContext.current
     val colorScheme =
-            if (color == Color.Unspecified) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (isDark) dynamicDarkColorScheme(context)
-                    else dynamicLightColorScheme(context)
-                } else {
-                    MaterialTheme.colorScheme
-                }
+        if (color == Color.Unspecified) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (isDark) dynamicDarkColorScheme(context)
+                else dynamicLightColorScheme(context)
             } else {
-                rememberDynamicColorScheme(seedColor = color, isDark = isDark)
+                MaterialTheme.colorScheme
             }
+        } else {
+            rememberDynamicColorScheme(seedColor = color, isDark = isDark)
+        }
 
     Surface(
         onClick = onClick,
