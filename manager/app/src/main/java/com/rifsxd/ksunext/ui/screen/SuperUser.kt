@@ -1,5 +1,6 @@
 package com.rifsxd.ksunext.ui.screen
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -150,6 +151,10 @@ private fun AppItem(
     app: SuperUserViewModel.AppInfo,
     onClickListener: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+
     ListItem(
         modifier = Modifier.clickable(onClick = onClickListener),
         headlineContent = { Text(
@@ -170,8 +175,13 @@ private fun AppItem(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (app.allowSu) {
+                        val rootLabel = if (developerOptionsEnabled) {
+                            "ROOT | UID: ${app.uid}"
+                        } else {
+                            "ROOT"
+                        }
                         LabelItem(
-                            text = "ROOT",
+                            text = rootLabel,
                         )
                     } else {
                         if (Natives.uidShouldUmount(app.uid)) {
