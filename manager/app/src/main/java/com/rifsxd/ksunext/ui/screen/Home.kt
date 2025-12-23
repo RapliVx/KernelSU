@@ -548,14 +548,10 @@ private fun StatusCard(
                 .padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
             when {
                 ksuVersion != null -> {
-                    val workingMode = when {
-                        lkmMode == true -> "LKM"
-                        lkmMode == false || kernelVersion.isGKI() -> "GKI2"
-                        lkmMode == null && kernelVersion.isULegacy() -> "U-LEGACY"
-                        lkmMode == null && kernelVersion.isLegacy() -> "LEGACY"
-                        lkmMode == null && kernelVersion.isGKI1() -> "GKI1"
-                        else -> "NON-STANDARD"
-                    }
+                    val workingMode = if (lkmMode == true || lkmMode == false) {
+                        val mode = if (lkmMode == true) "LKM" else "BUILT-IN"
+                        "$mode (" + kernelVersion.getKernelType() + ")"
+                    } else kernelVersion.getKernelType()
 
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
