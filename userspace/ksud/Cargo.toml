@@ -9,14 +9,33 @@ edition = "2024"
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 const_format = "0.2"
-zip = { version = "3",  features = [
+log = "0.4"
+env_logger = { version = "0.11", default-features = false }
+rust-embed = { version = "8", features = [
+    "debug-embed",
+    "compression", # must clean build after updating binaries
+] }
+which = "8"
+sha1 = "0.10"
+sha256 = "1"
+tempfile = "3"
+chrono = "0.4"
+regex-lite = "0.1"
+
+[target.'cfg(target_os = "android")'.dependencies]
+rustix = { version = "1", features = [
+    "all-apis",
+] }
+android-properties = { version = "0.2", features = ["bionic-deprecated"] }
+android_logger = { version = "0.15", default-features = false }
+zip = { version = "7",  features = [
     "deflate",
     "deflate64",
     "time",
     "lzma",
     "xz",
 ], default-features = false }
-zip-extensions = { version = "0.8", features = [
+zip-extensions = { version = "0.13", features = [
     "deflate",
     "lzma",
     "xz",
@@ -37,7 +56,6 @@ rust-embed = { version = "8", features = [
     "debug-embed",
     "compression", # must clean build after updating binaries
 ] }
-which = "7"
 getopts = "0.2"
 sha256 = "1"
 sha1 = "0.10"
@@ -52,7 +70,6 @@ rustix = { version = "=1.0.8", features = [
 # some android specific dependencies which compiles under unix are also listed here for convenience of coding
 android-properties = { version = "0.2", features = ["bionic-deprecated"] }
 
-[target.'cfg(target_os = "android")'.dependencies]
 android_logger = { version = "0.15", default-features = false }
 
 [profile.release]

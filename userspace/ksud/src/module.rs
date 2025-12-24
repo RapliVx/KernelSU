@@ -22,7 +22,7 @@ use std::{
     process::Command,
     str::FromStr,
 };
-use zip_extensions::zip_extract_file_to_memory;
+use zip_extensions::inflate::zip_extract::zip_extract_file_to_memory;
 
 use crate::defs::{MODULE_DIR, MODULE_UPDATE_DIR, UPDATE_FILE_NAME};
 use crate::module::ModuleType::{Active, All};

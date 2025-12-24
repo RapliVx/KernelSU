@@ -66,7 +66,7 @@ fn parse_feature_id(name: &str) -> Result<FeatureId> {
         "kernel_umount" | "1" => Ok(FeatureId::KernelUmount),
         "enhanced_security" | "2" => Ok(FeatureId::EnhancedSecurity),
         "avc_spoof" | "10003" => Ok(FeatureId::AvcSpoof),
-        _ => bail!("Unknown feature: {}", name),
+        _ => bail!("Unknown feature: {name}"),
     }
 }
 

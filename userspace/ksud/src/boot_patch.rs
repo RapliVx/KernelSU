@@ -145,8 +145,7 @@ fn parse_kmi_from_boot(magiskboot: &Path, image: &PathBuf, workdir: &Path) -> Re
 
     if !status.success() {
         bail!(
-            "magiskboot unpack failed with status: {:?}",
-            status.code().unwrap()
+            "magiskboot unpack failed with status: {status:?}",
         );
     }
 
@@ -163,7 +162,7 @@ fn do_cpio_cmd(magiskboot: &Path, workdir: &Path, cmd: &str) -> Result<()> {
         .arg(cmd)
         .status()?;
 
-    ensure!(status.success(), "magiskboot cpio {} failed", cmd);
+    ensure!(status.success(), "magiskboot cpio {cmd} failed");
     Ok(())
 }
 
@@ -178,7 +177,7 @@ fn do_vendor_init_boot_cpio_cmd(magiskboot: &Path, workdir: &Path, cmd: &str) ->
         .arg(cmd)
         .status()?;
 
-    ensure!(status.success(), "magiskboot cpio {} failed", cmd);
+    ensure!(status.success(), "magiskboot cpio {cmd} failed");
     Ok(())
 }
 
@@ -193,7 +192,7 @@ fn do_vendor_ramdisk_cpio_cmd(magiskboot: &Path, workdir: &Path, cmd: &str) -> R
         .arg(cmd)
         .status()?;
 
-    ensure!(status.success(), "magiskboot cpio {} failed", cmd);
+    ensure!(status.success(), "magiskboot cpio {cmd} failed");
     Ok(())
 }
 
@@ -287,9 +286,9 @@ fn dd<P: AsRef<Path>, Q: AsRef<Path>>(ifile: P, ofile: Q) -> Result<()> {
         .status()?;
     ensure!(
         status.success(),
-        "dd if={:?} of={:?} failed",
-        ifile.as_ref(),
-        ofile.as_ref()
+        "dd if={} of={} failed",
+        ifile.as_ref().display(),
+        ofile.as_ref().display()
     );
     Ok(())
 }
@@ -845,7 +844,7 @@ fn find_magiskboot(magiskboot_path: Option<PathBuf>, workdir: &Path) -> Result<P
                     .context("copy magiskboot failed")?;
                 magiskboot_path
             };
-            ensure!(magiskboot.exists(), "{magiskboot:?} is not exist");
+            ensure!(magiskboot.exists(), "{} is not exist", magiskboot.display());
             #[cfg(unix)]
             let _ = std::fs::set_permissions(&magiskboot, std::fs::Permissions::from_mode(0o755));
             magiskboot
