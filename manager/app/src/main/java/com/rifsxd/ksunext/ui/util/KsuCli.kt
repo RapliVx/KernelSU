@@ -527,42 +527,29 @@ fun zygiskRequired(dir: File): Boolean {
     return (SuFile(dir, "zygisk").listFiles()?.size ?: 0) > 0
 }
 
-fun getZygiskImplementation(): String {
+fun getZygiskImplementation(property: String): String {
     val modulesPath = "/data/adb/modules"
-    val zygiskModuleIds = arrayOf(
-        "rezygisk",
-        "zygisksu"
-    )
-    return try {
-        zygiskModuleIds.firstNotNullOfOrNull { moduleName ->
-            val modulePath = "$modulesPath/$moduleName"
-            val isEnabled = ShellUtils.fastCmdResult("test -f $modulePath/module.prop && test ! -f $modulePath/disable")
-            if (!isEnabled) return@firstNotNullOfOrNull null
-            ShellUtils.fastCmd("grep '^name=' $modulePath/module.prop | cut -d'=' -f2").takeIf { it.isNotBlank() }
-        } ?: "None"
-    } catch (_: Exception) {
-        "None"
-    }.also { result ->
-        Log.i(TAG, "Zygisk implement: $result")
-    }
-}
+    val zygiskModuleIds = arrayOf("rezygisk", "zygisksu")
 
-fun getZygiskVersion(): String {
-    val modulesPath = "/data/adb/modules"
-    val zygiskModuleIds = arrayOf(
-        "rezygisk",
-        "zygisksu"
-    )
-    return try {
-        zygiskModuleIds.firstNotNullOfOrNull { moduleName ->
-            val modulePath = "$modulesPath/$moduleName"
-            val isEnabled = ShellUtils.fastCmdResult("test -f $modulePath/module.prop && test ! -f $modulePath/disable")
-            if (!isEnabled) return@firstNotNullOfOrNull null
-            ShellUtils.fastCmd("grep '^version=' $modulePath/module.prop | cut -d'=' -f2").takeIf { it.isNotBlank() }
-        } ?: "None"
-    } catch (_: Exception) {
-        "None"
+    for (moduleId in zygiskModuleIds) {
+        val moduleDir = SuFile.open("$modulesPath/$moduleId")
+        if (!moduleDir.isDirectory) continue
+        if (SuFile.open("$modulesPath/$moduleId/disable").isFile ||
+            SuFile.open("$modulesPath/$moduleId/remove").isFile
+        ) continue
+
+        val propFile = SuFile.open("$modulesPath/$moduleId/module.prop")
+        if (!propFile.isFile) continue
+
+        val prop = Properties().apply { load(propFile.newInputStream()) }
+        prop.getProperty(property)?.let {
+            Log.i(TAG, "Zygisk $property: $it")
+            return it
+        }
     }
+
+    Log.i(TAG, "Zygisk $property: None")
+    return "None"
 }
 
 fun restartActivity(context: Context) {
