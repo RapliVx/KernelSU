@@ -37,6 +37,7 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
+import com.rifsxd.ksunext.*
 import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ui.component.DialogHandle
 import com.rifsxd.ksunext.ui.component.rememberConfirmDialog
@@ -179,8 +180,13 @@ sealed class InstallMethod {
 private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
     val rootAvailable = rootAvailable()
     val isAbDevice = isAbDevice()
+    val kernelVersion = getKernelVersion()
     val selectFileTip = stringResource(
-        id = R.string.select_file_tip, if (isInitBoot()) "init_boot/vendor_boot" else "boot"
+        id = R.string.select_file_tip,
+        if (kernelVersion.isKernel510())
+            "boot"
+        else
+            "init_boot/vendor_boot"
     )
     val radioOptions =
         mutableListOf<InstallMethod>(InstallMethod.SelectFile(summary = selectFileTip))
