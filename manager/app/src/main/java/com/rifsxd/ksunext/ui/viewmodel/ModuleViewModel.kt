@@ -47,7 +47,8 @@ class ModuleViewModel : ViewModel() {
         val size: Long,
         val banner: String,
         val zygiskRequired: Boolean,
-        val isMetaModule: Boolean
+        val isMetaModule: Boolean,
+        val donate: String,
     )
 
     data class ModuleUpdateInfo(
@@ -155,7 +156,8 @@ class ModuleViewModel : ViewModel() {
                                 size,
                                 obj.optString("banner"),
                                 zygiskRequired,
-                                metaModule
+                                metaModule,
+                                obj.optString("donate")
                             )
                         }.toList()
                     isNeedRefresh = false

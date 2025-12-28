@@ -231,4 +231,5 @@
     <string name="settings_disable_enhanced_security">Disable enhanced security</string>
     <string name="settings_disable_enhanced_security_summary">Disable stricter security policies.</string>
     <string name="meta_module">Meta</string>
+    <string name="donate">Donate</string>
 </resources>

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.outlined.Wysiwyg
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Terminal
@@ -1147,6 +1148,40 @@ fun ModuleItem(
                                         )
                                     }
                                 }
+
+                                Spacer(modifier = Modifier.weight(0.1f, true))
+                            }
+
+                            if (module.donate.isNotEmpty()) {
+                                val donateUrl = module.donate
+                                val ctx = LocalContext.current
+                                FilledTonalButton(
+                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                    enabled = !module.remove && module.enabled && filterZygiskModules,
+                                    onClick = {
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, donateUrl.toUri())
+                                            ctx.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(ctx, "Invalid donate url", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.Outlined.AttachMoney,
+                                        contentDescription = null
+                                    )
+                                    if (!module.hasActionScript && !module.hasWebUi && updateUrl.isEmpty()) {
+                                        Text(
+                                            modifier = Modifier.padding(start = 7.dp),
+                                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+                                            fontSize = MaterialTheme.typography.labelMedium.fontSize,
+                                            text = stringResource(R.string.donate)
+                                        )
+                                    }
+                                }
                             }
 
                             Spacer(modifier = Modifier.weight(1f, true))
@@ -1164,7 +1199,7 @@ fun ModuleItem(
                                         imageVector = Icons.Outlined.Download,
                                         contentDescription = null
                                     )
-                                    if (!module.hasActionScript || !module.hasWebUi) {
+                                    if (!module.hasActionScript || !module.hasWebUi || module.donate.isNotEmpty()) {
                                         Text(
                                             modifier = Modifier.padding(start = 7.dp),
                                             fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
@@ -1188,7 +1223,7 @@ fun ModuleItem(
                                         imageVector = Icons.Outlined.Restore,
                                         contentDescription = null
                                     )
-                                    if (!module.hasActionScript && !module.hasWebUi && updateUrl.isEmpty()) {
+                                    if (!module.hasActionScript && !module.hasWebUi && updateUrl.isEmpty() && module.donate.isEmpty()) {
                                         Text(
                                             modifier = Modifier.padding(start = 7.dp),
                                             fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
@@ -1260,7 +1295,8 @@ fun ModuleItemPreview() {
         size = 12345678L,
         banner = "",
         zygiskRequired = false,
-        isMetaModule = false
+        isMetaModule = false,
+        donate = ""
     )
     ModuleItem(EmptyDestinationsNavigator, module, "", {}, {}, {}, {}, {}, false, {})
 }
