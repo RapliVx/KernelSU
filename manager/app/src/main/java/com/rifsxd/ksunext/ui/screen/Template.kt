@@ -1,5 +1,6 @@
 package com.rifsxd.ksunext.ui.screen
 
+import android.content.ClipData
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -19,6 +20,8 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -94,7 +97,7 @@ fun AppProfileTemplateScreen(
 
     Scaffold(
         topBar = {
-            val clipboardManager = LocalClipboardManager.current
+            val clipboard = LocalClipboard.current
             val context = LocalContext.current
             val showToast = fun(msg: String) {
                 scope.launch(Dispatchers.Main) {
@@ -107,12 +110,12 @@ fun AppProfileTemplateScreen(
                     scope.launch { viewModel.fetchTemplates(true) }
                 },
                 onImport = {
-                    clipboardManager.getText()?.text?.let {
-                        if (it.isEmpty()) {
-                            showToast(context.getString(R.string.app_profile_template_import_empty))
-                            return@let
-                        }
-                        scope.launch {
+                    scope.launch {
+                        clipboard.getClipEntry()?.clipData?.getItemAt(0)?.text?.toString()?.let {
+                            if (it.isEmpty()) {
+                                showToast(context.getString(R.string.app_profile_template_import_empty))
+                                return@let
+                            }
                             viewModel.importTemplates(
                                 it, {
                                     showToast(context.getString(R.string.app_profile_template_import_success))
@@ -128,10 +131,13 @@ fun AppProfileTemplateScreen(
                         viewModel.exportTemplates(
                             {
                                 showToast(context.getString(R.string.app_profile_template_export_empty))
+                            },
+                            {
+                                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("template", it))) }
                             }
-                        ) {
-                            clipboardManager.setText(AnnotatedString(it))
-                        }
+                        )
+
+
                     }
                 },
                 scrollBehavior = scrollBehavior

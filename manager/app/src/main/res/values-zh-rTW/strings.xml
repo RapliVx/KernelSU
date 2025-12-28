@@ -15,7 +15,7 @@
   <string name="lkm_mode_deprecated">LKM 模式現已棄用！</string>
   <string name="lkm_alternative_suggestion">請使用 GKI 內核或手動將 KernelSU Next 整合到你的裝置。</string>
   <string name="home_working">運行中</string>
-  <string name="home_working_version">版本：%s (%d)</string>
+  <string name="home_working_version">版本：%1$s (%2$d)</string>
   <string name="home_module_update_count">可升級模組： %d</string>
   <string name="home_failure">內核中未找到 KernelSU Next v2 簽名！ [ !KSU_NEXT || != size/hash ]</string>
   <string name="home_failure_tip">請讓你的內核開發人員整合 KernelSU Next！</string>
@@ -25,10 +25,6 @@
   <string name="disable">停用</string>
   <string name="enabled">已經啓用</string>
   <string name="disabled">已經停用</string>
-  <string name="susfs_supported">支援</string>
-  <string name="home_susfs">SuSFS：%s</string>
-  <string name="home_susfs_version">SuSFS 版本</string>
-  <string name="home_susfs_sus_su">SuS SU</string>
   <string name="home_android">Android 版本</string>
   <string name="home_manager_version">管理員版本</string>
   <string name="home_abi">ABI</string>
@@ -86,8 +82,6 @@
   <string name="home_magic_mount">Magic Mount</string>
   <string name="home_overlayfs_mount">OverlayFS</string>
   <string name="unavailable">不可用</string>
-  <string name="use_overlay_fs">使用 OverlayFS</string>
-  <string name="use_overlay_fs_summary">使用 OverlayFS 而非 Magic Mount 作爲 KernelSU Next 的挂載系統。</string>
   <string name="reboot_required">需要重啟</string>
   <string name="reboot_message">更改將在系統重新啓動后生效，你想現在重啟嗎？</string>
   <string name="module_restore">復原模組</string>
@@ -103,7 +97,6 @@
   <string name="proceed">繼續</string>
   <string name="cancel">取消</string>
   <string name="later">稍後</string>
-  <string name="lkm_warning_message">該 LKM 補丁依賴閉源元件，確定繼續嗎？</string>
   <string name="home_next_kernelsu">🔥 Next 構建</string>
   <string name="home_next_kernelsu_repo">https://github.com/KernelSU-Next/KernelSU-Next</string>
   <string name="home_next_kernelsu_body">Next 實驗性分支。在 GitHub 上查看！</string>
@@ -131,8 +124,6 @@
   <string name="require_kernel_version">當前 KernelSU-Next 版本 %1$d 過低，管理員無法正常工作，請升級內核 KernelSU-Next 版本至 %2$d 或以上！</string>
   <string name="settings_umount_modules_default">預設卸載模組</string>
   <string name="settings_umount_modules_default_summary">程式設定中\"卸載模組\"的全域預設值，如果啟用，將會為沒有配置的應用移除所有模組針對系統的修改。</string>
-  <string name="settings_susfs_toggle">隱藏 Kprobe 鉤子</string>
-  <string name="settings_susfs_toggle_summary">它禁用由 KSU 所建立的 kprobe 鉤子，並啟用非 kprobe 內聯鉤子，就如同無法支援 kprobe 的 non-gki 核心的實現方式。</string>
   <string name="profile_umount_modules_summary">啟用後將允許 KernelSU Next 為本應用還原被模組修改過的檔案。</string>
   <string name="profile_selinux_domain">域</string>
   <string name="profile_selinux_rules">規則</string>
@@ -190,7 +181,6 @@
   <string name="install_next">下一步</string>
   <string name="select_file_tip">建議選擇 %1$s 分區鏡像</string>
   <string name="select_kmi">選擇 KMI</string>
-  <string name="shrink_sparse_image">最小化 Sparse 鏡像</string>
   <string name="settings_uninstall">卸載</string>
   <string name="settings_uninstall_temporary">暫時卸載</string>
   <string name="settings_uninstall_permanent">永久卸載</string>
@@ -228,7 +218,6 @@
   <string name="module_sort_action_first">依支援執行優先排序</string>
   <string name="module_sort_webui_first">依具備 WebUI 優先排序</string>
   <string name="settings_global_namespace_mode_summary">所有 Root 工作階段皆使用全域掛載命名空間</string>
-  <string name="shrink_sparse_image_message">將模組所在的稀疏檔案映像調整為其實際大小，注意這可能會導致模組工作異常，請僅在必要時（如備份）使用。</string>
   <string name="settings_uninstall_permanent_message">完全永久卸載 KernelSU Next，將丟失 Root 權限及所有已安裝的模組。</string>
   <string name="settings_restore_stock_image_message">復原原廠鏡像 (若存在備份)，一般在OTA前使用；如果你需要卸載 KernelSU Next, 請使用“永久卸載”。</string>
   <string name="settings_disable_su_summary">暫時禁止任何應用通過 su 命令獲取 root 權限 (現有的 root 進程不受影響)。</string>

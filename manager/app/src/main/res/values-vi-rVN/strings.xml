@@ -15,7 +15,7 @@
   <string name="lkm_mode_deprecated">Chế độ LKM không còn được hỗ trợ!</string>
   <string name="lkm_alternative_suggestion">Cài đặt Kernel GKI hoặc tự nhúng KernelSU Next vào thiết bị của bạn</string>
   <string name="home_working">Đang hoạt động</string>
-  <string name="home_working_version">Phiên bản: %s (%d)</string>
+  <string name="home_working_version">Phiên bản: %1$s (%2$d)</string>
   <string name="home_module_update_count">Cập nhật: %d</string>
   <string name="home_failure">Không tìm thấy chữ ký KernelSU Next v2 trong Kernel! [ !KSU_NEXT || != size/hash ]</string>
   <string name="home_failure_tip">Yêu cầu nhà phát triển Kernel của bạn tích hợp KernelSU Next!</string>
@@ -25,10 +25,6 @@
   <string name="disable">Vô hiệu hoá</string>
   <string name="enabled">Đã kích hoạt</string>
   <string name="disabled">Đã vô hiệu hoá</string>
-  <string name="susfs_supported">Được hỗ trợ</string>
-  <string name="home_susfs">SuSFS: %s</string>
-  <string name="home_susfs_version">Phiên bản SuSFS</string>
-  <string name="home_susfs_sus_su">SuS SU</string>
   <string name="home_android">Phiên bản Android</string>
   <string name="home_manager_version">Phiên bản Trình quản lý</string>
   <string name="home_abi">ABI</string>
@@ -86,8 +82,6 @@
   <string name="home_magic_mount">Magic Mount</string>
   <string name="home_overlayfs_mount">OverlayFS</string>
   <string name="unavailable">Không khả dụng</string>
-  <string name="use_overlay_fs">Sử dụng OverlayFS</string>
-  <string name="use_overlay_fs_summary">Gạt bật/tắt chuyển đổi giữa hai phương thức OverlayFS và Magic Mount cho hệ thống</string>
   <string name="reboot_required">Yêu cầu khởi động lại</string>
   <string name="reboot_message">Thay đổi sẽ có hiệu lực sau khi khởi động lại. Khởi động lại ngay?</string>
   <string name="module_restore">Khôi phục module</string>
@@ -103,7 +97,6 @@
   <string name="proceed">Tiếp tục</string>
   <string name="cancel">Hủy bỏ</string>
   <string name="later">Để sau</string>
-  <string name="lkm_warning_message">Bản vá LKM dựa trên mã nguồn đóng. Bạn có muốn tiếp tục không?</string>
   <string name="home_next_kernelsu">🔥 Bản dựng Next</string>
   <string name="home_next_kernelsu_repo">https://github.com/KernelSU-Next/KernelSU-Next</string>
   <string name="home_next_kernelsu_body">Nhánh thử nghiệm của Next. Hãy xem trên GitHub!</string>
@@ -131,8 +124,6 @@
   <string name="require_kernel_version">Phiên bản KernelSU Next hiện tại %1$d quá thấp để trình quản lý hoạt động bình thường. Vui lòng cập nhật lên phiên bản %2$d hoặc cao hơn!</string>
   <string name="settings_umount_modules_default">Umount modules</string>
   <string name="settings_umount_modules_default_summary">Giá trị mặc định chung cho \"Umount modules\" trong Hồ sơ ứng dụng. Nếu được bật, mọi thay đổi hệ thống do các module gây ra sẽ bị gỡ bỏ khỏi hệ thống và các ứng dụng chưa thiết lập hồ sơ</string>
-  <string name="settings_susfs_toggle">Ẩn kprobes hook</string>
-  <string name="settings_susfs_toggle_summary">Tùy chọn này sẽ vô hiệu hoá kprobes hook do KernelSU tạo ra và thay vào đó sẽ kích hoạt nhúng non-kprobes hook, đảm bảo những Kernel Non-GKI(EOL) hoạt động ổn định</string>
   <string name="profile_umount_modules_summary">Bật tùy chọn này sẽ cho phép KernelSU Next khôi phục mọi file đã được các module sửa đổi trong ứng dụng này</string>
   <string name="profile_selinux_domain">Tên miền</string>
   <string name="profile_selinux_rules">Quy tắc</string>
@@ -190,7 +181,6 @@
   <string name="install_next">Tiếp tục</string>
   <string name="select_file_tip">Phân vùng image %1$s được khuyến nghị</string>
   <string name="select_kmi">Chọn KMI</string>
-  <string name="shrink_sparse_image">Nén sparse image</string>
   <string name="settings_uninstall">Gỡ cài đặt</string>
   <string name="settings_uninstall_temporary">Gỡ cài đặt tạm thời</string>
   <string name="settings_uninstall_permanent">Gỡ cài đặt vĩnh viễn</string>
@@ -228,7 +218,6 @@
   <string name="module_sort_action_first">Sắp xếp (Khởi chạy trước)</string>
   <string name="module_sort_webui_first">Sắp xếp (WebUI trước)</string>
   <string name="settings_global_namespace_mode_summary">Tất cả các phiên root đều sử dụng một không gian tên duy nhất</string>
-  <string name="shrink_sparse_image_message">Thay đổi kích thước sparse image nơi lưu trữ module về kích thước thực tế của nó. Lưu ý rằng điều này có thể khiến module hoạt động không bình thường, vì vậy vui lòng chỉ sử dụng khi cần thiết (chẳng hạn như để sao lưu)</string>
   <string name="settings_uninstall_permanent_message">Gỡ cài đặt KernelSU Next (root và tất cả các module) sạch hoàn toàn, trả về trạng thái ban đầu</string>
   <string name="settings_restore_stock_image_message">Khôi phục lại image gốc (nếu có bản sao lưu), thường được sử dụng trước OTA; nếu bạn cần gỡ hẳn KernelSU Next, hãy sử dụng \"Gỡ cài đặt vĩnh viễn\"</string>
   <string name="settings_disable_su_summary">Vô hiệu hoá khả năng thực thi lệnh SU để lấy quyền root (những app đã cấp trước đó không bị ảnh hưởng)</string>

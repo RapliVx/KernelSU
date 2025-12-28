@@ -15,7 +15,7 @@
   <string name="lkm_mode_deprecated">Режим LKM тепер застарілий!</string>
   <string name="lkm_alternative_suggestion">Встановіть ядро GKI або інтегруйте KernelSU Next із вашим пристроєм.</string>
   <string name="home_working">Працює</string>
-  <string name="home_working_version">Версія драйвера: %s (%d)</string>
+  <string name="home_working_version">Версія драйвера: %1$s (%2$d)</string>
   <string name="home_module_update_count">Оновлення: %d</string>
   <string name="home_failure">Підпис KernelSU Next v2 не знайдено в ядрі! [!KSU_NEXT || != size/hash]</string>
   <string name="home_failure_tip">Попросіть вашого розробника ядра інтегрувати KernelSU Next!</string>
@@ -25,10 +25,6 @@
   <string name="disable">Вимкнути</string>
   <string name="enabled">Увімкнено</string>
   <string name="disabled">Вимкнено</string>
-  <string name="susfs_supported">Доступно</string>
-  <string name="home_susfs">SuSFS: %s</string>
-  <string name="home_susfs_version">Версія SuSFS</string>
-  <string name="home_susfs_sus_su">SuS SU</string>
   <string name="home_android">Версія Android</string>
   <string name="home_manager_version">Версія менеджера</string>
   <string name="home_abi">ABI</string>
@@ -86,8 +82,6 @@
   <string name="home_magic_mount">Magic Mount</string>
   <string name="home_overlayfs_mount">OverlayFS</string>
   <string name="unavailable">Недоступно</string>
-  <string name="use_overlay_fs">Використовувати OverlayFS</string>
-  <string name="use_overlay_fs_summary">Перемикання між використанням OverlayFS та Magic Mount для системи монтування KernelSU Next.</string>
   <string name="reboot_required">Потрібно перезавантаження</string>
   <string name="reboot_message">Зміни буде помітно після перезавантаження системи. Перезавантажити зараз?</string>
   <string name="module_restore">Відновити модуль</string>
@@ -103,7 +97,6 @@
   <string name="proceed">Продовжити</string>
   <string name="cancel">Скасувати</string>
   <string name="later">Пізніше</string>
-  <string name="lkm_warning_message">Патч LKM базується на компонентах із закритим кодом. Продовжити?</string>
   <string name="home_next_kernelsu">🔥 Наступна збірка</string>
   <string name="home_next_kernelsu_repo">https://github.com/KernelSU-Next/KernelSU-Next</string>
   <string name="home_next_kernelsu_body">Наступна експериментальна гілка. Подивіться на GitHub!</string>
@@ -131,8 +124,6 @@
   <string name="require_kernel_version">Поточна версія KernelSU Next %1$d надто низька для коректної роботи менеджера. Будь ласка, оновіться до версії %2$d або вище!</string>
   <string name="settings_umount_modules_default">Вимкнути модулі</string>
   <string name="settings_umount_modules_default_summary">Глобальне значення за замовчуванням для \"Вимкнути модулі\" у Профілі додатка. Якщо увімкнено, це видалить усі модифікації системи модулями для додатків без встановленого профілю.</string>
-  <string name="settings_susfs_toggle">Сховати хуки kprobe</string>
-  <string name="settings_susfs_toggle_summary">Вимикає хуки kprobe, створені ksu, і замість цього активує вбудовані функції, що реалізують ту ж функціональність для ядер, які не підтримують kprobe.</string>
   <string name="profile_umount_modules_summary">Увімкнення цієї опції дозволить KernelSU Next відновлювати будь-які змінені модулями файли для цього додатка.</string>
   <string name="profile_selinux_domain">Домен</string>
   <string name="profile_selinux_rules">Правила</string>
@@ -190,7 +181,6 @@
   <string name="install_next">Далі</string>
   <string name="select_file_tip">Рекомендовано образ розділу %1$s</string>
   <string name="select_kmi">Виберіть KMI</string>
-  <string name="shrink_sparse_image">Мінімізувати розріджене зображення</string>
   <string name="settings_uninstall">Видалення</string>
   <string name="settings_uninstall_temporary">Тимчасове видалення</string>
   <string name="settings_uninstall_permanent">Повне видалення</string>
@@ -228,7 +218,6 @@
   <string name="module_sort_action_first">За статусом (Спочатку зі скриптом)</string>
   <string name="module_sort_webui_first">За статусом (Спочатку з WebUI)</string>
   <string name="settings_global_namespace_mode_summary">Усі сесії користувача root будуть використовувати спільний простір імен</string>
-  <string name="shrink_sparse_image_message">Змініть розмір розрідженого зображення, де розташований модуль, до його фактичного розміру. Зверніть увагу, що це може призвести до неправильної роботи модуля, тому використовуйте його лише за необхідності (наприклад, для бекапу).</string>
   <string name="settings_uninstall_permanent_message">Повне та остаточне видалення KernelSU Next (Root та всіх модулів).</string>
   <string name="settings_restore_stock_image_message">Відновлення стандартного заводського образу (якщо є бекап), зазвичай використовується перед OTA; якщо потрібно видалити KernelSU Next, використовуйте \"Повне видалення\".</string>
   <string name="settings_disable_su_summary">Тимчасово вимкнути можливість додаткам отримувати права root через команду su (процеси з правами root не будуть зачеплені).</string>

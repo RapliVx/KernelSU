@@ -149,25 +149,22 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        var umountChecked by rememberSaveable {
+                            mutableStateOf(Natives.isDefaultUmountModules())
+                        }
 
-                        if (ksuVersion != null) {
-                            var umountChecked by rememberSaveable {
-                                mutableStateOf(Natives.isDefaultUmountModules())
-                            }
-
-                            SwitchItem(
-                                icon = Icons.Filled.FolderDelete,
-                                title = stringResource(R.string.settings_umount_modules_default),
-                                summary = stringResource(R.string.settings_umount_modules_default_summary),
-                                checked = umountChecked,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp)),
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                            ) {
-                                if (Natives.setDefaultUmountModules(it)) {
-                                    umountChecked = it
-                                }
+                        SwitchItem(
+                            icon = Icons.Filled.FolderDelete,
+                            title = stringResource(R.string.settings_umount_modules_default),
+                            summary = stringResource(R.string.settings_umount_modules_default_summary),
+                            checked = umountChecked,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp)),
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                        ) {
+                            if (Natives.setDefaultUmountModules(it)) {
+                                umountChecked = it
                             }
                         }
 
@@ -192,21 +189,18 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                                 }
                             }
                         }
-
-                        if (ksuVersion != null) {
-                            SwitchItem(
-                                icon = Icons.Filled.Engineering,
-                                title = stringResource(R.string.settings_global_namespace_mode),
-                                summary = stringResource(R.string.settings_global_namespace_mode_summary),
-                                checked = isGlobalNamespaceEnabled,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp)),
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            ) {
-                                setGlobalNamespaceEnabled(if (isGlobalNamespaceEnabled) "0" else "1")
-                                isGlobalNamespaceEnabled = it
-                            }
+                        SwitchItem(
+                            icon = Icons.Filled.Engineering,
+                            title = stringResource(R.string.settings_global_namespace_mode),
+                            summary = stringResource(R.string.settings_global_namespace_mode_summary),
+                            checked = isGlobalNamespaceEnabled,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp)),
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        ) {
+                            setGlobalNamespaceEnabled(if (isGlobalNamespaceEnabled) "0" else "1")
+                            isGlobalNamespaceEnabled = it
                         }
 
                         if (kernelUmountStatus == "supported") {
@@ -286,75 +280,68 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                         modifier = Modifier.padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    navigator.navigate(AppProfileTemplateScreenDestination)
+                                },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            leadingContent = {
+                                Icon(Icons.Filled.Fence, null)
+                            },
+                            headlineContent = {
+                                Text(
+                                    text = stringResource(R.string.settings_profile_template),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            },
+                            supportingContent = {
+                                Text(stringResource(R.string.settings_profile_template_summary))
+                            }
+                        )
 
-                        if (ksuVersion != null) {
-                            ListItem(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        navigator.navigate(AppProfileTemplateScreenDestination)
-                                    },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                leadingContent = {
-                                    Icon(Icons.Filled.Fence, null)
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    navigator.navigate(BackupRestoreScreenDestination)
                                 },
-                                headlineContent = {
-                                    Text(
-                                        text = stringResource(R.string.settings_profile_template),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                },
-                                supportingContent = {
-                                    Text(stringResource(R.string.settings_profile_template_summary))
-                                }
-                            )
-                        }
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            leadingContent = {
+                                Icon(Icons.Filled.Backup, null)
+                            },
+                            headlineContent = {
+                                Text(
+                                    text = stringResource(R.string.backup_restore),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        )
 
-                        if (ksuVersion != null) {
-                            ListItem(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        navigator.navigate(BackupRestoreScreenDestination)
-                                    },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                leadingContent = {
-                                    Icon(Icons.Filled.Backup, null)
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    navigator.navigate(DeveloperScreenDestination)
                                 },
-                                headlineContent = {
-                                    Text(
-                                        text = stringResource(R.string.backup_restore),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            )
-                        }
-
-                        if (ksuVersion != null) {
-                            ListItem(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        navigator.navigate(DeveloperScreenDestination)
-                                    },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                leadingContent = {
-                                    Icon(Icons.Filled.DeveloperBoard, null)
-                                },
-                                headlineContent = {
-                                    Text(
-                                        text = stringResource(R.string.developer),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            )
-                        }
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            leadingContent = {
+                                Icon(Icons.Filled.DeveloperBoard, null)
+                            },
+                            headlineContent = {
+                                Text(
+                                    text = stringResource(R.string.developer),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        )
 
                         if (Natives.isLkmMode) {
                             UninstallItem(

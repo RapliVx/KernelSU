@@ -15,7 +15,7 @@
   <string name="lkm_mode_deprecated">LKMモードは現在非推奨です！</string>
   <string name="lkm_alternative_suggestion">GKI カーネルをインストールするか、お使いのデバイスに KernelSU Next を統合してください。</string>
   <string name="home_working">動作中</string>
-  <string name="home_working_version">バージョン: %s (%d)</string>
+  <string name="home_working_version">バージョン: %1$s (%2$d)</string>
   <string name="home_module_update_count">アップデート: %d</string>
   <string name="home_failure">カーネル内に KernelSU Next v2 の署名がありません！ [ !KSU_NEXT || != size/hash ]</string>
   <string name="home_failure_tip">カーネルの開発者に KernelSU Next を統合するように依頼してください！</string>
@@ -25,10 +25,6 @@
   <string name="disable">無効化</string>
   <string name="enabled">有効</string>
   <string name="disabled">無効</string>
-  <string name="susfs_supported">対応済み</string>
-  <string name="home_susfs">SuSFS: %s</string>
-  <string name="home_susfs_version">SuSFS バージョン</string>
-  <string name="home_susfs_sus_su">SuS SU</string>
   <string name="home_android">Android バージョン</string>
   <string name="home_manager_version">マネージャーバージョン</string>
   <string name="home_abi">ABI</string>
@@ -86,8 +82,6 @@
   <string name="home_magic_mount">Magic Mount</string>
   <string name="home_overlayfs_mount">OverlayFS</string>
   <string name="unavailable">利用不可</string>
-  <string name="use_overlay_fs">OverlayFS を使用</string>
-  <string name="use_overlay_fs_summary">KernelSU Next のマウントシステムで、Magic Mount の代わりに OverlayFS の使用に切り替えます。</string>
   <string name="reboot_required">再起動が必要です</string>
   <string name="reboot_message">変更はシステムの再起動後に有効化されます。今すぐに再起動しますか？</string>
   <string name="module_restore">モジュールを復元</string>
@@ -103,7 +97,6 @@
   <string name="proceed">続行</string>
   <string name="cancel">キャンセル</string>
   <string name="later">後で</string>
-  <string name="lkm_warning_message">LKM パッチはクローズドソースのコンポーネントに依存しています。続行しますか？</string>
   <string name="home_next_kernelsu">🔥 Next build</string>
   <string name="home_next_kernelsu_repo">https://github.com/KernelSU-Next/KernelSU-Next</string>
   <string name="home_next_kernelsu_body">次の試験的なブランチです。GitHub で確認してください！</string>
@@ -131,8 +124,6 @@
   <string name="require_kernel_version">現在のバージョン %1$d の KernelSU Next は、マネージャーの正常動作の保証ができません。バージョン %2$d またはそれ以降に更新してください！</string>
   <string name="settings_umount_modules_default">モジュールをアンマウント</string>
   <string name="settings_umount_modules_default_summary">アプリプロファイルの「モジュールをアンマウント」のデフォルト値を設定します。有効にすると、プロファイルが設定されていないアプリでの、全てのモジュールのシステムに対する変更が削除されます。</string>
-  <string name="settings_susfs_toggle">kprobes フックを隠す</string>
-  <string name="settings_susfs_toggle_summary">このオプションは ksu によって作成された kprobes フックを無効にし、埋め込まれた kprobes フックを代わりに有効にします。 kprobe をサポートしていない非 GKI カーネルに適用されるものと同じ機能を実装します。</string>
   <string name="profile_umount_modules_summary">このオプションを有効にすると、KernelSU Next はこのアプリのモジュールによって変更されたファイルを復元することができます。</string>
   <string name="profile_selinux_domain">ドメイン</string>
   <string name="profile_selinux_rules">ルール</string>
@@ -190,7 +181,6 @@
   <string name="install_next">次へ</string>
   <string name="select_file_tip">%1$s パーティション イメージが推奨されます</string>
   <string name="select_kmi">KMI を選択</string>
-  <string name="shrink_sparse_image">スパースイメージを最小化</string>
   <string name="settings_uninstall">アンインストール</string>
   <string name="settings_uninstall_temporary">一時的にアンインストール</string>
   <string name="settings_uninstall_permanent">完全にアンインストール</string>
@@ -228,7 +218,6 @@
   <string name="module_sort_action_first">並べ替え (実行可能を優先)</string>
   <string name="module_sort_webui_first">並べ替え (WebUIを優先)</string>
   <string name="settings_global_namespace_mode_summary">すべての root セッションがグローバルマウント名前空間を使用します</string>
-  <string name="shrink_sparse_image_message">モジュールが配置されているスパースイメージを実際のサイズに変更します。ただし、これによりモジュールの動作に異常が生じる可能性があるため、必要な場合にのみ使用してください（バックアップなど）。</string>
   <string name="settings_uninstall_permanent_message">KernelSU Next (Root およびすべてのモジュール) を完全に永続的にアンインストールします。</string>
   <string name="settings_restore_stock_image_message">（バックアップが存在する場合）工場出荷時のイメージを復元します。通常は OTA の前に使用します。KernelSU Next をアンインストールする必要がある場合は、「完全にアンインストール」を使用してください。</string>
   <string name="settings_disable_su_summary">su コマンドを使用してアプリが Root 権限を取得する機能を一時的に無効にします（既存の Root プロセスは影響を受けません）。</string>

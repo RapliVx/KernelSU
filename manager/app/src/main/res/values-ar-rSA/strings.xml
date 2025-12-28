@@ -15,7 +15,7 @@
   <string name="lkm_mode_deprecated">وضع LKM قد تم إهماله!</string>
   <string name="lkm_alternative_suggestion">قم بتثبيت نواة GKI أو دمج KernelSU Next في جهازك.</string>
   <string name="home_working">جارِ العمل</string>
-  <string name="home_working_version">الإصدار: %s (%d)</string>
+  <string name="home_working_version">الإصدار: %1$s (%2$d)</string>
   <string name="home_module_update_count">تحديثات: %d</string>
   <string name="home_failure">لم يتم العثور على توقيع KernelSU Next v2 في النواة ! [ !KSU_NEXT &lt;unk&gt; != الحجم/الهاش ]</string>
   <string name="home_failure_tip">اطلب من مطور kernel الخاص بك دمج KernelSU Next!</string>
@@ -25,10 +25,6 @@
   <string name="disable">تعطيل</string>
   <string name="enabled">مفعّل</string>
   <string name="disabled">معطَّل</string>
-  <string name="susfs_supported">مدعوم</string>
-  <string name="home_susfs">SuSFS: %s</string>
-  <string name="home_susfs_version">إصدار SuSFS</string>
-  <string name="home_susfs_sus_su">SuS SU</string>
   <string name="home_android">إصدار الـ Android</string>
   <string name="home_manager_version">إصدار المدير</string>
   <string name="home_abi">ABI</string>
@@ -86,8 +82,6 @@
   <string name="home_magic_mount">تركيب النظام</string>
   <string name="home_overlayfs_mount">OverlayFS</string>
   <string name="unavailable">غير متاح</string>
-  <string name="use_overlay_fs">استخدام OverlayFS</string>
-  <string name="use_overlay_fs_summary">التبديل بين استخدام OverlayFS و Magic Mount لتركيب نظام KernelSU Next.</string>
   <string name="reboot_required">مطلوب إعادة التشغيل</string>
   <string name="reboot_message">ستصبح التغييرات سارية المفعول بعد إعادة تشغيل النظام. هل تريد إعادة التشغيل الآن؟</string>
   <string name="module_restore">استعادة الوحدة</string>
@@ -103,7 +97,6 @@
   <string name="proceed">متابعة</string>
   <string name="cancel">إلغاء</string>
   <string name="later">لاحقاً</string>
-  <string name="lkm_warning_message">تصحيح LKM يعتمد على مكونات مغلقة المصدر. هل تريد الاستمرار؟</string>
   <string name="home_next_kernelsu">🔥 الاصدار التالي</string>
   <string name="home_next_kernelsu_repo">https://github.com/KernelSU-Next/KernelSU-Next</string>
   <string name="home_next_kernelsu_body">الفرع التجريبي التالي. تحقق من ذلك على GitHub!</string>
@@ -131,8 +124,6 @@
   <string name="require_kernel_version">الإصدار KernelSU Next الحالي %1$d منخفض جدا لكي يعمل المدير بشكل صحيح. الرجاء الترقية إلى الإصدار %2$d أو أعلى!</string>
   <string name="settings_umount_modules_default">الغاء تحميل الإضافات</string>
   <string name="settings_umount_modules_default_summary">القيمة الافتراضية العامة لـ\"إلغاء تحميل الإضافات\" في ملفات تعريف التطبيقات. إذا تم تمكينه، إزالة جميع تعديلات الإضافات على النظام للتطبيقات التي لا تحتوي على مجموعة ملف تعريف.</string>
-  <string name="settings_susfs_toggle">أخفاء خطاف kprobes</string>
-  <string name="settings_susfs_toggle_summary">يعطل هذا الخيار خطاف kprobes الذي أنشأه المدير وبدلا من ذلك، يقوم بتفعيل الخطاف المدمج، تنفيذ نفس الوظيفة التي سيتم تطبيقها على كيرنيل غير GKI ، الذي لا يدعم kprobes.</string>
   <string name="profile_umount_modules_summary">تمكين هذا الخيار سيسمح KernelSU Next لاستعادة أي ملفات معدلة بواسطة وحدات هذا التطبيق.</string>
   <string name="profile_selinux_domain">النطاق</string>
   <string name="profile_selinux_rules">القواعد</string>
@@ -192,7 +183,6 @@
   <string name="install_next">التالي</string>
   <string name="select_file_tip">يوصي بصورة القسم %1$s</string>
   <string name="select_kmi">تحديد KMI</string>
-  <string name="shrink_sparse_image">تقليص ال sparse image</string>
   <string name="settings_uninstall">إلغاء التثبيت</string>
   <string name="settings_uninstall_temporary">إلغاء تثبيت مؤقت</string>
   <string name="settings_uninstall_permanent">إلغاء التثبيت نهائياً</string>
@@ -230,7 +220,6 @@
   <string name="module_sort_action_first">Sort (Action first)</string>
   <string name="module_sort_webui_first">Sort (WebUI first)</string>
   <string name="settings_global_namespace_mode_summary">All root sessions use the global mount namespace</string>
-  <string name="shrink_sparse_image_message">Resize the sparse image where the module is located to its actual size. Note that this may cause the module to work abnormally, so please only use when necessary (such as for backup).</string>
   <string name="settings_uninstall_permanent_message">Uninstalling KernelSU Next (root and all modules) completely and permanently.</string>
   <string name="settings_restore_stock_image_message">Restore the stock factory image (if a backup exists), usually used before OTA; if you need to uninstall KernelSU Next, please use \"Uninstall permanently\".</string>
   <string name="settings_disable_su_summary">Temporarily disable the ability of any app to gain root privileges via the ⁠su command (existing root processes won\'t be affected).</string>
