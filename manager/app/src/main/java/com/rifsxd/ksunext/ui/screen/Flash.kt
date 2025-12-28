@@ -222,6 +222,30 @@ fun FlashScreen(
                 )
             }
 
+            if (flashIt is FlashIt.FlashAnyKernel && (flashing == FlashingStatus.SUCCESS)) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                reboot()
+                            }
+                        }
+                    },
+                    icon = { Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.reboot)) },
+                    text = { Text(text = stringResource(R.string.reboot)) }
+                )
+            }
+
+            if (flashIt is FlashIt.FlashAnyKernel && (flashing == FlashingStatus.FAILED)) {
+                ExtendedFloatingActionButton(
+                    text = { Text(text = stringResource(R.string.close)) },
+                    icon = { Icon(Icons.Filled.Close, contentDescription = null) },
+                    onClick = {
+                        navigator.popBackStack()
+                    }
+                )
+            }
+
             if (flashIt is FlashIt.FlashModules && (flashing == FlashingStatus.FAILED)) {
                 // Close button for modules flashing
                 ExtendedFloatingActionButton(
@@ -320,6 +344,8 @@ sealed class FlashIt : Parcelable {
 
     data class FlashModules(val uris: List<Uri>) : FlashIt()
 
+    data class FlashAnyKernel(val uri: Uri) : FlashIt()
+
     data object FlashRestore : FlashIt()
 
     data object FlashUninstall : FlashIt()
@@ -335,6 +361,12 @@ fun flashIt(
             flashIt.boot,
             flashIt.lkm,
             flashIt.ota,
+            onStdout,
+            onStderr
+        )
+
+        is FlashIt.FlashAnyKernel -> flashAnyKernelZip(
+            flashIt.uri,
             onStdout,
             onStderr
         )

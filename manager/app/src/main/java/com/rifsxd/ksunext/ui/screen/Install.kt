@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -43,6 +44,7 @@ import com.rifsxd.ksunext.ui.component.DialogHandle
 import com.rifsxd.ksunext.ui.component.rememberConfirmDialog
 import com.rifsxd.ksunext.ui.component.rememberCustomDialog
 import com.rifsxd.ksunext.ui.util.*
+import java.util.Locale
 
 /**
  * @author weishu
@@ -61,8 +63,26 @@ fun InstallScreen(navigator: DestinationsNavigator) {
         mutableStateOf<LkmSelection>(LkmSelection.KmiNone)
     }
 
+    val context = LocalContext.current
+
     val onInstall = {
         installMethod?.let { method ->
+            when (method) {
+                is InstallMethod.AnyKernel -> {
+                    method.uri?.let { navigator.navigate(FlashScreenDestination(FlashIt.FlashAnyKernel(it))) }
+                    return@let
+                }
+                else -> {}
+            }
+            if (method is InstallMethod.SelectFile && method.uri != null) {
+                val name = getFileName(context, method.uri)
+                val lower = name.lowercase(Locale.getDefault())
+                if (lower.contains("anykernel") || lower.endsWith(".zip" ) && lower.contains("anykernel")) {
+                    navigator.navigate(FlashScreenDestination(FlashIt.FlashAnyKernel(method.uri)))
+                    return@let
+                }
+            }
+
             val flashIt = FlashIt.FlashBoot(
                 boot = if (method is InstallMethod.SelectFile) method.uri else null,
                 lkm = lkmSelection,
@@ -95,6 +115,16 @@ fun InstallScreen(navigator: DestinationsNavigator) {
             if (it.resultCode == Activity.RESULT_OK) {
                 it.data?.data?.let { uri ->
                     lkmSelection = LkmSelection.LkmUri(uri)
+                }
+            }
+        }
+
+    val selectAnyKernelLauncher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                it.data?.data?.let { uri ->
+                    // navigate to AnyKernel flasher directly
+                    navigator.navigate(FlashScreenDestination(FlashIt.FlashAnyKernel(uri)))
                 }
             }
         }
@@ -162,6 +192,12 @@ sealed class InstallMethod {
         override val summary: String?
     ) : InstallMethod()
 
+    data class AnyKernel(
+        val uri: Uri? = null,
+        @param:StringRes override val label: Int = R.string.anykernel_install,
+        override val summary: String? = null
+    ) : InstallMethod()
+
     data object DirectInstall : InstallMethod() {
         override val label: Int
             get() = R.string.direct_install
@@ -196,6 +232,8 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
         if (isAbDevice) {
             radioOptions.add(InstallMethod.DirectInstallToInactiveSlot)
         }
+
+        radioOptions.add(InstallMethod.AnyKernel())
     }
 
     var selectedOption by remember { mutableStateOf<InstallMethod?>(null) }
@@ -205,6 +243,18 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
         if (it.resultCode == Activity.RESULT_OK) {
             it.data?.data?.let { uri ->
                 val option = InstallMethod.SelectFile(uri, summary = selectFileTip)
+                selectedOption = option
+                onSelected(option)
+            }
+        }
+    }
+
+    val selectAnyKernelLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (it.resultCode == Activity.RESULT_OK) {
+            it.data?.data?.let { uri ->
+                val option = InstallMethod.AnyKernel(uri)
                 selectedOption = option
                 onSelected(option)
             }
@@ -224,6 +274,14 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
             is InstallMethod.SelectFile -> {
                 selectImageLauncher.launch(Intent(Intent.ACTION_GET_CONTENT).apply {
                     type = "application/octet-stream"
+                })
+            }
+
+            is InstallMethod.AnyKernel -> {
+                selectAnyKernelLauncher.launch(Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "application/zip"
+                    putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
+                    addCategory(Intent.CATEGORY_OPENABLE)
                 })
             }
 

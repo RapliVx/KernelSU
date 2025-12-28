@@ -333,6 +333,48 @@ fun reboot(reason: String = "") {
     ShellUtils.fastCmdResult("/system/bin/svc power reboot $reason || /system/bin/reboot $reason")
 }
 
+fun flashAnyKernelZip(
+    uri: Uri,
+    onStdout: (String) -> Unit,
+    onStderr: (String) -> Unit
+): FlashResult {
+    val resolver = ksuApp.contentResolver
+
+    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val tmpFile = File(ksuApp.cacheDir, "anykernel_${timestamp}.zip")
+    resolver.openInputStream(uri).use { input ->
+        tmpFile.outputStream().use { out ->
+            input?.copyTo(out)
+        }
+    }
+
+    val destZip = tmpFile.absolutePath
+    val destZipName = File(destZip).name
+    val destDirFile = File(ksuApp.cacheDir, "anykernel3_${timestamp}")
+    val destDir = destDirFile.absolutePath
+
+    val cmd = buildString {
+        append("mkdir -p '$destDir' && ")
+        append("(unzip -o '$destZip' -d '$destDir' 2>/dev/null || $BUSYBOX unzip -o '$destZip' -d '$destDir' 2>/dev/null || tar -xf '$destZip' -C '$destDir' 2>/dev/null) && ")
+        append("cp '$destZip' '$destDir/$destZipName' 2>/dev/null || true && chmod +x '$destDir/$destZipName' '$destDir/anykernel.sh' '$destDir/install.sh' '$destDir/anykernel' '$destDir/tools/'* 2>/dev/null || true && ")
+        append("(cd '$destDir' && if [ -f './anykernel.sh' ]; then OUTFD=1 sh './anykernel.sh' '$destZipName'; elif [ -f './install.sh' ]; then OUTFD=1 sh './install.sh' '$destZipName'; elif [ -f './anykernel' ]; then OUTFD=1 sh './anykernel' '$destZipName'; else echo 'No installer script found' >&2; exit 1; fi)")
+    }
+
+    val result = flashWithIO(cmd, onStdout, onStderr)
+    try {
+        return FlashResult(result, result.isSuccess)
+    } finally {
+        try {
+            runCatching {
+                createRootShell(true).use { sh ->
+                    sh.newJob().add("rm -rf '$destDir' '$destZip'").exec()
+                }
+            }
+        } catch (_: Throwable) {
+        }
+    }
+}
+
 fun rootAvailable() = Shell.isAppGrantedRoot() == true
 
 fun isAbDevice(): Boolean {
