@@ -453,13 +453,11 @@ private fun TopBar(
         },
         actions = {
             if (ksuVersion != null) {
-                if (kernelVersion.isGKI()) {
-                    IconButton(onClick = onInstallClick) {
-                        Icon(
-                            imageVector = Icons.Filled.Archive,
-                            contentDescription = stringResource(id = R.string.install)
-                        )
-                    }
+                IconButton(onClick = onInstallClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Archive,
+                        contentDescription = stringResource(id = R.string.install)
+                    )
                 }
             }
 
@@ -536,12 +534,10 @@ private fun StatusCard(
                         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                         if (ksuVersion != null) {
                             context.startActivity(intent)
-                        } else if (kernelVersion.isGKI()) {
-                            onClickInstall()
                         } else {
-                            Toast.makeText(context, "Something weird happened... 🤔", Toast.LENGTH_SHORT).show()
+                            onClickInstall()
                         }
-                    } else if (ksuVersion == null && kernelVersion.isGKI()) {
+                    } else if (ksuVersion == null) {
                         onClickInstall()
                     }
                 }

@@ -135,13 +135,15 @@ fun InstallScreen(navigator: DestinationsNavigator) {
         })
     }
 
+    val kernelVersion = getKernelVersion()
+
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
         topBar = {
             TopBar(
                 onBack = dropUnlessResumed { navigator.popBackStack() },
-                onLkmUpload = onLkmUpload,
+                onLkmUpload = if (kernelVersion.isGKI()) onLkmUpload else null,
                 scrollBehavior = scrollBehavior
             )
         },
@@ -226,16 +228,21 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
         else
             "init_boot/vendor_boot"
     )
-    val radioOptions =
-        mutableListOf<InstallMethod>(InstallMethod.SelectFile(summary = selectFileTip))
-    if (rootAvailable) {
-        radioOptions.add(InstallMethod.DirectInstall)
+    val radioOptions = mutableListOf<InstallMethod>()
 
-        if (isAbDevice) {
-            radioOptions.add(InstallMethod.DirectInstallToInactiveSlot)
-        }
+    radioOptions.add(InstallMethod.SelectFile(summary = selectFileTip))
 
+    if (!kernelVersion.isGKI()) {
+        // Non-GKI kernels only support AnyKernel installation
         radioOptions.add(InstallMethod.AnyKernel())
+    } else {
+        if (rootAvailable) {
+            radioOptions.add(InstallMethod.DirectInstall)
+            if (isAbDevice) {
+                radioOptions.add(InstallMethod.DirectInstallToInactiveSlot)
+            }
+            radioOptions.add(InstallMethod.AnyKernel())
+        }
     }
 
     var selectedOption by remember { mutableStateOf<InstallMethod?>(null) }
@@ -378,7 +385,7 @@ fun rememberSelectKmiDialog(onSelected: (String?) -> Unit): DialogHandle {
 @Composable
 private fun TopBar(
     onBack: () -> Unit = {},
-    onLkmUpload: () -> Unit = {},
+    onLkmUpload: (() -> Unit)? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     TopAppBar(
@@ -391,8 +398,10 @@ private fun TopBar(
                 onClick = onBack
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
         }, actions = {
-            IconButton(onClick = onLkmUpload) {
-                Icon(Icons.Filled.FileUpload, contentDescription = null)
+            onLkmUpload?.let { action ->
+                IconButton(onClick = action) {
+                    Icon(Icons.Filled.FileUpload, contentDescription = null)
+                }
             }
         },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
