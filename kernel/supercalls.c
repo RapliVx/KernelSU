@@ -68,6 +68,8 @@ static int do_grant_root(void __user *arg)
     return 0;
 }
 
+static uint32_t ksuver_override = 0;
+
 static int do_get_info(void __user *arg)
 {
     struct ksu_get_info_cmd cmd = { .version = KERNEL_SU_VERSION, .flags = 0 };
@@ -75,6 +77,9 @@ static int do_get_info(void __user *arg)
 #ifdef MODULE
     cmd.flags |= 0x1;
 #endif
+
+    if (ksuver_override)
+        cmd.version = ksuver_override;
 
     if (is_manager()) {
         cmd.flags |= 0x2;
@@ -782,13 +787,29 @@ static int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void 
         return 0;
     }
 
-    if (magic2 == GET_SULOG_DUMP) {
+    if (magic2 == GET_SULOG_DUMP_V2) {
         // only root is allowed for this command
         if (current_uid().val != 0)
             return 0;
 
-        send_sulog_dump(*arg);
-        return 0;
+        int ret = send_sulog_dump(*arg);
+            if (ret)
+                return 0;
+
+        if (copy_to_user((void __user *)*arg, &reply, sizeof(reply) ))
+            return 0;
+    }
+
+    if (magic2 == CHANGE_KSUVER) {
+        // only root is allowed for this command
+        if (current_uid().val != 0)
+            return 0;
+
+        pr_info("sys_reboot: ksu_change_ksuver to: %d\n", cmd);
+        ksuver_override = cmd;
+
+        if (copy_to_user((void __user *)*arg, &reply, sizeof(reply) ))
+            return 0;
     }
 
     return 0;
@@ -827,6 +848,8 @@ void ksu_supercalls_init(void)
     } else {
         pr_info("reboot kprobe registered successfully\n");
     }
+
+    sulog_init_heap(); // grab heap memory
 }
 
 void ksu_supercalls_exit(void)
