@@ -67,20 +67,13 @@ fun InstallScreen(navigator: DestinationsNavigator) {
 
     val onInstall = {
         installMethod?.let { method ->
-            when (method) {
-                is InstallMethod.AnyKernel -> {
-                    method.uri?.let { navigator.navigate(FlashScreenDestination(FlashIt.FlashAnyKernel(it))) }
-                    return@let
+            if (method is InstallMethod.AnyKernel) {
+                method.uri?.let {
+                    navigator.navigate(
+                        FlashScreenDestination(FlashIt.FlashAnyKernel(it))
+                    )
                 }
-                else -> {}
-            }
-            if (method is InstallMethod.SelectFile && method.uri != null) {
-                val name = getFileName(context, method.uri)
-                val lower = name.lowercase(Locale.getDefault())
-                if (lower.contains("anykernel") || lower.endsWith(".zip" ) && lower.contains("anykernel")) {
-                    navigator.navigate(FlashScreenDestination(FlashIt.FlashAnyKernel(method.uri)))
-                    return@let
-                }
+                return@let
             }
 
             val flashIt = FlashIt.FlashBoot(
@@ -102,11 +95,19 @@ fun InstallScreen(navigator: DestinationsNavigator) {
     }
 
     val onClickNext = {
-        if (lkmSelection == LkmSelection.KmiNone && currentKmi.isBlank()) {
-            // no lkm file selected and cannot get current kmi
-            selectKmiDialog.show()
-        } else {
-            onInstall()
+        when (installMethod) {
+            is InstallMethod.AnyKernel -> {
+                onInstall()
+            }
+
+            else -> {
+                if (lkmSelection == LkmSelection.KmiNone && currentKmi.isBlank()) {
+                    // no lkm file selected and cannot get current kmi
+                    selectKmiDialog.show()
+                } else {
+                    onInstall()
+                }
+            }
         }
     }
 
@@ -115,16 +116,6 @@ fun InstallScreen(navigator: DestinationsNavigator) {
             if (it.resultCode == Activity.RESULT_OK) {
                 it.data?.data?.let { uri ->
                     lkmSelection = LkmSelection.LkmUri(uri)
-                }
-            }
-        }
-
-    val selectAnyKernelLauncher =
-        rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {
-            if (it.resultCode == Activity.RESULT_OK) {
-                it.data?.data?.let { uri ->
-                    // navigate to AnyKernel flasher directly
-                    navigator.navigate(FlashScreenDestination(FlashIt.FlashAnyKernel(uri)))
                 }
             }
         }
@@ -232,17 +223,15 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
 
     radioOptions.add(InstallMethod.SelectFile(summary = selectFileTip))
 
-    if (!kernelVersion.isGKI()) {
-        // Non-GKI kernels only support AnyKernel installation
-        radioOptions.add(InstallMethod.AnyKernel())
-    } else {
-        if (rootAvailable) {
+    if (rootAvailable) {
+        if (kernelVersion.isGKI()) {
             radioOptions.add(InstallMethod.DirectInstall)
             if (isAbDevice) {
                 radioOptions.add(InstallMethod.DirectInstallToInactiveSlot)
             }
-            radioOptions.add(InstallMethod.AnyKernel())
         }
+
+        radioOptions.add(InstallMethod.AnyKernel())
     }
 
     var selectedOption by remember { mutableStateOf<InstallMethod?>(null) }
