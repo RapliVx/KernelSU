@@ -377,10 +377,6 @@ fun flashAnyKernelZip(
 
 fun rootAvailable() = Shell.isAppGrantedRoot() == true
 
-fun isAbDevice(): Boolean {
-    return ShellUtils.fastCmd("getprop ro.build.ab_update").trim().toBoolean()
-}
-
 fun isInitBoot(): Boolean {
     return !Os.uname().release.contains("android12-")
 }
@@ -391,8 +387,38 @@ suspend fun getCurrentKmi(): String = withContext(Dispatchers.IO) {
 }
 
 suspend fun getSupportedKmis(): List<String> = withContext(Dispatchers.IO) {
-    val cmd = "boot-info supported-kmi"
+    val cmd = "boot-info supported-kmis"
     val out = Shell.cmd("${getKsuDaemonPath()} $cmd").to(ArrayList(), null).exec().out
+    out.filter { it.isNotBlank() }.map { it.trim() }
+}
+
+suspend fun isAbDevice(): Boolean = withContext(Dispatchers.IO) {
+    val cmd = "boot-info is-ab-device"
+    ShellUtils.fastCmd("${getKsuDaemonPath()} $cmd").trim().toBoolean()
+}
+
+suspend fun getDefaultPartition(): String = withContext(Dispatchers.IO) {
+    if (rootAvailable()) {
+        val cmd = "boot-info default-partition"
+        ShellUtils.fastCmd("${getKsuDaemonPath()} $cmd").trim()
+    } else {
+        if (!Os.uname().release.contains("android12-")) "init_boot" else "boot"
+    }
+}
+
+suspend fun getSlotSuffix(ota: Boolean): String = withContext(Dispatchers.IO) {
+    val cmd = if (ota) {
+        "boot-info slot-suffix --ota"
+    } else {
+        "boot-info slot-suffix"
+    }
+    ShellUtils.fastCmd("${getKsuDaemonPath()} $cmd").trim()
+}
+
+suspend fun getAvailablePartitions(): List<String> = withContext(Dispatchers.IO) {
+    val shell = createRootShell(true)
+    val cmd = "boot-info available-partitions"
+    val out = shell.newJob().add("${getKsuDaemonPath()} $cmd").to(ArrayList(), null).exec().out
     out.filter { it.isNotBlank() }.map { it.trim() }
 }
 

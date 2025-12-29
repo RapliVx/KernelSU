@@ -215,7 +215,9 @@ sealed class InstallMethod {
 @Composable
 private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
     val rootAvailable = rootAvailable()
-    val isAbDevice = isAbDevice()
+    val isAbDevice = produceState(initialValue = false) {
+        value = isAbDevice()
+    }.value
     val kernelVersion = getKernelVersion()
     val selectFileTip = stringResource(
         id = R.string.select_file_tip,

@@ -615,7 +615,7 @@ private fun ModuleList(
 
         val success = loadingDialog.withLoading {
             withContext(Dispatchers.IO) {
-                uninstallModule(module.dirId)
+                uninstallModule(module.id)
             }
         }
 
@@ -655,7 +655,7 @@ private fun ModuleList(
 
         val success = loadingDialog.withLoading {
             withContext(Dispatchers.IO) {
-                restoreModule(module.dirId)
+                restoreModule(module.id)
             }
         }
 
@@ -727,7 +727,7 @@ private fun ModuleList(
                                 scope.launch {
                                     val success = loadingDialog.withLoading {
                                         withContext(Dispatchers.IO) {
-                                            toggleModule(module.dirId, !module.enabled)
+                                            toggleModule(module.id, !module.enabled)
                                         }
                                     }
                                     if (success) {
@@ -760,7 +760,7 @@ private fun ModuleList(
                                 }
                             },
                             onClick = {
-                                onClickModule(it.dirId, it.name, it.hasWebUi)
+                                onClickModule(it.id, it.name, it.hasWebUi)
                             },
                             expanded = expandedModuleId == module.id,
                             onExpandToggle = {
@@ -1103,7 +1103,7 @@ fun ModuleItem(
                                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                     enabled = !module.remove && module.enabled && filterZygiskModules,
                                     onClick = {
-                                        navigator.navigate(ExecuteModuleActionScreenDestination(module.dirId))
+                                        navigator.navigate(ExecuteModuleActionScreenDestination(module.id))
                                         viewModel.markNeedRefresh()
                                     },
                                     contentPadding = ButtonDefaults.TextButtonContentPadding
@@ -1291,7 +1291,6 @@ fun ModuleItemPreview() {
         updateJson = "",
         hasWebUi = false,
         hasActionScript = false,
-        dirId = "dirId",
         size = 12345678L,
         banner = "",
         zygiskRequired = false,

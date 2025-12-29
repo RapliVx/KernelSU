@@ -139,20 +139,16 @@ fn run_stage(stage: &str, block: bool) {
     }
 }
 
-pub fn on_services() -> Result<()> {
+pub fn on_services() {
     info!("on_services triggered!");
     run_stage("service", false);
-
-    Ok(())
 }
 
-pub fn on_boot_completed() -> Result<()> {
+pub fn on_boot_completed() {
     ksucalls::report_boot_complete();
     info!("on_boot_completed triggered!");
 
     run_stage("boot-completed", false);
-
-    Ok(())
 }
 
 #[cfg(unix)]

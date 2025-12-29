@@ -2,12 +2,11 @@ use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use std::path::PathBuf;
 
-#[cfg(target_os = "android")]
 use android_logger::Config;
-#[cfg(target_os = "android")]
 use log::LevelFilter;
 
-use crate::{apk_sign, assets, debug, defs, init_event, ksucalls, module, utils};
+use crate::boot_patch::{BootPatchArgs, BootRestoreArgs};
+use crate::{apk_sign, assets, debug, defs, init_event, ksucalls, module, module_config, utils};
 
 /// KernelSU Next userspace cli
 #[derive(Parser, Debug)]
@@ -66,58 +65,10 @@ enum Commands {
     },
 
     /// Patch boot or init_boot images to apply KernelSU Next
-    BootPatch {
-        /// boot image path, if not specified, will try to find the boot image automatically
-        #[arg(short, long)]
-        boot: Option<PathBuf>,
+    BootPatch(BootPatchArgs),
 
-        /// kernel image path to replace
-        #[arg(short, long)]
-        kernel: Option<PathBuf>,
-
-        /// LKM module path to replace, if not specified, will use the builtin one
-        #[arg(short, long)]
-        module: Option<PathBuf>,
-
-        /// init to be replaced
-        #[arg(short, long, requires("module"))]
-        init: Option<PathBuf>,
-
-        /// will use another slot when boot image is not specified
-        #[arg(short = 'u', long, default_value = "false")]
-        ota: bool,
-
-        /// Flash it to boot partition after patch
-        #[arg(short, long, default_value = "false")]
-        flash: bool,
-
-        /// output path, if not specified, will use current directory
-        #[arg(short, long, default_value = None)]
-        out: Option<PathBuf>,
-
-        /// magiskboot path, if not specified, will search from $PATH
-        #[arg(long, default_value = None)]
-        magiskboot: Option<PathBuf>,
-
-        /// KMI version, if specified, will use the specified KMI
-        #[arg(long, default_value = None)]
-        kmi: Option<String>,
-    },
-
-    /// Restore boot or init_boot images patched by KernelSU Next
-    BootRestore {
-        /// boot image path, if not specified, will try to find the boot image automatically
-        #[arg(short, long)]
-        boot: Option<PathBuf>,
-
-        /// Flash it to boot partition after patch
-        #[arg(short, long, default_value = "false")]
-        flash: bool,
-
-        /// magiskboot path, if not specified, will search from $PATH
-        #[arg(long, default_value = None)]
-        magiskboot: Option<PathBuf>,
-    },
+    /// Restore boot or init_boot images patched by KernelSU
+    BootRestore(BootRestoreArgs),
 
     /// Show boot information
     BootInfo {
@@ -142,7 +93,23 @@ enum BootInfo {
     CurrentKmi,
 
     /// show supported kmi versions
-    SupportedKmi,
+    SupportedKmis,
+
+    /// check if device is A/B capable
+    IsAbDevice,
+
+    /// show auto-selected boot partition name
+    DefaultPartition,
+
+    /// list available partitions for current or OTA toggled slot
+    AvailablePartitions,
+
+    /// show slot suffix for current or OTA toggled slot
+    SlotSuffix {
+        /// toggle to another slot
+        #[arg(short = 'u', long, default_value = "false")]
+        ota: bool,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -236,14 +203,14 @@ enum Module {
         zip: String,
     },
 
-    /// Uninstall module <id>
-    Uninstall {
+    /// Undo module uninstall mark <id>
+    Restore {
         /// module id
         id: String,
     },
 
-    /// Restore module <id>
-    Restore {
+    /// Uninstall module <id>
+    Uninstall {
         /// module id
         id: String,
     },
@@ -432,15 +399,11 @@ enum UmountOp {
 }
 
 pub fn run() -> Result<()> {
-    #[cfg(target_os = "android")]
     android_logger::init_once(
         Config::default()
             .with_max_level(crate::debug_select!(LevelFilter::Trace, LevelFilter::Info))
             .with_tag("KernelSU Next"),
     );
-
-    #[cfg(not(target_os = "android"))]
-    env_logger::init();
 
     // the kernel executes su with argv[0] = "su" and replace it with us
     let arg0 = std::env::args().next().unwrap_or_default();
@@ -454,17 +417,17 @@ pub fn run() -> Result<()> {
 
     let result = match cli.command {
         Commands::PostFsData => init_event::on_post_data_fs(),
-        Commands::BootCompleted => init_event::on_boot_completed(),
+        Commands::BootCompleted => {
+            init_event::on_boot_completed();
+            Ok(())
+        }
 
         Commands::Module { command } => {
-            #[cfg(any(target_os = "linux", target_os = "android"))]
-            {
-                utils::switch_mnt_ns(1)?;
-            }
+            utils::switch_mnt_ns(1)?;
             match command {
                 Module::Install { zip } => module::install_module(&zip),
-                Module::Uninstall { id } => module::uninstall_module(&id),
                 Module::Restore { id } => module::restore_module(&id),
+                Module::Uninstall { id } => module::uninstall_module(&id),
                 Module::Enable { id } => module::enable_module(&id),
                 Module::Disable { id } => module::disable_module(&id),
                 Module::Action { id } => module::run_action(&id),
@@ -476,17 +439,16 @@ pub fn run() -> Result<()> {
                         anyhow::anyhow!("This command must be run in the context of a module")
                     })?;
 
-                    use crate::module_config;
                     match command {
                         ModuleConfigCmd::Get { key } => {
                             // Use merge_configs to respect priority (temp overrides persist)
                             let config = module_config::merge_configs(&module_id)?;
                             match config.get(&key) {
                                 Some(value) => {
-                                    println!("{}", value);
+                                    println!("{value}");
                                     Ok(())
                                 }
-                                None => anyhow::bail!("Key '{}' not found", key),
+                                None => anyhow::bail!("Key '{key}' not found"),
                             }
                         }
                         ModuleConfigCmd::Set {
@@ -533,7 +495,7 @@ pub fn run() -> Result<()> {
                                 println!("No config entries found");
                             } else {
                                 for (key, value) in config {
-                                    println!("{}={}", key, value);
+                                    println!("{key}={value}");
                                 }
                             }
                             Ok(())
@@ -565,7 +527,10 @@ pub fn run() -> Result<()> {
             Sepolicy::Apply { file } => crate::sepolicy::apply_file(file),
             Sepolicy::Check { sepolicy } => crate::sepolicy::check_rule(&sepolicy),
         },
-        Commands::Services => init_event::on_services(),
+        Commands::Services => {
+            init_event::on_services();
+            Ok(())
+        }
         Commands::Profile { command } => match command {
             Profile::GetSepolicy { package } => crate::profile::get_sepolicy(package),
             Profile::SetSepolicy { package, policy } => {
@@ -616,19 +581,7 @@ pub fn run() -> Result<()> {
             },
         },
 
-        Commands::BootPatch {
-            boot,
-            init,
-            kernel,
-            module,
-            ota,
-            flash,
-            out,
-            magiskboot,
-            kmi,
-        } => crate::boot_patch::patch(
-            boot, kernel, module, init, ota, flash, out, magiskboot, kmi,
-        ),
+        Commands::BootPatch(boot_patch) => crate::boot_patch::patch(boot_patch),
 
         Commands::BootInfo { command } => match command {
             BootInfo::CurrentKmi => {
@@ -637,17 +590,40 @@ pub fn run() -> Result<()> {
                 // return here to avoid printing the error message
                 return Ok(());
             }
-            BootInfo::SupportedKmi => {
-                let kmi = crate::assets::list_supported_kmi()?;
-                kmi.iter().for_each(|kmi| println!("{kmi}"));
+            BootInfo::SupportedKmis => {
+                let kmi = crate::assets::list_supported_kmi();
+                for kmi in &kmi {
+                    println!("{kmi}");
+                }
+                return Ok(());
+            }
+            BootInfo::IsAbDevice => {
+                let val = crate::utils::getprop("ro.build.ab_update")
+                    .unwrap_or_else(|| String::from("false"));
+                let is_ab = val.trim().to_lowercase() == "true";
+                println!("{}", if is_ab { "true" } else { "false" });
+                return Ok(());
+            }
+            BootInfo::DefaultPartition => {
+                let kmi = crate::boot_patch::get_current_kmi().unwrap_or_else(|_| String::new());
+                let name = crate::boot_patch::choose_boot_partition(&kmi, false, &None);
+                println!("{name}");
+                return Ok(());
+            }
+            BootInfo::SlotSuffix { ota } => {
+                let suffix = crate::boot_patch::get_slot_suffix(ota);
+                println!("{suffix}");
+                return Ok(());
+            }
+            BootInfo::AvailablePartitions => {
+                let parts = crate::boot_patch::list_available_partitions();
+                for p in &parts {
+                    println!("{p}");
+                }
                 return Ok(());
             }
         },
-        Commands::BootRestore {
-            boot,
-            magiskboot,
-            flash,
-        } => crate::boot_patch::restore(boot, magiskboot, flash),
+        Commands::BootRestore(boot_restore) => crate::boot_patch::restore(boot_restore),
         Commands::Kernel { command } => match command {
             Kernel::NukeExt4Sysfs { mnt } => ksucalls::nuke_ext4_sysfs(&mnt),
             Kernel::Umount { command } => match command {

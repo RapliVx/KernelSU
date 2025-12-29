@@ -43,7 +43,6 @@ class ModuleViewModel : ViewModel() {
         val updateJson: String,
         val hasWebUi: Boolean,
         val hasActionScript: Boolean,
-        val dirId: String,
         val size: Long,
         val banner: String,
         val zygiskRequired: Boolean,
@@ -80,7 +79,7 @@ class ModuleViewModel : ViewModel() {
             sortZToA -> compareByDescending { it.name.lowercase() }
             sortSizeLowToHigh -> compareBy { it.size }
             sortSizeHighToLow -> compareByDescending { it.size }
-            else -> compareBy<ModuleInfo> { it.dirId }
+            else -> compareBy<ModuleInfo> { it.id }
         }.thenBy(Collator.getInstance(Locale.getDefault()), ModuleInfo::id)
 
         modules.filter {
@@ -130,8 +129,7 @@ class ModuleViewModel : ViewModel() {
                         .map { array.getJSONObject(it) }
                         .map { obj ->
                             val id = obj.getString("id")
-                            val dirId = obj.getString("dir_id")
-                            val moduleDir = File("/data/adb/modules/$dirId")
+                            val moduleDir = File("/data/adb/modules/$id")
                             val size = getModuleSize(moduleDir)
                             val zygiskRequired = zygiskRequired(moduleDir)
                             val metaModule =
@@ -152,7 +150,6 @@ class ModuleViewModel : ViewModel() {
                                 obj.optString("updateJson"),
                                 obj.optBoolean("web"),
                                 obj.optBoolean("action"),
-                                dirId,
                                 size,
                                 obj.optString("banner"),
                                 zygiskRequired,
