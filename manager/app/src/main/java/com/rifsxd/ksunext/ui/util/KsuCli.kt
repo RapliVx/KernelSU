@@ -428,19 +428,6 @@ fun hasMagisk(): Boolean {
     return result
 }
 
-fun isGlobalNamespaceEnabled(): Boolean {
-    val result = ShellUtils.fastCmd("cat ${Natives.GLOBAL_NAMESPACE_FILE}")
-    Log.i(TAG, "is global namespace enabled: $result")
-    return result == "1"
-}
-
-fun setGlobalNamespaceEnabled(value: String) {
-    Shell.cmd("echo $value > ${Natives.GLOBAL_NAMESPACE_FILE}")
-        .submit { result ->
-            Log.i(TAG, "setGlobalNamespaceEnabled result: ${result.isSuccess} [${result.out}]")
-        }
-}
-
 fun isSepolicyValid(rules: String?): Boolean {
     if (rules == null) {
         return true

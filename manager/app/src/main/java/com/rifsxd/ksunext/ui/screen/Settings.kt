@@ -70,8 +70,6 @@ import java.time.format.DateTimeFormatter
 fun SettingScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
-    var isGlobalNamespaceEnabled by rememberSaveable { mutableStateOf(false) }
-    isGlobalNamespaceEnabled = isGlobalNamespaceEnabled()
 
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
@@ -189,26 +187,13 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                                 }
                             }
                         }
-                        SwitchItem(
-                            icon = Icons.Filled.Engineering,
-                            title = stringResource(R.string.settings_global_namespace_mode),
-                            summary = stringResource(R.string.settings_global_namespace_mode_summary),
-                            checked = isGlobalNamespaceEnabled,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp)),
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        ) {
-                            setGlobalNamespaceEnabled(if (isGlobalNamespaceEnabled) "0" else "1")
-                            isGlobalNamespaceEnabled = it
-                        }
 
                         if (kernelUmountStatus == "supported") {
                             var isKernelUmountDisabled by rememberSaveable {
                                 mutableStateOf(!Natives.isKernelUmountEnabled())
                             }
                             SwitchItem(
-                                icon = Icons.Filled.FolderDelete,
+                                icon = Icons.Filled.RemoveCircle,
                                 title = stringResource(id = R.string.settings_disable_kernel_umount),
                                 summary = stringResource(id = R.string.settings_disable_kernel_umount_summary),
                                 checked = isKernelUmountDisabled,
