@@ -38,7 +38,7 @@ class KernelSUApplication : Application(), ViewModelStoreOwner {
         val superUserViewModel = ViewModelProvider(this)[SuperUserViewModel::class.java]
         CoroutineScope(Dispatchers.Main).launch {
             if (superUserViewModel.appList.isEmpty()) {
-                superUserViewModel.loadAppList()
+                superUserViewModel.fetchAppList()
             }
             if (moduleViewModel.moduleList.isEmpty()) {
                 moduleViewModel.fetchModuleList()

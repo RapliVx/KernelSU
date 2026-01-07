@@ -42,11 +42,6 @@ data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) 
     constructor(result: Shell.Result) : this(result, result.isSuccess)
 }
 
-object KsuCli {
-    val SHELL: Shell = createRootShell()
-    val GLOBAL_MNT_SHELL: Shell = createRootShell(true)
-}
-
 inline fun <T> withNewRootShell(
     globalMnt: Boolean = false,
     block: Shell.() -> T
