@@ -22,7 +22,10 @@ import com.rifsxd.ksunext.Natives
 import com.rifsxd.ksunext.ksuApp
 import com.rifsxd.ksunext.ui.KsuService
 import com.rifsxd.ksunext.ui.util.HanziToPinyin
+import com.topjohnwu.superuser.ipc.RootService
 import com.topjohnwu.superuser.Shell
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
@@ -136,7 +139,7 @@ class SuperUserViewModel : ViewModel() {
 
         val intent = Intent(ksuApp, KsuService::class.java)
 
-        val task = KsuService.bindOrTask(
+        val task = RootService.bindOrTask(
             intent,
             Shell.EXECUTOR,
             connection,
@@ -146,41 +149,43 @@ class SuperUserViewModel : ViewModel() {
 
     private fun stopKsuService() {
         val intent = Intent(ksuApp, KsuService::class.java)
-        KsuService.stop(intent)
+        RootService.stop(intent)
     }
 
     suspend fun fetchAppList() {
+        Mutex().withLock {
 
-        isRefreshing = true
+            isRefreshing = true
 
-        val result = connectKsuService {
-            Log.w(TAG, "KsuService disconnected")
-        }
-
-        withContext(Dispatchers.IO) {
-            val pm = ksuApp.packageManager
-            val start = SystemClock.elapsedRealtime()
-
-            val binder = result.first
-            val allPackages = IKsuInterface.Stub.asInterface(binder).getPackages(0)
-
-            withContext(Dispatchers.Main) {
-                stopKsuService()
+            val result = connectKsuService {
+                Log.w(TAG, "KsuService disconnected")
             }
 
-            val packages = allPackages.list
+            withContext(Dispatchers.IO) {
+                val pm = ksuApp.packageManager
+                val start = SystemClock.elapsedRealtime()
 
-            apps = packages.map {
-                val appInfo = it.applicationInfo
-                val uid = appInfo!!.uid
-                val profile = Natives.getAppProfile(it.packageName, uid)
-                AppInfo(
-                    label = appInfo.loadLabel(pm).toString(),
-                    packageInfo = it,
-                    profile = profile,
-                )
+                val binder = result.first
+                val allPackages = IKsuInterface.Stub.asInterface(binder).getPackages(0)
+
+                withContext(Dispatchers.Main) {
+                    stopKsuService()
+                }
+
+                val packages = allPackages.list
+
+                apps = packages.map {
+                    val appInfo = it.applicationInfo
+                    val uid = appInfo!!.uid
+                    val profile = Natives.getAppProfile(it.packageName, uid)
+                    AppInfo(
+                        label = appInfo.loadLabel(pm).toString(),
+                        packageInfo = it,
+                        profile = profile,
+                    )
+                }
+                Log.i(TAG, "load cost: ${SystemClock.elapsedRealtime() - start}")
             }
-            Log.i(TAG, "load cost: ${SystemClock.elapsedRealtime() - start}")
         }
     }
 }
