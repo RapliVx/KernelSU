@@ -54,7 +54,7 @@ fun SuperUserScreen(navigator: DestinationsNavigator) {
     LaunchedEffect(navigator) {
         viewModel.search = ""
         if (viewModel.appList.isEmpty()) {
-            viewModel.fetchAppList()
+            viewModel.loadAppList()
         }
     }
 
@@ -98,7 +98,7 @@ fun SuperUserScreen(navigator: DestinationsNavigator) {
                                 Text(stringResource(R.string.refresh))
                             }, onClick = {
                                 scope.launch {
-                                    viewModel.fetchAppList()
+                                    viewModel.loadAppList()
                                 }
                                 showDropdown = false
                             })
@@ -125,7 +125,7 @@ fun SuperUserScreen(navigator: DestinationsNavigator) {
         PullToRefreshBox(
             modifier = Modifier.padding(innerPadding),
             onRefresh = {
-                scope.launch { viewModel.fetchAppList() }
+                scope.launch { viewModel.loadAppList() }
             },
             isRefreshing = viewModel.isRefreshing
         ) {

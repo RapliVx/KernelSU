@@ -128,7 +128,7 @@ fun AppProfileScreen(
                         snackBarHost.showSnackbar(failToUpdateAppProfile.format(appInfo.uid))
                     } else {
                         profile = it
-                        viewModel.updateAppProfile(packageName, it)
+                        viewModel.loadAppList()
                     }
                 }
             },

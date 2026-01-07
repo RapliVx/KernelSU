@@ -6,23 +6,33 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
+import android.graphics.drawable.Drawable
+import android.os.Build
+import android.os.DeadObjectException
 import android.os.IBinder
 import android.os.Parcelable
+import android.os.RemoteException
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.core.content.edit
-import android.graphics.drawable.Drawable
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.rifsxd.ksunext.IKsuInterface
 import com.rifsxd.ksunext.Natives
 import com.rifsxd.ksunext.ksuApp
 import com.rifsxd.ksunext.ui.KsuService
 import com.rifsxd.ksunext.ui.util.HanziToPinyin
+import com.rifsxd.ksunext.ui.util.KsuCli
 import com.topjohnwu.superuser.Shell
+import com.topjohnwu.superuser.ipc.RootService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
@@ -35,11 +45,13 @@ class SuperUserViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "SuperUserViewModel"
-         var apps by mutableStateOf<List<AppInfo>>(emptyList())
+        private val appsLock = Any()
+        var apps by mutableStateOf<List<AppInfo>>(emptyList())
 
         @JvmStatic
         fun getAppIconDrawable(context: Context, packageName: String): Drawable? {
-            val appDetail = apps.find { it.packageName == packageName }
+            val appList = synchronized(appsLock) { apps }
+            val appDetail = appList.find { it.packageName == packageName }
             return appDetail?.packageInfo?.applicationInfo?.loadIcon(context.packageManager)
         }
         private var profileOverrides by mutableStateOf<Map<String, Natives.Profile>>(emptyMap())
@@ -76,22 +88,29 @@ class SuperUserViewModel : ViewModel() {
 
     var search by mutableStateOf("")
     var showSystemApps by mutableStateOf(prefs.getBoolean("show_system_apps", false))
-        private set
     var isRefreshing by mutableStateOf(false)
         private set
+
+    var isNeedRefresh by mutableStateOf(false)
+        private set
+
+    fun markNeedRefresh() {
+        isNeedRefresh = true
+    }
 
     fun updateShowSystemApps(newValue: Boolean) {
         showSystemApps = newValue
         prefs.edit { putBoolean("show_system_apps", newValue) }
     }
 
+    val isAppListEmpty: Boolean
+        get() = synchronized(appsLock) { apps.isEmpty() }
+
     private val sortedList by derivedStateOf {
         val comparator = compareBy<AppInfo> {
             when {
-                it.profile != null && it.profile.allowSu -> 0
-                it.profile != null && (
-                    if (it.profile.allowSu) !it.profile.rootUseDefault else !it.profile.nonRootUseDefault
-                ) -> 1
+                it.allowSu -> 0
+                it.hasCustomProfile -> 1
                 else -> 2
             }
         }.then(compareBy(Collator.getInstance(Locale.getDefault()), AppInfo::label))
@@ -115,12 +134,6 @@ class SuperUserViewModel : ViewModel() {
         }
     }
 
-    fun updateAppProfile(packageName: String, newProfile: Natives.Profile) {
-        profileOverrides = profileOverrides.toMutableMap().apply {
-            put(packageName, newProfile)
-        }
-    }
-
     private suspend inline fun connectKsuService(
         crossinline onDisconnect: () -> Unit = {}
     ): Pair<IBinder, ServiceConnection> = suspendCoroutine {
@@ -136,51 +149,126 @@ class SuperUserViewModel : ViewModel() {
 
         val intent = Intent(ksuApp, KsuService::class.java)
 
-        val task = KsuService.bindOrTask(
+        val task = RootService.bindOrTask(
             intent,
             Shell.EXECUTOR,
             connection,
         )
-        task?.let { it1 -> Shell.getShell().execTask(it1) }
+        val shell = KsuCli.SHELL
+        task?.let { it1 -> shell.execTask(it1) }
     }
 
     private fun stopKsuService() {
         val intent = Intent(ksuApp, KsuService::class.java)
-        KsuService.stop(intent)
+        RootService.stop(intent)
+    }
+
+    private fun filterAndSort(list: List<AppInfo>): List<AppInfo> {
+        val comparator = compareBy<AppInfo> {
+            when {
+                it.allowSu -> 0
+                it.hasCustomProfile -> 1
+                else -> 2
+            }
+        }.then(compareBy(Collator.getInstance(Locale.getDefault()), AppInfo::label))
+        return list.sortedWith(comparator).filter {
+            it.uid == 2000
+                    || showSystemApps
+                    || it.allowSu
+                    || it.hasCustomProfile
+                    || it.packageInfo.applicationInfo!!.flags.and(ApplicationInfo.FLAG_SYSTEM) == 0
+        }
     }
 
     suspend fun fetchAppList() {
+        Mutex().withLock {
+            withContext(Dispatchers.Main) { isRefreshing = true }
 
-        isRefreshing = true
+            val result = connectKsuService {
+                Log.w(TAG, "KsuService disconnected")
+            }
 
-        val result = connectKsuService {
-            Log.w(TAG, "KsuService disconnected")
-        }
+            val allPackagesSlice = withContext(Dispatchers.IO) {
+                val pm = ksuApp.packageManager
+                val start = SystemClock.elapsedRealtime()
 
-        withContext(Dispatchers.IO) {
-            val pm = ksuApp.packageManager
-            val start = SystemClock.elapsedRealtime()
+                val binder = result.first
+                val iface = IKsuInterface.Stub.asInterface(binder)
+                val slice = try {
+                    iface.getPackages(0)
+                } catch (_: DeadObjectException) {
+                    val retry = connectKsuService { Log.w(TAG, "KsuService disconnected") }
+                    IKsuInterface.Stub.asInterface(retry.first).getPackages(0)
+                } catch (_: RemoteException) {
+                    val retry = connectKsuService { Log.w(TAG, "KsuService disconnected") }
+                    IKsuInterface.Stub.asInterface(retry.first).getPackages(0)
+                }
 
-            val binder = result.first
-            val allPackages = IKsuInterface.Stub.asInterface(binder).getPackages(0)
+                val packages = slice.list
+                val newApps = packages.map {
+                    val appInfo = it.applicationInfo
+                    val uid = appInfo!!.uid
+                    val profile = Natives.getAppProfile(it.packageName, uid)
+                    AppInfo(
+                        label = appInfo.loadLabel(pm).toString(),
+                        packageInfo = it,
+                        profile = profile,
+                    )
+                }.filter {
+                        val ai = it.packageInfo.applicationInfo!!
+                        if (Build.VERSION.SDK_INT >= 29) !ai.isResourceOverlay else true
+                    }
+
+                val sortedFiltered = filterAndSort(newApps)
+
+                Log.i(TAG, "load cost: ${SystemClock.elapsedRealtime() - start}")
+
+                Pair(newApps, sortedFiltered)
+            }
 
             withContext(Dispatchers.Main) {
+                synchronized(appsLock) {
+                    apps = allPackagesSlice.first
+                }
+                isRefreshing = false
+                isNeedRefresh = false
                 stopKsuService()
             }
+        }
+    }
 
-            val packages = allPackages.list
+    private suspend fun refreshAppList() {
+        Mutex().withLock {
+            val currentApps = synchronized(appsLock) { apps }
+            if (currentApps.isEmpty()) return
 
-            apps = packages.map {
-                val appInfo = it.applicationInfo
-                val uid = appInfo!!.uid
-                val profile = Natives.getAppProfile(it.packageName, uid)
-                AppInfo(
-                    label = appInfo.loadLabel(pm).toString(),
-                    packageInfo = it,
-                    profile = profile,
-                )
+            val updatedApps = withContext(Dispatchers.IO) {
+                currentApps.map {
+                    val profile = Natives.getAppProfile(it.packageName, it.uid)
+                    it.copy(profile = profile)
+                }
             }
-            Log.i(TAG, "load cost: ${SystemClock.elapsedRealtime() - start}")
+
+            val sortedFiltered = withContext(Dispatchers.IO) {
+                filterAndSort(updatedApps)
+            }
+
+            withContext(Dispatchers.Main) {
+                synchronized(appsLock) {
+                    apps = updatedApps
+                }
+                isNeedRefresh = false
+            }
+        }
+    }
+
+    fun loadAppList(force: Boolean = false) {
+        viewModelScope.launch {
+            if (force || apps.isEmpty()) {
+                fetchAppList()
+            } else {
+                refreshAppList()
+            }
         }
     }
 }
