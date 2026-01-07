@@ -38,7 +38,7 @@ import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ksuApp
 import com.rifsxd.ksunext.ui.component.SwitchItem
 import com.rifsxd.ksunext.ui.component.rememberCustomDialog
-import com.rifsxd.ksunext.ui.util.restartActivity
+import com.rifsxd.ksunext.ui.util.refreshActivity
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.LocaleHelper
 
@@ -195,7 +195,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                                     currentAppLocale = LocaleHelper.getCurrentAppLocale(context)
                                     
                                     // Apply locale change immediately for Android < 13
-                                    LocaleHelper.restartActivity(context)
+                                    refreshActivity(context)
                                 }
                                 dismiss()
                             },

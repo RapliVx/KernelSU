@@ -660,6 +660,12 @@ fun getZygiskImplementation(property: String): String {
     return "None"
 }
 
+fun refreshActivity(context: Context) {
+    if (context is Activity) {
+        context.recreate()
+    }
+}
+
 fun restartActivity(context: Context) {
     val packageManager = context.packageManager
     val intent = packageManager.getLaunchIntentForPackage(context.packageName)

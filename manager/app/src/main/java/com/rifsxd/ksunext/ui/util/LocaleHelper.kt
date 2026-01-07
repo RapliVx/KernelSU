@@ -107,15 +107,6 @@ object LocaleHelper {
     }
     
     /**
-     * Restart activity to apply language change (Android < 13)
-     */
-    fun restartActivity(context: Context) {
-        if (context is Activity && !useSystemLanguageSettings) {
-            context.recreate()
-        }
-    }
-    
-    /**
      * Get current app locale
      */
     fun getCurrentAppLocale(context: Context): Locale? {
