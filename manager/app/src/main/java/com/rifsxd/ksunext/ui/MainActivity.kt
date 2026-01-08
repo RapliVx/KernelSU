@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
                         DestinationsNavHost(
                             modifier = Modifier
                                 .padding(innerPadding)
-                                .windowInsetsPadding(WindowInsets.navigationBars),
+                                .fillMaxSize(),
                             navGraph = NavGraphs.root,
                             navController = navController,
                             defaultTransitions = object : NavHostAnimatedDestinationStyle() {

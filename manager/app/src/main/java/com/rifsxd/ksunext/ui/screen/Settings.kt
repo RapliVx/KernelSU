@@ -94,6 +94,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 .padding(paddingValues)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
+                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
         ) {
 
             val context = LocalContext.current

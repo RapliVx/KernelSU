@@ -430,18 +430,24 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                         viewModel.markNeedRefresh()
                     }
 
-                    ExtendedFloatingActionButton(
-                        onClick = {
-                            // Select the zip files to install
-                            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                                type = "application/zip"
-                                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                            }
-                            selectZipLauncher.launch(intent)
-                        },
-                        icon = { Icon(Icons.Filled.Add, moduleInstall) },
-                        text = { Text(text = moduleInstall) },
-                    )
+                    Box(
+                        modifier = Modifier.padding(
+                            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                        )
+                    ) {
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                // Select the zip files to install
+                                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                                    type = "application/zip"
+                                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                                }
+                                selectZipLauncher.launch(intent)
+                            },
+                            icon = { Icon(Icons.Filled.Add, moduleInstall) },
+                            text = { Text(text = moduleInstall) },
+                        )
+                    }
                 }
             }
         },
@@ -675,6 +681,8 @@ private fun ModuleList(
             viewModel.fetchModuleList()
         }
     ) {
+        val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -686,7 +694,7 @@ private fun ModuleList(
                     start = 16.dp,
                     top = 16.dp,
                     end = 16.dp,
-                    bottom = 16.dp
+                    bottom = 16.dp + navBarPadding
                 )
             }
         ) {

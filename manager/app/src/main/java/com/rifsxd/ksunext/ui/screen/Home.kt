@@ -108,6 +108,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 .padding(innerPadding)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
+                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

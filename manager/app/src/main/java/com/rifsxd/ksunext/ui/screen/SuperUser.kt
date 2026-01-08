@@ -133,9 +133,15 @@ fun SuperUserScreen(navigator: DestinationsNavigator) {
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = PaddingValues(
+                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                )
             ) {
-                items(viewModel.appList.filter { it.packageName != ksuApp.packageName }, key = { it.packageName + it.uid }) { app ->
+                items(
+                    viewModel.appList.filter { it.packageName != ksuApp.packageName }, 
+                    key = { it.packageName + it.uid }
+                ) { app ->
                     AppItem(app) {
                         navigator.navigate(AppProfileScreenDestination(app))
                     }
