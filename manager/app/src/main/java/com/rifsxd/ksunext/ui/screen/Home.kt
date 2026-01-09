@@ -460,9 +460,15 @@ private fun TopBar(
                     }
                 }
             ) {
+                val contentColor =
+                    if (kpatchNext != null)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        LocalContentColor.current
                 Icon(
                     painter = painterResource(R.drawable.ic_ksu_next),
                     contentDescription = null,
+                    tint = contentColor,
                     modifier = Modifier
                         .padding(end = 8.dp)
                         .graphicsLayer {
@@ -473,6 +479,7 @@ private fun TopBar(
                     text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
+                    color = contentColor
                 )
             }
         },
