@@ -40,6 +40,7 @@ import java.util.Locale
 @SuppressLint("SetJavaScriptEnabled")
 class WebUIActivity : ComponentActivity() {
 
+    private lateinit var webviewInterface: WebViewInterface
     private val rootShell by lazy { createRootShell(true) }
     private var webView: WebView? = null
     private lateinit var container: FrameLayout
@@ -393,7 +394,11 @@ class WebUIActivity : ComponentActivity() {
             destroy()
         }
         webView = null
-        rootShell.runCatching { close() }
+        runCatching {
+            webviewInterface.destroy()
+            webView?.destroy()
+            rootShell?.close()
+        }
         super.onDestroy()
     }
 }
