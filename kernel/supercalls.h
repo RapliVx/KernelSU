@@ -123,7 +123,7 @@ struct ksu_add_try_umount_cmd {
 #define KSU_IOCTL_NUKE_EXT4_SYSFS _IOC(_IOC_WRITE, 'K', 17, 0)
 #define KSU_IOCTL_ADD_TRY_UMOUNT _IOC(_IOC_WRITE, 'K', 18, 0)
 
-#define KSU_IOCTL_SET_INIT_PGRP _IOC(_IOC_NONE, 'K', 1000, 0)
+#define KSU_IOCTL_SET_INIT_PGRP _IOC(_IOC_NONE, 'K', 100, 0)
 
 // IOCTL handler types
 typedef int (*ksu_ioctl_handler_t)(void __user *arg);
@@ -150,5 +150,6 @@ void ksu_supercalls_exit(void);
 #define GET_SULOG_DUMP 10009     // get sulog dump, max, last 100 escalations
 #define GET_SULOG_DUMP_V2 10010     // get sulog dump, max, last 250 escalations
 #define CHANGE_KSUVER 10011     // change ksu version
+#define CHANGE_SPOOF_UNAME 10012 // spoof uname
 
 #endif // __KSU_H_SUPERCALLS
