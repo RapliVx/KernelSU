@@ -111,7 +111,6 @@ import me.weishu.kernelsu.ui.util.LocalSnackbarHost
 import me.weishu.kernelsu.ui.util.getBugreportFile
 import me.weishu.kernelsu.ui.util.getFeaturePersistValue
 import me.weishu.kernelsu.ui.util.isToolKitInstalled
-import me.weishu.kernelsu.ui.util.isWebuiModuleInstalled
 import me.weishu.kernelsu.ui.util.SELinuxMode
 import me.weishu.kernelsu.ui.util.getSELinuxModeRaw
 import me.weishu.kernelsu.ui.util.setSELinuxMode
