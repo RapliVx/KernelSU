@@ -98,9 +98,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.ui.geometry.Offset
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -116,7 +113,6 @@ import me.weishu.kernelsu.ui.util.getSELinuxStatus
 import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.rootAvailable
-import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>(start = true)
@@ -271,7 +267,6 @@ private fun StatusCard(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-        // Logic teks versi
         val workingMode = when (lkmMode) {
             null -> "LEGACY"
             true -> "LKM"
@@ -290,7 +285,7 @@ private fun StatusCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp) // Sedikit lebih tinggi agar proporsional
+                    .height(170.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .clickable {
                         if (kernelVersion.isGKI()) {
@@ -299,7 +294,7 @@ private fun StatusCard(
                     }
             ) {
 
-                // 🔹 Background image (TETAP SAMA)
+                // 🔹 Background image
                 val context = LocalContext.current
                 val headerImageUri = context.getHeaderImage()
 
@@ -322,70 +317,69 @@ private fun StatusCard(
                     )
                 }
 
-                // 🔹 Gradient overlay
-                // Gradasi halus dari bawah kiri ke atas kanan
+                // 🔹 Gradient overlay (theme-aware)
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    cs.surface.copy(alpha = 0.5f), // Gelap di kiri bawah
+                            Brush.horizontalGradient(
+                                listOf(
+                                    cs.surface.copy(alpha = 0.75f),
                                     Color.Transparent
-                                ),
-                                start = Offset(0f, Float.POSITIVE_INFINITY),
-                                end = Offset(Float.POSITIVE_INFINITY, 0f)
+                                )
                             )
                         )
                 )
 
-                // 🔹 GLASS PANEL CONTENT
-                // Ini bagian kuncinya: Panel di pojok kiri bawah
+                // 🔹 CONTENT
                 Column(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 24.dp, bottom = 24.dp) // Jarak dari pinggir
-                        .clip(RoundedCornerShape(24.dp)) // Sudut membulat panel
-                        .background(cs.surface.copy(alpha = 0.25f)) // Transparansi kaca "milky"
-                        .padding(horizontal = 24.dp, vertical = 20.dp), // Padding dalam panel
+                        .fillMaxSize()
+                        .padding(24.dp),
                     verticalArrangement = Arrangement.Center
                 ) {
 
-                    // TITLE (Alive)
+                    // TITLE
                     Text(
                         text = if (ksuVersion != null)
                             stringResource(R.string.home_working)
                         else
                             stringResource(R.string.home_not_installed),
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.ExtraBold, // Sangat tebal
-                            letterSpacing = (-1).sp
-                        ),
-                        color = cs.primary // Warna biru/teal (Alive)
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = cs.primary
                     )
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                    // CHIP (Service PID...)
+                    // CHIP
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(cs.secondaryContainer.copy(alpha = 0.6f)) // Background chip semi-transparan
                     ) {
+                        // 🔹 BLUR LAYER (BACKGROUND)
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .blur(16.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                                )
+                        )
+
+                        // 🔹 CONTENT LAYER (NO BLUR)
                         Text(
                             text = versionText,
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = cs.onSecondaryContainer.copy(alpha = 0.8f), // Teks sedikit pudar
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
                 }
             }
         }
 
-        // ==== CARD BAWAH TETAP (TIDAK BERUBAH) ====
+        // ==== CARD BAWAH TETAP ====
         if (fullFeatured == true) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
