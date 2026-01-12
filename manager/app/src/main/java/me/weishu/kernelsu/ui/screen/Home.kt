@@ -98,6 +98,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.foundation.layout.fillMaxHeight
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -113,6 +114,7 @@ import me.weishu.kernelsu.ui.util.getSELinuxStatus
 import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.rootAvailable
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>(start = true)
@@ -287,23 +289,17 @@ private fun StatusCard(
                     .fillMaxWidth()
                     .height(170.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .clickable {
-                        if (kernelVersion.isGKI()) {
-                            onClickInstall()
-                        }
-                    }
+                    .clickable { if (kernelVersion.isGKI()) onClickInstall() }
             ) {
 
-                // 🔹 Background image
                 val context = LocalContext.current
+                val cs = MaterialTheme.colorScheme
                 val headerImageUri = context.getHeaderImage()
 
+                // BACKGROUND
                 if (headerImageUri != null) {
                     AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(headerImageUri)
-                            .crossfade(false)
-                            .build(),
+                        model = ImageRequest.Builder(context).data(headerImageUri).build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.matchParentSize()
@@ -317,26 +313,47 @@ private fun StatusCard(
                     )
                 }
 
-                // 🔹 Gradient overlay (theme-aware)
+                // MAIN GRADIENT
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .background(
                             Brush.horizontalGradient(
                                 listOf(
-                                    cs.surface.copy(alpha = 0.75f),
+                                    cs.surface.copy(alpha = 0.92f),
+                                    cs.surface.copy(alpha = 0.55f),
                                     Color.Transparent
                                 )
                             )
                         )
                 )
 
-                // 🔹 CONTENT
+                // GLOW LIGHT
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(200.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    cs.primary.copy(alpha = 0.18f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                // GLASS PANEL
+                // GLASS PANEL
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.Center
+                        .width(210.dp)
+                        .padding(start = 18.dp, top = 22.dp, bottom = 20.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(cs.surface.copy(alpha = 0.35f))
+                        .blur(0.6.dp),
+                    verticalArrangement = Arrangement.Bottom
                 ) {
 
                     // TITLE
@@ -345,34 +362,24 @@ private fun StatusCard(
                             stringResource(R.string.home_working)
                         else
                             stringResource(R.string.home_not_installed),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.ExtraBold,
                         color = cs.primary
                     )
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(6.dp))
 
                     // CHIP
-                    Box(
+                    Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
+                            .background(cs.secondaryContainer.copy(alpha = 0.65f))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
-                        // 🔹 BLUR LAYER (BACKGROUND)
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .blur(16.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                                )
-                        )
-
-                        // 🔹 CONTENT LAYER (NO BLUR)
                         Text(
                             text = versionText,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            color = cs.onSecondaryContainer
                         )
                     }
                 }
