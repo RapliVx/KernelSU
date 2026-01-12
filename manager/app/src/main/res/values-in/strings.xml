@@ -154,4 +154,8 @@
     <string name="refresh_refresh">Menyegarkan…</string>
     <string name="refresh_complete">Penyegaran berhasil</string>
     <string name="home_android">Versi Android</string>
+    <string name="settings_selinux">Mode SELinux</string>
+    <string name="settings_selinux_summary">Atur mode enforcement SELinux.</string>
+    <string name="settings_selinux_dialog_title">Atur Mode SELinux</string>
+    <string name="settings_selinux_set_failed">Gagal mengatur mode SELinux</string>
 </resources>
