@@ -99,6 +99,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.ui.geometry.Offset
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -269,6 +271,7 @@ private fun StatusCard(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
+        // Logic teks versi
         val workingMode = when (lkmMode) {
             null -> "LEGACY"
             true -> "LKM"
@@ -287,18 +290,25 @@ private fun StatusCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(170.dp)
+                    .height(180.dp) // Sedikit lebih tinggi agar proporsional
                     .clip(RoundedCornerShape(28.dp))
-                    .clickable { if (kernelVersion.isGKI()) onClickInstall() }
+                    .clickable {
+                        if (kernelVersion.isGKI()) {
+                            onClickInstall()
+                        }
+                    }
             ) {
 
+                // 🔹 Background image (TETAP SAMA)
                 val context = LocalContext.current
                 val headerImageUri = context.getHeaderImage()
 
-                // BACKGROUND
                 if (headerImageUri != null) {
                     AsyncImage(
-                        model = ImageRequest.Builder(context).data(headerImageUri).build(),
+                        model = ImageRequest.Builder(context)
+                            .data(headerImageUri)
+                            .crossfade(false)
+                            .build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.matchParentSize()
@@ -312,81 +322,70 @@ private fun StatusCard(
                     )
                 }
 
-                // MAIN GRADIENT
+                // 🔹 Gradient overlay
+                // Gradasi halus dari bawah kiri ke atas kanan
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    cs.surface.copy(alpha = 0.92f),
-                                    cs.surface.copy(alpha = 0.55f),
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    cs.surface.copy(alpha = 0.5f), // Gelap di kiri bawah
                                     Color.Transparent
-                                )
+                                ),
+                                start = Offset(0f, Float.POSITIVE_INFINITY),
+                                end = Offset(Float.POSITIVE_INFINITY, 0f)
                             )
                         )
                 )
 
-                // GLOW LIGHT (Dari kode sumber awal)
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(200.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    cs.primary.copy(alpha = 0.18f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                )
-
-                // GLASS PANEL (Dikembalikan seperti sumber tapi dirapikan posisinya)
+                // 🔹 GLASS PANEL CONTENT
+                // Ini bagian kuncinya: Panel di pojok kiri bawah
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .width(240.dp) // Sedikit dilebarkan agar teks muat
-                        .padding(start = 24.dp, bottom = 24.dp) // Padding luar agar tidak nempel pojok
-                        .wrapContentSize(Alignment.BottomStart) // Pastikan menempel di bawah
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(cs.surface.copy(alpha = 0.35f))
-                        .blur(0.6.dp) // Blur sesuai kode sumber awal
-                        .padding(20.dp), // Padding dalam panel
-                    verticalArrangement = Arrangement.Bottom
+                        .align(Alignment.BottomStart)
+                        .padding(start = 24.dp, bottom = 24.dp) // Jarak dari pinggir
+                        .clip(RoundedCornerShape(24.dp)) // Sudut membulat panel
+                        .background(cs.surface.copy(alpha = 0.25f)) // Transparansi kaca "milky"
+                        .padding(horizontal = 24.dp, vertical = 20.dp), // Padding dalam panel
+                    verticalArrangement = Arrangement.Center
                 ) {
 
-                    // TITLE
+                    // TITLE (Alive)
                     Text(
                         text = if (ksuVersion != null)
                             stringResource(R.string.home_working)
                         else
                             stringResource(R.string.home_not_installed),
-                        fontSize = 32.sp, // Sedikit dikecilkan agar proporsional
-                        fontWeight = FontWeight.ExtraBold,
-                        color = cs.primary
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.ExtraBold, // Sangat tebal
+                            letterSpacing = (-1).sp
+                        ),
+                        color = cs.primary // Warna biru/teal (Alive)
                     )
 
                     Spacer(Modifier.height(8.dp))
 
-                    // CHIP
-                    Row(
+                    // CHIP (Service PID...)
+                    Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(cs.secondaryContainer.copy(alpha = 0.65f))
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .background(cs.secondaryContainer.copy(alpha = 0.6f)) // Background chip semi-transparan
                     ) {
                         Text(
                             text = versionText,
                             style = MaterialTheme.typography.labelMedium,
-                            color = cs.onSecondaryContainer
+                            fontWeight = FontWeight.Medium,
+                            color = cs.onSecondaryContainer.copy(alpha = 0.8f), // Teks sedikit pudar
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                         )
                     }
                 }
             }
         }
 
-        // ==== CARD BAWAH TETAP ====
+        // ==== CARD BAWAH TETAP (TIDAK BERUBAH) ====
         if (fullFeatured == true) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

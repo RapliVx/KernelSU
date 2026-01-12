@@ -22,6 +22,7 @@ material3 = "1.5.0-alpha10"
 foundation = "1.10.0"
 foundation-layout = "1.10.0"
 ui = "1.10.0"
+ui-geometry = "1.10.0"
 
 [plugins]
 agp-app = { id = "com.android.application", version.ref = "agp" }
@@ -82,3 +83,4 @@ lsposed-cxx = { module = "org.lsposed.libcxx:libcxx", version.ref = "ndk" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundation-layout" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
+androidx-compose-ui-geometry = { group = "androidx.compose.ui", name = "ui-geometry", version.ref = "ui-geometry" }
