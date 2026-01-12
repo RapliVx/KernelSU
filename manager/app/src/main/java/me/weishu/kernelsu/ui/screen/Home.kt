@@ -287,25 +287,18 @@ private fun StatusCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .height(170.dp)
                     .clip(RoundedCornerShape(28.dp))
-                    .clickable {
-                        if (kernelVersion.isGKI()) {
-                            onClickInstall()
-                        }
-                    }
+                    .clickable { if (kernelVersion.isGKI()) onClickInstall() }
             ) {
 
-                // 🔹 Background image (TETAP SAMA)
                 val context = LocalContext.current
                 val headerImageUri = context.getHeaderImage()
 
+                // BACKGROUND
                 if (headerImageUri != null) {
                     AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(headerImageUri)
-                            .crossfade(false)
-                            .build(),
+                        model = ImageRequest.Builder(context).data(headerImageUri).build(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.matchParentSize()
@@ -319,29 +312,48 @@ private fun StatusCard(
                     )
                 }
 
-                // 🔹 Gradient overlay (TETAP SAMA)
+                // MAIN GRADIENT
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .background(
                             Brush.horizontalGradient(
                                 listOf(
-                                    cs.surface.copy(alpha = 0.6f),
+                                    cs.surface.copy(alpha = 0.92f),
+                                    cs.surface.copy(alpha = 0.55f),
                                     Color.Transparent
                                 )
                             )
                         )
                 )
 
-                // 🔹 CONTENT
+                // GLOW LIGHT (Dari kode sumber awal)
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(200.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    cs.primary.copy(alpha = 0.18f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                // GLASS PANEL (Dikembalikan seperti sumber tapi dirapikan posisinya)
                 Column(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(16.dp)
-                        .clip(RoundedCornerShape(24.dp))
+                        .fillMaxSize()
+                        .width(240.dp) // Sedikit dilebarkan agar teks muat
+                        .padding(start = 24.dp, bottom = 24.dp) // Padding luar agar tidak nempel pojok
+                        .wrapContentSize(Alignment.BottomStart) // Pastikan menempel di bawah
+                        .clip(RoundedCornerShape(22.dp))
                         .background(cs.surface.copy(alpha = 0.35f))
-                        .padding(horizontal = 24.dp, vertical = 20.dp),
-                    verticalArrangement = Arrangement.Center
+                        .blur(0.6.dp) // Blur sesuai kode sumber awal
+                        .padding(20.dp), // Padding dalam panel
+                    verticalArrangement = Arrangement.Bottom
                 ) {
 
                     // TITLE
@@ -350,7 +362,7 @@ private fun StatusCard(
                             stringResource(R.string.home_working)
                         else
                             stringResource(R.string.home_not_installed),
-                        style = MaterialTheme.typography.headlineMedium,
+                        fontSize = 32.sp, // Sedikit dikecilkan agar proporsional
                         fontWeight = FontWeight.ExtraBold,
                         color = cs.primary
                     )
@@ -358,23 +370,23 @@ private fun StatusCard(
                     Spacer(Modifier.height(8.dp))
 
                     // CHIP
-                    Box(
+                    Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(cs.secondaryContainer.copy(alpha = 0.65f)) // Background chip
+                            .background(cs.secondaryContainer.copy(alpha = 0.65f))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Text(
                             text = versionText,
                             style = MaterialTheme.typography.labelMedium,
-                            color = cs.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            color = cs.onSecondaryContainer
                         )
                     }
                 }
             }
         }
 
-        // ==== CARD BAWAH TETAP (TIDAK BERUBAH) ====
+        // ==== CARD BAWAH TETAP ====
         if (fullFeatured == true) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
