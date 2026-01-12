@@ -29,11 +29,11 @@
 
 KernelSU is a kernel-based root solution for Android GKI devices. It works in kernel mode and grants root permission to userspace applications directly in kernel space.
 
-The main features of KernelSU:
+## Features
 
-1. **Kernel-based**: KernelSU works in kernel mode, which means it can provide more powerful features than userspace root solutions.
-2. **Module System**: KernelSU supports systemless modification through overlayfs, which allows you to modify the system without touching the read-only partitions.
-3. **App Profile**: You can control which apps have root permission, and you can also grant root permission to specific apps only.
+1. Kernel-based `su` and root access management.
+2. Module system based on [Metamodule](https://kernelsu.org/guide/metamodule.html)
+3. [App Profile](https://kernelsu.org/guide/app-profile.html): Lock up the root power in a cage.
 
 ## How to add MamboSU kernel driver into your kernel source
 
@@ -64,12 +64,6 @@ curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/susfs-r
     - [See this repository for more information](https://github.com/rksuorg/kernel_patches)
     - Default hook method on Non-GKI kernels, with condition that `CONFIG_KPROBES` off by default.
     - Need `CONFIG_KSU_MANUAL_HOOK=y`
-
-## Features
-
-1. Kernel-based `su` and root access management.
-2. Module system based on [Metamodule](https://kernelsu.org/guide/metamodule.html)
-3. [App Profile](https://kernelsu.org/guide/app-profile.html): Lock up the root power in a cage.
 
 ## Compatibility State
 
