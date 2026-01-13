@@ -273,11 +273,18 @@ private fun StatusCard(
             else -> "GKI"
         }
 
+        // Logic text bawah (PID/Version)
         val versionText = when {
             ksuVersion != null -> "Version: $ksuVersion - $workingMode"
             kernelVersion.isGKI() -> stringResource(R.string.home_click_to_install)
             else -> stringResource(R.string.home_unsupported)
         }
+
+        // Logic text atas (Alive/Working)
+        val statusText = if (ksuVersion != null)
+            stringResource(R.string.home_working)
+        else
+            stringResource(R.string.home_not_installed)
 
         val cs = MaterialTheme.colorScheme
 
@@ -294,7 +301,7 @@ private fun StatusCard(
                     }
             ) {
 
-                // 🔹 Background image
+                // 🔹 Background image (TIDAK DIUBAH)
                 val context = LocalContext.current
                 val headerImageUri = context.getHeaderImage()
 
@@ -317,7 +324,7 @@ private fun StatusCard(
                     )
                 }
 
-                // 🔹 Gradient overlay (theme-aware)
+                // 🔹 Gradient overlay (TIDAK DIUBAH)
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -331,47 +338,54 @@ private fun StatusCard(
                         )
                 )
 
-                // 🔹 CONTENT
+                // 🔹 CONTENT (DIUBAH SESUAI FOTO)
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.Center
+                        .padding(24.dp), // Padding tetap
+                    verticalArrangement = Arrangement.Bottom, // Turun ke bawah
+                    horizontalAlignment = Alignment.Start // Rata kiri
                 ) {
 
-                    // TITLE
-                    Text(
-                        text = if (ksuVersion != null)
-                            stringResource(R.string.home_working)
-                        else
-                            stringResource(R.string.home_not_installed),
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = cs.primary
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    // CHIP
+                    // CHIP 1: STATUS (Alive/Working)
                     Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
+                        modifier = Modifier.clip(RoundedCornerShape(50))
                     ) {
-                        // 🔹 BLUR LAYER (BACKGROUND)
+                        // Blur Background
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
                                 .blur(16.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                                )
+                                .background(cs.secondaryContainer.copy(alpha = 0.6f))
                         )
+                        // Content
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.titleMedium, // Sedikit lebih besar untuk judul
+                            fontWeight = FontWeight.Bold,
+                            color = cs.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
 
-                        // 🔹 CONTENT LAYER (NO BLUR)
+                    Spacer(Modifier.height(8.dp)) // Jarak antar Chip
+
+                    // CHIP 2: VERSION (PID/Info)
+                    Box(
+                        modifier = Modifier.clip(RoundedCornerShape(50))
+                    ) {
+                        // Blur Background
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .blur(16.dp)
+                                .background(cs.secondaryContainer.copy(alpha = 0.6f))
+                        )
+                        // Content
                         Text(
                             text = versionText,
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            color = cs.onSecondaryContainer,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
@@ -379,7 +393,7 @@ private fun StatusCard(
             }
         }
 
-        // ==== CARD BAWAH TETAP ====
+        // ==== CARD BAWAH TETAP (TIDAK DIUBAH) ====
         if (fullFeatured == true) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
