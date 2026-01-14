@@ -145,32 +145,29 @@ class MainActivity : ComponentActivity() {
                 val activity = LocalActivity.current
                 val homeRoute = BottomBarDestination.entries.firstOrNull()?.direction?.route
 
-                // --- FIX NAVIGATION & BACK HANDLER ---
+                // --- KODE FIX: Back Handler Anti-Loop ---
                 BackHandler(enabled = true) {
                     val currentDest = navController.currentBackStackEntry?.destination?.route
 
-                    if (currentDest in bottomBarRoutes) {
-                        // Jika di halaman Tab BottomBar (selain Home)
-                        if (currentDest != homeRoute && homeRoute != null) {
+                    if (currentDest == homeRoute) {
+                        activity?.finishAndRemoveTask()
+                    }
+                    else if (currentDest in bottomBarRoutes) {
+                        if (homeRoute != null) {
                             navController.navigate(homeRoute) {
-                                // Reset stack ke Root (Home)
                                 popUpTo(navController.graph.startDestinationId) {
-                                    saveState = false // Jangan save state, reset fresh
-                                    inclusive = false // Home tetap ada
+                                    inclusive = false
                                 }
                                 launchSingleTop = true
-                                restoreState = true // Restore jika ada state Home tersimpan
+                                restoreState = false
                             }
-                        } else {
-                            // Jika sudah di Home, exit
-                            activity?.finishAndRemoveTask()
                         }
-                    } else {
-                        // Jika di detail page, back normal
+                    }
+                    else {
                         navController.popBackStack()
                     }
                 }
-                // -------------------------------------
+                // -----------------------------------------
 
                 LaunchedEffect(zipUri) {
                     if (!zipUri.isNullOrEmpty()) {
