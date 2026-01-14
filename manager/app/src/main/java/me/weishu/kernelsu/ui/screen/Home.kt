@@ -296,9 +296,8 @@ private fun StatusCard(
     else
         stringResource(R.string.home_not_installed)
 
-    // --- IMAGE LOADER (GIF Support) ---
+    // --- IMAGE LOADER ---
     val headerImageUri = context.getHeaderImage()
-
     val imageLoader = remember(context) {
         ImageLoader.Builder(context)
             .components {
@@ -311,7 +310,7 @@ private fun StatusCard(
             .build()
     }
 
-    // --- KOMPONEN HEADER CARD (Reusable) ---
+    // --- HEADER CARD CONTENT ---
     val headerCardContent = @Composable { modifier: Modifier ->
         TonalCard(
             containerColor = Color.Transparent,
@@ -354,9 +353,7 @@ private fun StatusCard(
                         )
                 )
 
-                // Content Overlay (Text)
                 if (useClassicLayout) {
-                    // === STYLE CLASSIC ===
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -386,7 +383,6 @@ private fun StatusCard(
                         }
                     }
                 } else {
-                    // === STYLE MODERN (Kiri Atas - Compact) ===
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -421,9 +417,9 @@ private fun StatusCard(
         }
     }
 
-    // --- KOMPONEN STATS CARD ---
     val statsCardsContent = @Composable { modifier: Modifier, isVertical: Boolean ->
         if (fullFeatured == true) {
+
             @Composable
             fun StatInfoCard(title: String, count: String, onClick: () -> Unit, itemModifier: Modifier) {
                 Card(
@@ -431,7 +427,8 @@ private fun StatusCard(
                         .clip(RoundedCornerShape(20.dp))
                         .clickable { onClick() },
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        containerColor = cs.surfaceVariant,
+                        contentColor = cs.onSurfaceVariant
                     ),
                     shape = RoundedCornerShape(20.dp)
                 ) {
@@ -445,13 +442,15 @@ private fun StatusCard(
                         Text(
                             text = title,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Normal
+                            fontWeight = FontWeight.Normal,
+                            color = cs.onSurfaceVariant
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = count,
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = cs.onSurface
                         )
                     }
                 }
@@ -500,7 +499,7 @@ private fun StatusCard(
     if (useClassicLayout) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             headerCardContent(Modifier.fillMaxWidth().height(170.dp))
-            statsCardsContent(Modifier.fillMaxWidth(), false) // false = horizontal row
+            statsCardsContent(Modifier.fillMaxWidth(), false)
         }
     } else {
         Row(
