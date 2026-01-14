@@ -148,14 +148,17 @@ class MainActivity : ComponentActivity() {
                 val homeRoute = BottomBarDestination.entries.firstOrNull()?.direction?.route
 
                 BackHandler(enabled = true) {
-                    if (currentRoute in bottomBarRoutes) {
-                        if (currentRoute != homeRoute && homeRoute != null) {
+                    val currentDest = navController.currentBackStackEntry?.destination?.route
+
+                    if (currentDest in bottomBarRoutes) {
+                        if (currentDest != homeRoute && homeRoute != null) {
                             navController.navigate(homeRoute) {
                                 popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
+                                    saveState = false
+                                    inclusive = false
                                 }
                                 launchSingleTop = true
-                                restoreState = true
+                                restoreState = false
                             }
                         } else {
                             activity?.finishAndRemoveTask()
