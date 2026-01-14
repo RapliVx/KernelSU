@@ -8,6 +8,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -138,6 +141,29 @@ class MainActivity : ComponentActivity() {
                     BottomBarDestination.entries.map { it.direction.route }.toSet()
                 }
                 val navigator = navController.rememberDestinationsNavigator()
+
+                val activity = LocalActivity.current
+                val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
+                val homeRoute = BottomBarDestination.entries.firstOrNull()?.direction?.route
+
+                BackHandler(enabled = true) {
+                    if (currentRoute in bottomBarRoutes) {
+                        if (currentRoute != homeRoute && homeRoute != null) {
+                            navController.navigate(homeRoute) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        } else {
+                            activity?.finishAndRemoveTask()
+                        }
+                    } else {
+                        navController.popBackStack()
+                    }
+                }
 
                 LaunchedEffect(zipUri) {
                     if (!zipUri.isNullOrEmpty()) {
