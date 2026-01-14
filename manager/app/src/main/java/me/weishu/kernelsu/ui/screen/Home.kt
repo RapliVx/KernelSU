@@ -114,6 +114,7 @@ import me.weishu.kernelsu.getKernelVersion
 import me.weishu.kernelsu.ui.component.RebootListPopup
 import me.weishu.kernelsu.ui.component.rememberConfirmDialog
 import me.weishu.kernelsu.ui.util.checkNewVersion
+import me.weishu.kernelsu.ui.util.getLayoutStyle
 import me.weishu.kernelsu.ui.util.getModuleCount
 import me.weishu.kernelsu.ui.util.getSELinuxStatus
 import me.weishu.kernelsu.ui.util.getSuperuserCount
@@ -124,6 +125,7 @@ import me.weishu.kernelsu.ui.util.rootAvailable
 @Destination<RootGraph>(start = true)
 @Composable
 fun HomeScreen(navigator: DestinationsNavigator) {
+    val context = LocalContext.current
     val kernelVersion = getKernelVersion()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -151,6 +153,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 ksuVersion,
                 lkmMode,
                 fullFeatured,
+                useClassicLayout = context.getLayoutStyle(),
                 onClickInstall = { navigator.navigate(InstallScreenDestination) },
                 onClickSuperuser = {
                     navigator.navigate(SuperUserScreenDestination) {
