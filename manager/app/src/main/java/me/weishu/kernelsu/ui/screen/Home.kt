@@ -2,6 +2,7 @@ package me.weishu.kernelsu.ui.screen
 
 import android.content.Context
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import android.system.Os
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -101,6 +102,9 @@ import androidx.compose.animation.core.VisibilityThreshold
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.ImageLoader
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
@@ -301,16 +305,30 @@ private fun StatusCard(
                     }
             ) {
 
-                // 🔹 Background image (TIDAK DIUBAH)
+                // 🔹 Background image (DIUPDATE UNTUK SUPPORT GIF)
                 val context = LocalContext.current
                 val headerImageUri = context.getHeaderImage()
+
+                // 1. Inisialisasi Loader Khusus GIF
+                val imageLoader = remember(context) {
+                    ImageLoader.Builder(context)
+                        .components {
+                            if (SDK_INT >= 28) {
+                                add(ImageDecoderDecoder.Factory())
+                            } else {
+                                add(GifDecoder.Factory())
+                            }
+                        }
+                        .build()
+                }
 
                 if (headerImageUri != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(headerImageUri)
-                            .crossfade(false)
+                            .crossfade(true) // Crossfade true agar transisi gambar biasa (JPG) halus
                             .build(),
+                        imageLoader = imageLoader, // <--- KUNCI AGAR GIF BERGERAK
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.matchParentSize()
@@ -338,13 +356,13 @@ private fun StatusCard(
                         )
                 )
 
-                // 🔹 CONTENT (DIUBAH SESUAI FOTO)
+                // 🔹 CONTENT (TIDAK DIUBAH)
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp), // Padding tetap
-                    verticalArrangement = Arrangement.Bottom, // Turun ke bawah
-                    horizontalAlignment = Alignment.Start // Rata kiri
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Bottom,
+                    horizontalAlignment = Alignment.Start
                 ) {
 
                     // CHIP 1: STATUS (Alive/Working)
@@ -361,7 +379,7 @@ private fun StatusCard(
                         // Content
                         Text(
                             text = statusText,
-                            style = MaterialTheme.typography.titleMedium, // Sedikit lebih besar untuk judul
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = cs.onSecondaryContainer,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)

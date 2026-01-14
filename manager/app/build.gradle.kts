@@ -132,6 +132,8 @@ dependencies {
 
     implementation(libs.io.coil.kt.coil.compose)
 
+    implementation(libs.coilGif)
+
     implementation(libs.kotlinx.coroutines.core)
 
     implementation(libs.markwon)
