@@ -270,7 +270,7 @@ private fun StatusCard(
     ksuVersion: Int?,
     lkmMode: Boolean?,
     fullFeatured: Boolean?,
-    useClassicLayout: Boolean, // <--- Parameter dari Parent (sesuai util baru)
+    useClassicLayout: Boolean,
     onClickInstall: () -> Unit = {},
     onClickSuperuser: () -> Unit = {},
     onclickModule: () -> Unit = {},
@@ -297,7 +297,6 @@ private fun StatusCard(
         stringResource(R.string.home_not_installed)
 
     // --- IMAGE LOADER (GIF Support) ---
-    // Menggunakan extension function baru dari Utils.kt
     val headerImageUri = context.getHeaderImage()
 
     val imageLoader = remember(context) {
@@ -327,7 +326,7 @@ private fun StatusCard(
                 if (headerImageUri != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
-                            .data(headerImageUri) // Coil otomatis handle String Uri dari Util
+                            .data(headerImageUri)
                             .crossfade(true)
                             .build(),
                         imageLoader = imageLoader,
@@ -357,7 +356,7 @@ private fun StatusCard(
 
                 // Content Overlay (Text)
                 if (useClassicLayout) {
-                    // === STYLE CLASSIC (Bawah) ===
+                    // === STYLE CLASSIC (Standard Size) ===
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -389,25 +388,36 @@ private fun StatusCard(
                         }
                     }
                 } else {
-                    // === STYLE MODERN (Kiri Atas) ===
+                    // === STYLE MODERN (Compact Size for Split View) ===
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.Top,
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.Bottom,
                         horizontalAlignment = Alignment.Start
                     ) {
-                        Text(
-                            text = statusText,
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = cs.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = versionText,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = cs.onSurface.copy(alpha = 0.8f)
-                        )
+                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                            Text(
+                                text = statusText,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = cs.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                            Text(
+                                text = versionText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = cs.onSecondaryContainer,
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -460,15 +470,12 @@ private fun StatusCard(
     }
 
     // --- RENDER LAYOUT UTAMA ---
-    // Menggunakan parameter 'useClassicLayout' yang dikirim dari Parent
     if (useClassicLayout) {
-        // Layout Atas-Bawah
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             headerCardContent(Modifier.fillMaxWidth().height(170.dp))
             statsCardsContent(Modifier.fillMaxWidth(), false)
         }
     } else {
-        // Layout Samping-Samping
         Row(
             modifier = Modifier
                 .fillMaxWidth()
