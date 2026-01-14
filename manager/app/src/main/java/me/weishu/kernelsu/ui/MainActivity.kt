@@ -10,7 +10,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -61,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.NavGraphs
@@ -142,10 +142,11 @@ class MainActivity : ComponentActivity() {
                 }
                 val navigator = navController.rememberDestinationsNavigator()
 
+                // --- TAMBAHAN: Variabel untuk BackHandler ---
                 val activity = LocalActivity.current
                 val homeRoute = BottomBarDestination.entries.firstOrNull()?.direction?.route
 
-                // --- KODE FIX: Back Handler Anti-Loop ---
+                // --- TAMBAHAN: Back Handler Anti-Loop ---
                 BackHandler(enabled = true) {
                     val currentDest = navController.currentBackStackEntry?.destination?.route
 
@@ -183,36 +184,44 @@ class MainActivity : ComponentActivity() {
                 val defaultTransitions = object : NavHostAnimatedDestinationStyle() {
                     override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
                         {
+                            // If the target is a detail page (not a bottom navigation page), slide in from the right
                             if (targetState.destination.route !in bottomBarRoutes) {
                                 slideInHorizontally(initialOffsetX = { it })
                             } else {
+                                // Otherwise (switching between bottom navigation pages), use fade in
                                 fadeIn(animationSpec = tween(340))
                             }
                         }
 
                     override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
                         {
+                            // If navigating from the home page (bottom navigation page) to a detail page, slide out to the left
                             if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
                                 slideOutHorizontally(targetOffsetX = { -it / 4 }) + fadeOut()
                             } else {
+                                // Otherwise (switching between bottom navigation pages), use fade out
                                 fadeOut(animationSpec = tween(340))
                             }
                         }
 
                     override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
                         {
+                            // If returning to the home page (bottom navigation page), slide in from the left
                             if (targetState.destination.route in bottomBarRoutes) {
                                 slideInHorizontally(initialOffsetX = { -it / 4 }) + fadeIn()
                             } else {
+                                // Otherwise (e.g., returning between multiple detail pages), use default fade in
                                 fadeIn(animationSpec = tween(340))
                             }
                         }
 
                     override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
                         {
+                            // If returning from a detail page (not a bottom navigation page), scale down and fade out
                             if (initialState.destination.route !in bottomBarRoutes) {
                                 scaleOut(targetScale = 0.9f) + fadeOut()
                             } else {
+                                // Otherwise, use default fade out
                                 fadeOut(animationSpec = tween(340))
                             }
                         }
@@ -261,10 +270,7 @@ private fun BottomBar(navController: NavHostController) {
     val bottomBarRoutes = remember {
         BottomBarDestination.entries.map { it.direction.route }.toSet()
     }
-
-    // FIX DOUBLE HIGHLIGHT: Gunakan logika sederhana
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-
     NavigationBar(
         windowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
@@ -272,10 +278,8 @@ private fun BottomBar(navController: NavHostController) {
     ) {
         BottomBarDestination.entries.forEach { destination ->
             if (!fullFeatured && destination.rootRequired) return@forEach
-
-            // Cek apakah route ini sama persis dengan route aktif
+            // FIX: Gunakan perbandingan manual, bukan isRouteOnBackStackAsState untuk UI highlight
             val isSelected = currentRoute == destination.direction.route
-
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
@@ -315,10 +319,7 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
     val bottomBarRoutes = remember {
         BottomBarDestination.entries.map { it.direction.route }.toSet()
     }
-
-    // FIX DOUBLE HIGHLIGHT: Sama seperti BottomBar
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-
     NavigationRail(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -329,9 +330,8 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
         ) {
             BottomBarDestination.entries.forEach { destination ->
                 if (!fullFeatured && destination.rootRequired) return@forEach
-
+                // FIX: Gunakan perbandingan manual, bukan isRouteOnBackStackAsState untuk UI highlight
                 val isSelected = currentRoute == destination.direction.route
-
                 NavigationRailItem(
                     selected = isSelected,
                     onClick = {
