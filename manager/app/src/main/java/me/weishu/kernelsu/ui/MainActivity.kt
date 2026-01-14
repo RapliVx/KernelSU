@@ -143,30 +143,34 @@ class MainActivity : ComponentActivity() {
                 val navigator = navController.rememberDestinationsNavigator()
 
                 val activity = LocalActivity.current
-                val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-
                 val homeRoute = BottomBarDestination.entries.firstOrNull()?.direction?.route
 
+                // --- FIX NAVIGATION & BACK HANDLER ---
                 BackHandler(enabled = true) {
                     val currentDest = navController.currentBackStackEntry?.destination?.route
 
                     if (currentDest in bottomBarRoutes) {
+                        // Jika di halaman Tab BottomBar (selain Home)
                         if (currentDest != homeRoute && homeRoute != null) {
                             navController.navigate(homeRoute) {
+                                // Reset stack ke Root (Home)
                                 popUpTo(navController.graph.startDestinationId) {
-                                    saveState = false
-                                    inclusive = false
+                                    saveState = false // Jangan save state, reset fresh
+                                    inclusive = false // Home tetap ada
                                 }
                                 launchSingleTop = true
-                                restoreState = false
+                                restoreState = true // Restore jika ada state Home tersimpan
                             }
                         } else {
+                            // Jika sudah di Home, exit
                             activity?.finishAndRemoveTask()
                         }
                     } else {
+                        // Jika di detail page, back normal
                         navController.popBackStack()
                     }
                 }
+                // -------------------------------------
 
                 LaunchedEffect(zipUri) {
                     if (!zipUri.isNullOrEmpty()) {
@@ -182,44 +186,36 @@ class MainActivity : ComponentActivity() {
                 val defaultTransitions = object : NavHostAnimatedDestinationStyle() {
                     override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
                         {
-                            // If the target is a detail page (not a bottom navigation page), slide in from the right
                             if (targetState.destination.route !in bottomBarRoutes) {
                                 slideInHorizontally(initialOffsetX = { it })
                             } else {
-                                // Otherwise (switching between bottom navigation pages), use fade in
                                 fadeIn(animationSpec = tween(340))
                             }
                         }
 
                     override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
                         {
-                            // If navigating from the home page (bottom navigation page) to a detail page, slide out to the left
                             if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
                                 slideOutHorizontally(targetOffsetX = { -it / 4 }) + fadeOut()
                             } else {
-                                // Otherwise (switching between bottom navigation pages), use fade out
                                 fadeOut(animationSpec = tween(340))
                             }
                         }
 
                     override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
                         {
-                            // If returning to the home page (bottom navigation page), slide in from the left
                             if (targetState.destination.route in bottomBarRoutes) {
                                 slideInHorizontally(initialOffsetX = { -it / 4 }) + fadeIn()
                             } else {
-                                // Otherwise (e.g., returning between multiple detail pages), use default fade in
                                 fadeIn(animationSpec = tween(340))
                             }
                         }
 
                     override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
                         {
-                            // If returning from a detail page (not a bottom navigation page), scale down and fade out
                             if (initialState.destination.route !in bottomBarRoutes) {
                                 scaleOut(targetScale = 0.9f) + fadeOut()
                             } else {
-                                // Otherwise, use default fade out
                                 fadeOut(animationSpec = tween(340))
                             }
                         }
@@ -268,7 +264,10 @@ private fun BottomBar(navController: NavHostController) {
     val bottomBarRoutes = remember {
         BottomBarDestination.entries.map { it.direction.route }.toSet()
     }
-    val currentRoute = navController.currentBackStackEntry?.destination?.route
+
+    // FIX DOUBLE HIGHLIGHT: Gunakan logika sederhana
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
     NavigationBar(
         windowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
@@ -276,11 +275,14 @@ private fun BottomBar(navController: NavHostController) {
     ) {
         BottomBarDestination.entries.forEach { destination ->
             if (!fullFeatured && destination.rootRequired) return@forEach
-            val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
+
+            // Cek apakah route ini sama persis dengan route aktif
+            val isSelected = currentRoute == destination.direction.route
+
             NavigationBarItem(
-                selected = isCurrentDestOnBackStack,
+                selected = isSelected,
                 onClick = {
-                    if (isCurrentDestOnBackStack) {
+                    if (isSelected) {
                         navigator.popBackStack(destination.direction, false)
                     } else {
                         val isFromNonBottom = currentRoute !in bottomBarRoutes
@@ -297,7 +299,7 @@ private fun BottomBar(navController: NavHostController) {
                 },
                 icon = {
                     Icon(
-                        if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
+                        if (isSelected) destination.iconSelected else destination.iconNotSelected,
                         stringResource(destination.label)
                     )
                 },
@@ -316,7 +318,10 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
     val bottomBarRoutes = remember {
         BottomBarDestination.entries.map { it.direction.route }.toSet()
     }
-    val currentRoute = navController.currentBackStackEntry?.destination?.route
+
+    // FIX DOUBLE HIGHLIGHT: Sama seperti BottomBar
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
     NavigationRail(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -327,11 +332,13 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
         ) {
             BottomBarDestination.entries.forEach { destination ->
                 if (!fullFeatured && destination.rootRequired) return@forEach
-                val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
+
+                val isSelected = currentRoute == destination.direction.route
+
                 NavigationRailItem(
-                    selected = isCurrentDestOnBackStack,
+                    selected = isSelected,
                     onClick = {
-                        if (isCurrentDestOnBackStack) {
+                        if (isSelected) {
                             navigator.popBackStack(destination.direction, false)
                         } else {
                             val isFromNonBottom = currentRoute !in bottomBarRoutes
@@ -348,7 +355,7 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
                     },
                     icon = {
                         Icon(
-                            if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
+                            if (isSelected) destination.iconSelected else destination.iconNotSelected,
                             stringResource(destination.label)
                         )
                     },
