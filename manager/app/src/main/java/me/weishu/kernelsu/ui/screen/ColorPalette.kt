@@ -98,6 +98,8 @@ import me.weishu.kernelsu.ui.util.saveHeaderImage
 import me.weishu.kernelsu.ui.util.clearHeaderImage
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import android.content.Intent
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.runtime.saveable.rememberSaveable
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
@@ -376,6 +378,89 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                         stringResource(R.string.header_custom)
                                     else
                                         stringResource(R.string.header_default)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp)) // Jarak antar section
+
+            // === LAYOUT SWITCH (DESAIN BARU) ===
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp) // Padding disamakan
+            ) {
+                // Label Pill (Desain Kapsul)
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Surface(
+                        modifier = Modifier.padding(4.dp),
+                        shape = RoundedCornerShape(999.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ) {
+                        // Ganti text dengan stringResource(R.string.card_layout) jika ada
+                        Text(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            text = "Card Layout",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // Toggle Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        ButtonGroupDefaults.ConnectedSpaceBetween
+                    )
+                ) {
+                    // True = Classic, False = Modern
+                    val layoutOptions = listOf(true, false)
+
+                    layoutOptions.forEachIndexed { index, isClassic ->
+                        ToggleButton(
+                            checked = useClassicLayout == isClassic,
+                            onCheckedChange = { checked ->
+                                if (!checked) return@ToggleButton
+
+                                // Ubah State
+                                useClassicLayout = isClassic
+
+                                // Simpan ke Util (Agar permanen)
+                                context.setLayoutStyle(isClassic)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics { role = Role.RadioButton },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                layoutOptions.lastIndex ->
+                                    ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            }
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (isClassic)
+                                        Icons.AutoMirrored.Filled.ViewList
+                                    else
+                                        Icons.Filled.ViewColumn,
+                                    contentDescription = null
+                                )
+                                Text(
+                                    text = if (isClassic) "Classic" else "Modern"
                                 )
                             }
                         }

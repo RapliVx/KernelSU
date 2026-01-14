@@ -99,6 +99,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -265,70 +267,67 @@ private fun StatusCard(
     ksuVersion: Int?,
     lkmMode: Boolean?,
     fullFeatured: Boolean?,
+    useClassicLayout: Boolean, // <--- Parameter dari Parent (sesuai util baru)
     onClickInstall: () -> Unit = {},
     onClickSuperuser: () -> Unit = {},
     onclickModule: () -> Unit = {},
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    val context = LocalContext.current
+    val cs = MaterialTheme.colorScheme
 
-        val workingMode = when (lkmMode) {
-            null -> "LEGACY"
-            true -> "LKM"
-            else -> "GKI"
-        }
+    // --- LOGIC TEXT & DATA ---
+    val workingMode = when (lkmMode) {
+        null -> "LEGACY"
+        true -> "LKM"
+        else -> "GKI"
+    }
 
-        // Logic text bawah (PID/Version)
-        val versionText = when {
-            ksuVersion != null -> "Version: $ksuVersion - $workingMode"
-            kernelVersion.isGKI() -> stringResource(R.string.home_click_to_install)
-            else -> stringResource(R.string.home_unsupported)
-        }
+    val versionText = when {
+        ksuVersion != null -> "Version: $ksuVersion - $workingMode"
+        kernelVersion.isGKI() -> stringResource(R.string.home_click_to_install)
+        else -> stringResource(R.string.home_unsupported)
+    }
 
-        // Logic text atas (Alive/Working)
-        val statusText = if (ksuVersion != null)
-            stringResource(R.string.home_working)
-        else
-            stringResource(R.string.home_not_installed)
+    val statusText = if (ksuVersion != null)
+        stringResource(R.string.home_working)
+    else
+        stringResource(R.string.home_not_installed)
 
-        val cs = MaterialTheme.colorScheme
+    // --- IMAGE LOADER (GIF Support) ---
+    // Menggunakan extension function baru dari Utils.kt
+    val headerImageUri = context.getHeaderImage()
 
-        TonalCard(containerColor = Color.Transparent) {
+    val imageLoader = remember(context) {
+        ImageLoader.Builder(context)
+            .components {
+                if (SDK_INT >= 28) {
+                    add(ImageDecoderDecoder.Factory())
+                } else {
+                    add(GifDecoder.Factory())
+                }
+            }
+            .build()
+    }
+
+    // --- KOMPONEN HEADER CARD (Reusable) ---
+    val headerCardContent = @Composable { modifier: Modifier ->
+        TonalCard(
+            containerColor = Color.Transparent,
+            modifier = modifier.clip(RoundedCornerShape(28.dp))
+        ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(170.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .clickable {
-                        if (kernelVersion.isGKI()) {
-                            onClickInstall()
-                        }
-                    }
+                    .fillMaxSize()
+                    .clickable { if (kernelVersion.isGKI()) onClickInstall() }
             ) {
-
-                // 🔹 Background image (DIUPDATE UNTUK SUPPORT GIF)
-                val context = LocalContext.current
-                val headerImageUri = context.getHeaderImage()
-
-                // 1. Inisialisasi Loader Khusus GIF
-                val imageLoader = remember(context) {
-                    ImageLoader.Builder(context)
-                        .components {
-                            if (SDK_INT >= 28) {
-                                add(ImageDecoderDecoder.Factory())
-                            } else {
-                                add(GifDecoder.Factory())
-                            }
-                        }
-                        .build()
-                }
-
+                // Background Image
                 if (headerImageUri != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
-                            .data(headerImageUri)
-                            .crossfade(true) // Crossfade true agar transisi gambar biasa (JPG) halus
+                            .data(headerImageUri) // Coil otomatis handle String Uri dari Util
+                            .crossfade(true)
                             .build(),
-                        imageLoader = imageLoader, // <--- KUNCI AGAR GIF BERGERAK
+                        imageLoader = imageLoader,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.matchParentSize()
@@ -342,121 +341,139 @@ private fun StatusCard(
                     )
                 }
 
-                // 🔹 Gradient overlay (TIDAK DIUBAH)
+                // Gradient Overlay
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    cs.surface.copy(alpha = 0.75f),
-                                    Color.Transparent
-                                )
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, cs.surface.copy(alpha = 0.8f))
                             )
                         )
                 )
 
-                // 🔹 CONTENT (TIDAK DIUBAH)
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.Bottom,
-                    horizontalAlignment = Alignment.Start
-                ) {
-
-                    // CHIP 1: STATUS (Alive/Working)
-                    Box(
-                        modifier = Modifier.clip(RoundedCornerShape(50))
+                // Content Overlay (Text)
+                if (useClassicLayout) {
+                    // === STYLE CLASSIC (Bawah) ===
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.Bottom,
+                        horizontalAlignment = Alignment.Start
                     ) {
-                        // Blur Background
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .blur(16.dp)
-                                .background(cs.secondaryContainer.copy(alpha = 0.6f))
-                        )
-                        // Content
+                        // Status Chip
+                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                            Text(
+                                text = statusText,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = cs.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        // Version Chip
+                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                            Text(
+                                text = versionText,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = cs.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                } else {
+                    // === STYLE MODERN (Kiri Atas) ===
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.Top,
+                        horizontalAlignment = Alignment.Start
+                    ) {
                         Text(
                             text = statusText,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = cs.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            color = cs.onSurface
                         )
-                    }
-
-                    Spacer(Modifier.height(8.dp)) // Jarak antar Chip
-
-                    // CHIP 2: VERSION (PID/Info)
-                    Box(
-                        modifier = Modifier.clip(RoundedCornerShape(50))
-                    ) {
-                        // Blur Background
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .blur(16.dp)
-                                .background(cs.secondaryContainer.copy(alpha = 0.6f))
-                        )
-                        // Content
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = versionText,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = cs.onSecondaryContainer,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            style = MaterialTheme.typography.titleMedium,
+                            color = cs.onSurface.copy(alpha = 0.8f)
                         )
                     }
                 }
             }
         }
+    }
 
-        // ==== CARD BAWAH TETAP (TIDAK DIUBAH) ====
+    // --- KOMPONEN STATS CARD (Reusable) ---
+    val statsCardsContent = @Composable { modifier: Modifier, isVertical: Boolean ->
         if (fullFeatured == true) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                TonalCard(modifier = Modifier.weight(1f)) {
+            @Composable
+            fun SmallInfoCard(title: String, count: Int, onClick: () -> Unit, itemModifier: Modifier) {
+                TonalCard(modifier = itemModifier) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onClickSuperuser() }
-                            .padding(horizontal = 24.dp, vertical = 16.dp)
+                            .fillMaxHeight()
+                            .clickable { onClick() }
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Text(
-                            text = stringResource(R.string.superuser),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                        Text(text = title, style = MaterialTheme.typography.bodyLarge)
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = getSuperuserCount().toString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = cs.onSurfaceVariant
-                        )
-                    }
-                }
-
-                TonalCard(modifier = Modifier.weight(1f)) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onclickModule() }
-                            .padding(horizontal = 24.dp, vertical = 16.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.module),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = getModuleCount().toString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = cs.onSurfaceVariant
+                            text = count.toString(),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = cs.primary
                         )
                     }
                 }
             }
+
+            if (isVertical) {
+                Column(
+                    modifier = modifier,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    SmallInfoCard(stringResource(R.string.superuser), getSuperuserCount(), onClickSuperuser, Modifier.fillMaxWidth().weight(1f))
+                    SmallInfoCard(stringResource(R.string.module), getModuleCount(), onclickModule, Modifier.fillMaxWidth().weight(1f))
+                }
+            } else {
+                Row(
+                    modifier = modifier,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    SmallInfoCard(stringResource(R.string.superuser), getSuperuserCount(), onClickSuperuser, Modifier.weight(1f))
+                    SmallInfoCard(stringResource(R.string.module), getModuleCount(), onclickModule, Modifier.weight(1f))
+                }
+            }
+        }
+    }
+
+    // --- RENDER LAYOUT UTAMA ---
+    // Menggunakan parameter 'useClassicLayout' yang dikirim dari Parent
+    if (useClassicLayout) {
+        // Layout Atas-Bawah
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            headerCardContent(Modifier.fillMaxWidth().height(170.dp))
+            statsCardsContent(Modifier.fillMaxWidth(), false)
+        }
+    } else {
+        // Layout Samping-Samping
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            headerCardContent(Modifier.weight(0.6f).fillMaxHeight())
+            statsCardsContent(Modifier.weight(0.4f).fillMaxHeight(), true)
         }
     }
 }
@@ -704,11 +721,42 @@ fun getManagerVersion(context: Context): Pair<String, Long> {
 @Preview
 @Composable
 private fun StatusCardPreview() {
-    Column {
-        StatusCard(KernelVersion(5, 10, 101), 1, null, false)
-        StatusCard(KernelVersion(5, 10, 101), 20000, true, true)
-        StatusCard(KernelVersion(5, 10, 101), null, true, true)
-        StatusCard(KernelVersion(4,10, 101), null, false, false)
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Preview 1: Classic Layout (Working)
+        StatusCard(
+            kernelVersion = KernelVersion(5, 10, 101),
+            ksuVersion = 1,
+            lkmMode = null,
+            fullFeatured = false,
+            useClassicLayout = true // Classic
+        )
+
+        // Preview 2: Modern Layout (Working + Full Featured)
+        StatusCard(
+            kernelVersion = KernelVersion(5, 10, 101),
+            ksuVersion = 20000,
+            lkmMode = true,
+            fullFeatured = true,
+            useClassicLayout = false // Modern
+        )
+
+        // Preview 3: Classic Layout (Not Installed)
+        StatusCard(
+            kernelVersion = KernelVersion(5, 10, 101),
+            ksuVersion = null,
+            lkmMode = true,
+            fullFeatured = true,
+            useClassicLayout = true // Classic
+        )
+
+        // Preview 4: Modern Layout (Unsupported)
+        StatusCard(
+            kernelVersion = KernelVersion(4, 10, 101),
+            ksuVersion = null,
+            lkmMode = false,
+            fullFeatured = false,
+            useClassicLayout = false // Modern
+        )
     }
 }
 
