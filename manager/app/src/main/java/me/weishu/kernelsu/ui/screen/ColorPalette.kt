@@ -104,6 +104,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
+import me.weishu.kernelsu.ui.util.getLayoutStyle
+import me.weishu.kernelsu.ui.util.setLayoutStyle
 
 private val keyColorOptions = listOf(
     Color(0xFF1A73E8).toArgb(),
@@ -423,19 +425,16 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                         ButtonGroupDefaults.ConnectedSpaceBetween
                     )
                 ) {
-                    // True = Classic, False = Modern
-                    val layoutOptions = listOf(true, false)
+                    val context = LocalContext.current
+                    var useClassicLayout by remember { mutableStateOf(context.getLayoutStyle()) }
+                    val layoutOptions = listOf(true, false) // True = Classic, False = Modern
 
                     layoutOptions.forEachIndexed { index, isClassic ->
                         ToggleButton(
                             checked = useClassicLayout == isClassic,
                             onCheckedChange = { checked ->
                                 if (!checked) return@ToggleButton
-
-                                // Ubah State
                                 useClassicLayout = isClassic
-
-                                // Simpan ke Util (Agar permanen)
                                 context.setLayoutStyle(isClassic)
                             },
                             modifier = Modifier
