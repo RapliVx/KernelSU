@@ -353,6 +353,7 @@ private fun StatusCard(
                         )
                 )
 
+                // Content Overlay
                 if (useClassicLayout) {
                     Column(
                         modifier = Modifier
@@ -419,38 +420,24 @@ private fun StatusCard(
 
     val statsCardsContent = @Composable { modifier: Modifier, isVertical: Boolean ->
         if (fullFeatured == true) {
-
             @Composable
             fun StatInfoCard(title: String, count: String, onClick: () -> Unit, itemModifier: Modifier) {
-                Card(
-                    modifier = itemModifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable { onClick() },
-                    colors = CardDefaults.cardColors(
-                        containerColor = cs.surfaceVariant,
-                        contentColor = cs.onSurfaceVariant
-                    ),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
+                TonalCard(modifier = itemModifier) {
                     Column(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 20.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.Start
+                            .fillMaxWidth()
+                            .clickable { onClick() }
+                            .padding(horizontal = 24.dp, vertical = 16.dp)
                     ) {
                         Text(
                             text = title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Normal,
-                            color = cs.onSurfaceVariant
+                            style = MaterialTheme.typography.bodyLarge
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = count,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = cs.onSurface
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = cs.onSurfaceVariant
                         )
                     }
                 }
@@ -465,13 +452,13 @@ private fun StatusCard(
                         title = stringResource(R.string.superuser),
                         count = getSuperuserCount().toString(),
                         onClick = onClickSuperuser,
-                        itemModifier = Modifier.weight(1f).fillMaxWidth()
+                        itemModifier = Modifier.weight(1f) // Fill width handled by Column
                     )
                     StatInfoCard(
                         title = stringResource(R.string.module),
                         count = getModuleCount().toString(),
                         onClick = onclickModule,
-                        itemModifier = Modifier.weight(1f).fillMaxWidth()
+                        itemModifier = Modifier.weight(1f)
                     )
                 }
             } else {
