@@ -6,10 +6,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -59,8 +58,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.NavGraphs
@@ -70,9 +69,9 @@ import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.ui.screen.BottomBarDestination
 import me.weishu.kernelsu.ui.screen.FlashIt
-import me.weishu.kernelsu.ui.theme.KernelSUTheme
 import me.weishu.kernelsu.ui.theme.AppSettings
 import me.weishu.kernelsu.ui.theme.ColorMode
+import me.weishu.kernelsu.ui.theme.KernelSUTheme
 import me.weishu.kernelsu.ui.theme.ThemeController
 import me.weishu.kernelsu.ui.util.LocalSnackbarHost
 import me.weishu.kernelsu.ui.util.install
@@ -137,38 +136,36 @@ class MainActivity : ComponentActivity() {
             ) {
                 val navController = rememberNavController()
                 val snackBarHostState = remember { SnackbarHostState() }
+
                 val bottomBarRoutes = remember {
                     BottomBarDestination.entries.map { it.direction.route }.toSet()
                 }
+
                 val navigator = navController.rememberDestinationsNavigator()
 
-                // --- TAMBAHAN: Variabel untuk BackHandler ---
-                val activity = LocalActivity.current
-                val homeRoute = BottomBarDestination.entries.firstOrNull()?.direction?.route
+                // --- PORTED BACK HANDLER START ---
+                // Mengambil state backstack saat ini untuk mengetahui posisi user
+                val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = currentBackStackEntry?.destination?.route
 
-                // --- TAMBAHAN: Back Handler Anti-Loop ---
-                BackHandler(enabled = true) {
-                    val currentDest = navController.currentBackStackEntry?.destination?.route
+                // Mendapatkan route halaman utama (biasanya Home/Dashboard)
+                val homeDestination = BottomBarDestination.entries.firstOrNull()
+                val startRoute = homeDestination?.direction?.route
 
-                    if (currentDest == homeRoute) {
-                        activity?.finishAndRemoveTask()
-                    }
-                    else if (currentDest in bottomBarRoutes) {
-                        if (homeRoute != null) {
-                            navController.navigate(homeRoute) {
-                                popUpTo(navController.graph.startDestinationId) {
-                                    inclusive = false
-                                }
-                                launchSingleTop = true
-                                restoreState = false
+                // Logika: Jika user ada di tab lain (bukan Home) tapi masih di BottomBar,
+                // tombol Back akan membawa user ke Home dulu, baru keluar.
+                if (homeDestination != null && startRoute != null) {
+                    BackHandler(enabled = currentRoute != startRoute && currentRoute in bottomBarRoutes) {
+                        navigator.navigate(homeDestination.direction) {
+                            popUpTo(NavGraphs.root) {
+                                saveState = true
                             }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     }
-                    else {
-                        navController.popBackStack()
-                    }
                 }
-                // -----------------------------------------
+                // --- PORTED BACK HANDLER END ---
 
                 LaunchedEffect(zipUri) {
                     if (!zipUri.isNullOrEmpty()) {
@@ -184,44 +181,36 @@ class MainActivity : ComponentActivity() {
                 val defaultTransitions = object : NavHostAnimatedDestinationStyle() {
                     override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
                         {
-                            // If the target is a detail page (not a bottom navigation page), slide in from the right
                             if (targetState.destination.route !in bottomBarRoutes) {
                                 slideInHorizontally(initialOffsetX = { it })
                             } else {
-                                // Otherwise (switching between bottom navigation pages), use fade in
                                 fadeIn(animationSpec = tween(340))
                             }
                         }
 
                     override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
                         {
-                            // If navigating from the home page (bottom navigation page) to a detail page, slide out to the left
                             if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
                                 slideOutHorizontally(targetOffsetX = { -it / 4 }) + fadeOut()
                             } else {
-                                // Otherwise (switching between bottom navigation pages), use fade out
                                 fadeOut(animationSpec = tween(340))
                             }
                         }
 
                     override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
                         {
-                            // If returning to the home page (bottom navigation page), slide in from the left
                             if (targetState.destination.route in bottomBarRoutes) {
                                 slideInHorizontally(initialOffsetX = { -it / 4 }) + fadeIn()
                             } else {
-                                // Otherwise (e.g., returning between multiple detail pages), use default fade in
                                 fadeIn(animationSpec = tween(340))
                             }
                         }
 
                     override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
                         {
-                            // If returning from a detail page (not a bottom navigation page), scale down and fade out
                             if (initialState.destination.route !in bottomBarRoutes) {
                                 scaleOut(targetScale = 0.9f) + fadeOut()
                             } else {
-                                // Otherwise, use default fade out
                                 fadeOut(animationSpec = tween(340))
                             }
                         }
@@ -270,7 +259,7 @@ private fun BottomBar(navController: NavHostController) {
     val bottomBarRoutes = remember {
         BottomBarDestination.entries.map { it.direction.route }.toSet()
     }
-    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+    val currentRoute = navController.currentBackStackEntry?.destination?.route
     NavigationBar(
         windowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
@@ -278,12 +267,11 @@ private fun BottomBar(navController: NavHostController) {
     ) {
         BottomBarDestination.entries.forEach { destination ->
             if (!fullFeatured && destination.rootRequired) return@forEach
-            // FIX: Gunakan perbandingan manual, bukan isRouteOnBackStackAsState untuk UI highlight
-            val isSelected = currentRoute == destination.direction.route
+            val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
             NavigationBarItem(
-                selected = isSelected,
+                selected = isCurrentDestOnBackStack,
                 onClick = {
-                    if (isSelected) {
+                    if (isCurrentDestOnBackStack) {
                         navigator.popBackStack(destination.direction, false)
                     } else {
                         val isFromNonBottom = currentRoute !in bottomBarRoutes
@@ -300,7 +288,7 @@ private fun BottomBar(navController: NavHostController) {
                 },
                 icon = {
                     Icon(
-                        if (isSelected) destination.iconSelected else destination.iconNotSelected,
+                        if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
                         stringResource(destination.label)
                     )
                 },
@@ -319,7 +307,7 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
     val bottomBarRoutes = remember {
         BottomBarDestination.entries.map { it.direction.route }.toSet()
     }
-    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+    val currentRoute = navController.currentBackStackEntry?.destination?.route
     NavigationRail(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -330,12 +318,11 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
         ) {
             BottomBarDestination.entries.forEach { destination ->
                 if (!fullFeatured && destination.rootRequired) return@forEach
-                // FIX: Gunakan perbandingan manual, bukan isRouteOnBackStackAsState untuk UI highlight
-                val isSelected = currentRoute == destination.direction.route
+                val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
                 NavigationRailItem(
-                    selected = isSelected,
+                    selected = isCurrentDestOnBackStack,
                     onClick = {
-                        if (isSelected) {
+                        if (isCurrentDestOnBackStack) {
                             navigator.popBackStack(destination.direction, false)
                         } else {
                             val isFromNonBottom = currentRoute !in bottomBarRoutes
@@ -352,7 +339,7 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
                     },
                     icon = {
                         Icon(
-                            if (isSelected) destination.iconSelected else destination.iconNotSelected,
+                            if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
                             stringResource(destination.label)
                         )
                     },
