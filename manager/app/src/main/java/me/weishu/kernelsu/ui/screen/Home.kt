@@ -356,7 +356,7 @@ private fun StatusCard(
 
                 // Content Overlay (Text)
                 if (useClassicLayout) {
-                    // === STYLE CLASSIC (Standard Size) ===
+                    // === STYLE CLASSIC ===
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -364,7 +364,6 @@ private fun StatusCard(
                         verticalArrangement = Arrangement.Bottom,
                         horizontalAlignment = Alignment.Start
                     ) {
-                        // Status Chip
                         Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
                             Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
                             Text(
@@ -376,7 +375,6 @@ private fun StatusCard(
                             )
                         }
                         Spacer(Modifier.height(8.dp))
-                        // Version Chip
                         Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
                             Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
                             Text(
@@ -388,7 +386,7 @@ private fun StatusCard(
                         }
                     }
                 } else {
-                    // === STYLE MODERN (Compact Size for Split View) ===
+                    // === STYLE MODERN (Kiri Atas - Compact) ===
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -407,7 +405,6 @@ private fun StatusCard(
                             )
                         }
                         Spacer(modifier = Modifier.height(6.dp))
-
                         Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
                             Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
                             Text(
@@ -424,26 +421,37 @@ private fun StatusCard(
         }
     }
 
-    // --- KOMPONEN STATS CARD (Reusable) ---
+    // --- KOMPONEN STATS CARD ---
     val statsCardsContent = @Composable { modifier: Modifier, isVertical: Boolean ->
         if (fullFeatured == true) {
             @Composable
-            fun SmallInfoCard(title: String, count: Int, onClick: () -> Unit, itemModifier: Modifier) {
-                TonalCard(modifier = itemModifier) {
+            fun StatInfoCard(title: String, count: String, onClick: () -> Unit, itemModifier: Modifier) {
+                Card(
+                    modifier = itemModifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable { onClick() },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    ),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
                     Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .fillMaxHeight()
-                            .clickable { onClick() }
-                            .padding(horizontal = 24.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.Center
+                            .fillMaxSize()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.Start
                     ) {
-                        Text(text = title, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Normal
+                        )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = count.toString(),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = cs.primary
+                            text = count,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -454,26 +462,45 @@ private fun StatusCard(
                     modifier = modifier,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    SmallInfoCard(stringResource(R.string.superuser), getSuperuserCount(), onClickSuperuser, Modifier.fillMaxWidth().weight(1f))
-                    SmallInfoCard(stringResource(R.string.module), getModuleCount(), onclickModule, Modifier.fillMaxWidth().weight(1f))
+                    StatInfoCard(
+                        title = stringResource(R.string.superuser),
+                        count = getSuperuserCount().toString(),
+                        onClick = onClickSuperuser,
+                        itemModifier = Modifier.weight(1f).fillMaxWidth()
+                    )
+                    StatInfoCard(
+                        title = stringResource(R.string.module),
+                        count = getModuleCount().toString(),
+                        onClick = onclickModule,
+                        itemModifier = Modifier.weight(1f).fillMaxWidth()
+                    )
                 }
             } else {
                 Row(
                     modifier = modifier,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    SmallInfoCard(stringResource(R.string.superuser), getSuperuserCount(), onClickSuperuser, Modifier.weight(1f))
-                    SmallInfoCard(stringResource(R.string.module), getModuleCount(), onclickModule, Modifier.weight(1f))
+                    StatInfoCard(
+                        title = stringResource(R.string.superuser),
+                        count = getSuperuserCount().toString(),
+                        onClick = onClickSuperuser,
+                        itemModifier = Modifier.weight(1f)
+                    )
+                    StatInfoCard(
+                        title = stringResource(R.string.module),
+                        count = getModuleCount().toString(),
+                        onClick = onclickModule,
+                        itemModifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
     }
 
-    // --- RENDER LAYOUT UTAMA ---
     if (useClassicLayout) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             headerCardContent(Modifier.fillMaxWidth().height(170.dp))
-            statsCardsContent(Modifier.fillMaxWidth(), false)
+            statsCardsContent(Modifier.fillMaxWidth(), false) // false = horizontal row
         }
     } else {
         Row(
