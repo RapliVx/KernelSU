@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -139,6 +140,8 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                 lastOffset = currOffset
             }
     }
+
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Scaffold(
         topBar = {
@@ -452,7 +455,12 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
             }
         },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        snackbarHost = { SnackbarHost(hostState = snackBarHost) }
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackBarHost,
+                modifier = Modifier.padding(bottom = navBarPadding)
+            )
+        }
     ) { innerPadding ->
 
         when {
@@ -819,6 +827,8 @@ fun ModuleItem(
 
             val useBanner = prefs.getBoolean("use_banner", true)
 
+            val textDecoration = if (!module.remove) null else TextDecoration.LineThrough
+
             if (useBanner && module.banner.isNotEmpty()) {
                 val isDark = isSystemInDarkTheme()
                 val colorScheme = MaterialTheme.colorScheme
@@ -1022,21 +1032,24 @@ fun ModuleItem(
                                 fontSize = MaterialTheme.typography.titleMedium.fontSize,
                                 fontWeight = FontWeight.SemiBold,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                fontFamily = MaterialTheme.typography.titleMedium.fontFamily
+                                fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
+                                textDecoration = textDecoration
                             )
 
                             Text(
                                 text = "$moduleVersion: ${module.version}",
                                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                                fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                textDecoration = textDecoration
                             )
 
                             Text(
                                 text = "$moduleAuthor: ${module.author}",
                                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                                fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                textDecoration = textDecoration
                             )
 
                             if (developerOptionsEnabled) {
@@ -1045,21 +1058,24 @@ fun ModuleItem(
                                     text = "$moduleId: ${module.id}",
                                     fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                    textDecoration = textDecoration
                                 )
 
                                 Text(
                                     text = "$moduleVersionCode: ${module.versionCode}",
                                     fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                    textDecoration = textDecoration
                                 )
 
                                 Text(
                                     text = if (module.updateJson.isNotEmpty()) "$moduleUpdateJson: ${module.updateJson}" else "$moduleUpdateJson: $moduleUpdateJsonEmpty",
                                     fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                    textDecoration = textDecoration
                                 )
                             }
                         }
@@ -1088,7 +1104,8 @@ fun ModuleItem(
                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                         fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
                         overflow = TextOverflow.Ellipsis,
-                        maxLines = 4
+                        maxLines = 3,
+                        textDecoration = textDecoration
                     )
 
                     Spacer(modifier = Modifier.height(2.dp))
