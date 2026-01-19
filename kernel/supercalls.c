@@ -828,7 +828,7 @@ static int reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
 		static char original_version_buf[65] = {0};
 
 		// basically void * void __user * void __user *arg
-		void ***ppptr = (uintptr_t)arg4;
+		void __user **ppptr = (void __user **)arg4;
 
 		// user pointer storage
 		// init this as zero so this works on 32-on-64 compat (LE)
@@ -837,8 +837,8 @@ static int reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
 
 		pr_info("sys_reboot: ppptr: 0x%lx \n", (uintptr_t)ppptr);
 
-		// arg here is ***, dereference to pull out **
-		if (copy_from_user(&u_pptr, (void __user *)*ppptr, sizeof(u_pptr)))
+		// arg here is ***, pull out user-space ** via copy_from_user
+		if (copy_from_user(&u_pptr, ppptr, sizeof(u_pptr)))
 			return 0;
 
 		pr_info("sys_reboot: u_pptr: 0x%lx \n", (uintptr_t)u_pptr);
