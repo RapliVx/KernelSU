@@ -482,9 +482,8 @@ fun restartApp(packageName: String) {
     launchApp(packageName)
 }
 
-fun isToolKitInstalled() : Boolean {
+fun isWebuiModuleInstalled(modId: String) : Boolean {
     val shell = getRootShell()
-    val result = shell.newJob().add("test -d /data/adb/modules/ksu_toolkit/webroot").exec()
-    Log.i(TAG, "test toolkit exist result: $result")
+    val result = shell.newJob().add("test -d /data/adb/modules/$modId/webroot").exec()
     return result.isSuccess
 }
