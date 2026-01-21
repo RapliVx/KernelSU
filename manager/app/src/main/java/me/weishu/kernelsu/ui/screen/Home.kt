@@ -319,7 +319,7 @@ private fun StatusCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable { if (kernelVersion.isGKI()) onClickInstall() }
+                    .clickable { onClickInstall() }
             ) {
                 // Background Image
                 if (headerImageUri != null) {
