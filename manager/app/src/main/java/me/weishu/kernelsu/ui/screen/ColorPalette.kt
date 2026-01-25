@@ -496,8 +496,8 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             Spacer(Modifier.height(16.dp))
 
             // ================================================
-// === [BARU] START: CONTROLLER APP BACKGROUND ===
-// ================================================
+            // === [BARU] START: CONTROLLER APP BACKGROUND ===
+            // ================================================
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -617,10 +617,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // 2. Opacity Slider Controller
-                    // State slider (default 0.5f jika belum diset)
-                    var bgAlpha by remember { mutableFloatStateOf(prefs.getFloat("background_alpha", 0.5f)) }
-
+                    // 2. Opacity Sliders (Background & Cards)
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -628,45 +625,88 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                 color = MaterialTheme.colorScheme.surfaceContainerLow,
                                 shape = RoundedCornerShape(16.dp)
                             )
-                            .padding(16.dp)
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(24.dp) // Jarak antar slider
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Background Opacity",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurface
+                        // --- SLIDER 1: Background Opacity ---
+                        var bgAlpha by remember { mutableFloatStateOf(prefs.getFloat("background_alpha", 0.5f)) }
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Background Opacity",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${(bgAlpha * 100).toInt()}%",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Slider(
+                                value = bgAlpha,
+                                onValueChange = { newValue ->
+                                    bgAlpha = newValue
+                                    prefs.edit().putFloat("background_alpha", newValue).apply()
+                                },
+                                valueRange = 0f..1f,
+                                steps = 19,
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            // Menampilkan nilai persen (misal: 50%)
                             Text(
-                                text = "${(bgAlpha * 100).toInt()}%",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                text = "Adjust app theme visibility over image.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        // --- SLIDER 2: Card Opacity ---
+                        var cardAlpha by remember { mutableFloatStateOf(prefs.getFloat("card_alpha", 0.8f)) }
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Card Opacity",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${(cardAlpha * 100).toInt()}%",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
 
-                        Slider(
-                            value = bgAlpha,
-                            onValueChange = { newValue ->
-                                bgAlpha = newValue
-                                prefs.edit().putFloat("background_alpha", newValue).apply()
-                            },
-                            valueRange = 0f..1f,
-                            steps = 19, // step per 5%
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                            Spacer(modifier = Modifier.height(8.dp))
 
-                        Text(
-                            text = "Adjust visibility of the app theme over the image.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
+                            Slider(
+                                value = cardAlpha,
+                                onValueChange = { newValue ->
+                                    cardAlpha = newValue
+                                    prefs.edit().putFloat("card_alpha", newValue).apply()
+                                },
+                                valueRange = 0f..1f,
+                                steps = 19,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                text = "Adjust transparency of info cards.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
                     }
                 }
             }

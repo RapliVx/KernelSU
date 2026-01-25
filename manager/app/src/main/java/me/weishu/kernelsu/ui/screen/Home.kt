@@ -120,6 +120,7 @@ import me.weishu.kernelsu.ui.util.getSELinuxStatus
 import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.rootAvailable
+import androidx.compose.material3.contentColorFor // Import penting untuk kontras
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>(start = true)
@@ -133,14 +134,15 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     // Cek apakah background URI ada
     val hasBackground = remember { prefs.getString("background_uri", null) != null }
-    // Ambil nilai transparansi dari Slider (default 0.5f jika tidak ada setting)
+
+    // Ambil nilai transparansi BACKGROUND dari Slider (default 0.5f)
     val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
+
+    // [BARU] Ambil nilai transparansi CARD dari Slider (default 0.8f)
+    val cardAlpha = remember { prefs.getFloat("card_alpha", 0.8f) }
 
     Scaffold(
         // --- WARNA DENGAN TRANSPARANSI TERKONTROL ---
-        // Jika ada background image: Gunakan warna tema ASLI (Putih/Hitam) tapi ubah Alpha-nya.
-        // Jika slider 0% -> Bening total (Gambar jelas).
-        // Jika slider 100% -> Warna solid (Gambar tertutup).
         containerColor = if (hasBackground) {
             MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
         } else {
@@ -149,7 +151,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
         topBar = {
             TopBar(
                 scrollBehavior = scrollBehavior,
-                // TopBar juga mengikuti transparansi agar seragam
+                // TopBar juga mengikuti transparansi background agar seragam
                 backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
             )
         },
@@ -199,20 +201,23 @@ fun HomeScreen(navigator: DestinationsNavigator) {
 
             if (isManager && Natives.requireNewKernel()) {
                 WarningCard(
-                    stringResource(id = R.string.require_kernel_version).format(
+                    message = stringResource(id = R.string.require_kernel_version).format(
                         ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL
-                    )
+                    ),
+                    cardAlpha = cardAlpha // [BARU] Kirim alpha ke WarningCard
                 )
             }
             if (ksuVersion != null && !rootAvailable()) {
                 WarningCard(
-                    stringResource(id = R.string.grant_root_failed)
+                    message = stringResource(id = R.string.grant_root_failed),
+                    cardAlpha = cardAlpha // [BARU] Kirim alpha ke WarningCard
                 )
             }
 
-            InfoCard()
-            DonateCard()
-            LearnMoreCard()
+            // [BARU] Kirim cardAlpha ke kartu lainnya
+            InfoCard(cardAlpha = cardAlpha)
+            DonateCard(cardAlpha = cardAlpha)
+            LearnMoreCard(cardAlpha = cardAlpha)
             Spacer(Modifier)
         }
     }
@@ -237,6 +242,10 @@ fun UpdateCard() {
     val title = stringResource(id = R.string.module_changelog)
     val updateText = stringResource(id = R.string.module_update)
 
+    // Baca prefs untuk cardAlpha di sini juga jika diperlukan, atau default 1f
+    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    val cardAlpha = prefs.getFloat("card_alpha", 0.8f)
+
     AnimatedVisibility(
         visible = newVersionCode > currentVersionCode,
         enter = fadeIn() + expandVertically(),
@@ -245,7 +254,8 @@ fun UpdateCard() {
         val updateDialog = rememberConfirmDialog(onConfirm = { uriHandler.openUri(newVersionUrl) })
         WarningCard(
             message = stringResource(id = R.string.new_version_available).format(newVersionCode),
-            MaterialTheme.colorScheme.outlineVariant
+            color = MaterialTheme.colorScheme.outlineVariant,
+            cardAlpha = cardAlpha // [BARU]
         ) {
             if (changelog.isEmpty()) {
                 uriHandler.openUri(newVersionUrl)
@@ -265,19 +275,18 @@ fun UpdateCard() {
 @Composable
 private fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    backgroundAlpha: Float = 1f // Parameter Alpha untuk TopBar
+    backgroundAlpha: Float = 1f
 ) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val isOfficialEnabled = prefs.getBoolean("enable_official_launcher", false)
     val appNameId = if (isOfficialEnabled) R.string.app_name else R.string.app_name_mambo
 
-    // Menggunakan warna surface tema, tapi dengan Alpha yang disesuaikan slider
+    // Warna container mengikuti alpha background utama
     val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
 
-    // Saat discroll, kita bisa buat sedikit lebih solid atau tetap ikuti alpha
     val scrolledColor = MaterialTheme.colorScheme.surface.copy(
-        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f) // Sedikit lebih solid saat scroll
+        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f)
     )
 
     TopAppBar(
@@ -336,9 +345,11 @@ private fun StatusCard(
             .build()
     }
 
+    // StatusCard tetap menggunakan background bening khusus (tidak pakai cardAlpha umum)
     val headerCardContent = @Composable { modifier: Modifier ->
         TonalCard(
             containerColor = Color.Transparent,
+            alpha = 1f, // StatusCard tetap solid/transparan khusus
             modifier = modifier.clip(RoundedCornerShape(28.dp))
         ) {
             Box(
@@ -444,7 +455,16 @@ private fun StatusCard(
         if (fullFeatured == true) {
             @Composable
             fun StatInfoCard(title: String, count: String, onClick: () -> Unit, itemModifier: Modifier) {
-                TonalCard(modifier = itemModifier) {
+                // StatCard menggunakan warna default surfaceColorAtElevation,
+                // bisa juga diberi alpha jika diinginkan. Di sini saya biarkan default/sedikit transparan.
+                val context = LocalContext.current
+                val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+                val cardAlpha = remember { prefs.getFloat("card_alpha", 0.8f) }
+
+                TonalCard(
+                    modifier = itemModifier,
+                    alpha = cardAlpha // [BARU] Terapkan alpha ke Stat Card
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -459,7 +479,9 @@ private fun StatusCard(
                         Text(
                             text = count,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = cs.onSurfaceVariant
+                            // Warna teks sekunder juga perlu kontras, diatur otomatis oleh TonalCard
+                            // tapi kita bisa override alpha-nya
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -525,9 +547,15 @@ private fun StatusCard(
 
 @Composable
 fun WarningCard(
-    message: String, color: Color = MaterialTheme.colorScheme.error, onClick: (() -> Unit)? = null
+    message: String,
+    color: Color = MaterialTheme.colorScheme.error,
+    cardAlpha: Float = 1f, // [BARU] Parameter alpha
+    onClick: (() -> Unit)? = null
 ) {
-    TonalCard(containerColor = color) {
+    TonalCard(
+        containerColor = color,
+        alpha = cardAlpha // [BARU]
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -544,25 +572,41 @@ fun WarningCard(
 @Composable
 fun TonalCard(
     modifier: Modifier = Modifier,
+    alpha: Float = 1f, // [BARU] Parameter Alpha
     containerColor: Color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
     shape: Shape = RoundedCornerShape(20.dp),
     content: @Composable () -> Unit
 ) {
+    // 1. Hitung warna akhir container dengan alpha
+    val adjustedContainerColor = containerColor.copy(alpha = alpha)
+
+    // 2. [FIX BUG TEXT COLOR]
+    // Cari warna konten yang kontras dengan warna container (meskipun transparan)
+    val contrastContentColor = MaterialTheme.colorScheme.contentColorFor(adjustedContainerColor)
+
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = containerColor),
+        colors = CardDefaults.cardColors(
+            containerColor = adjustedContainerColor,
+            contentColor = contrastContentColor // Terapkan warna kontras ke teks
+        ),
         shape = shape
     ) {
-        content()
+        // Pastikan children di dalam card juga menggunakan warna kontras
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides contrastContentColor
+        ) {
+            content()
+        }
     }
 }
 
 @Composable
-fun LearnMoreCard() {
+fun LearnMoreCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
     val uriHandler = LocalUriHandler.current
     val url = stringResource(R.string.home_learn_kernelsu_url)
 
-    TonalCard {
+    TonalCard(alpha = cardAlpha) { // [BARU]
         Row(modifier = Modifier
             .fillMaxWidth()
             .clickable {
@@ -578,7 +622,9 @@ fun LearnMoreCard() {
                 Text(
                     text = stringResource(R.string.home_click_to_learn_kernelsu),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.outline
+                    // Kita bisa biarkan warna outline, atau ganti ke LocalContentColor.current.copy(alpha=0.7f)
+                    // agar lebih aman terhadap kontras background gelap
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -586,10 +632,10 @@ fun LearnMoreCard() {
 }
 
 @Composable
-fun DonateCard() {
+fun DonateCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
     val uriHandler = LocalUriHandler.current
 
-    TonalCard {
+    TonalCard(alpha = cardAlpha) { // [BARU]
         Row(modifier = Modifier
             .fillMaxWidth()
             .clickable {
@@ -605,7 +651,7 @@ fun DonateCard() {
                 Text(
                     text = stringResource(R.string.home_support_content),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.outline
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -613,7 +659,7 @@ fun DonateCard() {
 }
 
 @Composable
-private fun InfoCard() {
+private fun InfoCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
@@ -630,6 +676,7 @@ private fun InfoCard() {
     )
 
     TonalCard(
+        alpha = cardAlpha, // [BARU]
         modifier = Modifier
             .fillMaxWidth()
             .clip(CardDefaults.shape)
@@ -667,7 +714,7 @@ private fun InfoCard() {
                             text = content,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 4.dp),
-                            color = MaterialTheme.colorScheme.outline
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

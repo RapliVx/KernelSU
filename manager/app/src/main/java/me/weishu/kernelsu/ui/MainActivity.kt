@@ -19,7 +19,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box // --- NEW IMPORT ---
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -36,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -47,6 +48,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
@@ -54,18 +56,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color // --- NEW IMPORT ---
-import androidx.compose.ui.layout.ContentScale // --- NEW IMPORT ---
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext // --- NEW IMPORT ---
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import coil.compose.AsyncImage // --- NEW IMPORT ---
-import coil.request.ImageRequest // --- NEW IMPORT ---
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.NavGraphs
@@ -88,7 +90,6 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
 
-        // Enable edge to edge
         enableEdgeToEdge()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
@@ -101,7 +102,6 @@ class MainActivity : ComponentActivity() {
 
         val isAnyKernel = intent.component?.className?.endsWith("FlashAnyKernel") == true
 
-        // Check if launched with a ZIP file
         val zipUri: ArrayList<Uri>? = if (intent.data != null) {
             arrayListOf(intent.data!!)
         } else {
@@ -126,9 +126,10 @@ class MainActivity : ComponentActivity() {
             val prefs = remember { getSharedPreferences("settings", MODE_PRIVATE) }
 
             // --- CUSTOMIZATION STATE START ---
-            // Menyimpan state background URI dan mode fill screen
             var backgroundUri by remember { mutableStateOf(prefs.getString("background_uri", null)) }
             var fillScreen by remember { mutableStateOf(prefs.getBoolean("background_fill_screen", false)) }
+            // [BARU] State untuk Opacity (Transparansi)
+            var backgroundAlpha by remember { mutableFloatStateOf(prefs.getFloat("background_alpha", 0.5f)) }
             // --- CUSTOMIZATION STATE END ---
 
             val prefsListener = remember {
@@ -137,11 +138,13 @@ class MainActivity : ComponentActivity() {
                         appSettingsState.value = ThemeController.getAppSettings(this@MainActivity)
                     }
                     // --- CUSTOMIZATION LISTENER START ---
-                    // Update tampilan realtime jika setting berubah
                     else if (key == "background_uri") {
                         backgroundUri = sharedPrefs.getString("background_uri", null)
                     } else if (key == "background_fill_screen") {
                         fillScreen = sharedPrefs.getBoolean("background_fill_screen", false)
+                    } else if (key == "background_alpha") {
+                        // [BARU] Update alpha realtime
+                        backgroundAlpha = sharedPrefs.getFloat("background_alpha", 0.5f)
                     }
                     // --- CUSTOMIZATION LISTENER END ---
                 }
@@ -157,11 +160,10 @@ class MainActivity : ComponentActivity() {
             KernelSUTheme(
                 appSettings = appSettingsState.value
             ) {
-                // --- BACKGROUND BOX WRAPPER START ---
-                // Kita bungkus seluruh UI dalam Box agar bisa menaruh Image di lapisan paling bawah
+                // --- BACKGROUND BOX WRAPPER ---
                 Box(modifier = Modifier.fillMaxSize()) {
 
-                    // 1. Render Background Image (Jika ada)
+                    // 1. Render Background Image
                     if (backgroundUri != null) {
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
@@ -253,11 +255,12 @@ class MainActivity : ComponentActivity() {
                     }
 
                     Scaffold(
-                        // Agar background terlihat, Scaffold harus transparan
+                        // Container transparan agar background terlihat
                         containerColor = Color.Transparent,
                         bottomBar = {
                             if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
-                                BottomBar(navController)
+                                // [BARU] Kirim nilai alpha ke BottomBar
+                                BottomBar(navController, backgroundAlpha)
                             }
                         },
                         contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -267,8 +270,8 @@ class MainActivity : ComponentActivity() {
                         ) {
                             if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
                                 Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
-                                    // SideBar juga harus transparan
-                                    SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
+                                    // [BARU] Kirim nilai alpha ke SideBar
+                                    SideBar(navController = navController, alpha = backgroundAlpha, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
                                     DestinationsNavHost(
                                         modifier = Modifier.weight(1f),
                                         navGraph = NavGraphs.root,
@@ -293,7 +296,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun BottomBar(navController: NavHostController) {
+private fun BottomBar(navController: NavHostController, alpha: Float) {
     val navigator = navController.rememberDestinationsNavigator()
     val isManager = Natives.isManager
     val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
@@ -301,9 +304,23 @@ private fun BottomBar(navController: NavHostController) {
         BottomBarDestination.entries.map { it.direction.route }.toSet()
     }
     val currentRoute = navController.currentBackStackEntry?.destination?.route
+
+    // [BARU] Logic pewarnaan BottomBar transparan
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE) }
+    val hasBackground = remember(prefs.getString("background_uri", null)) { prefs.getString("background_uri", null) != null }
+
+    val navContainerColor = if (hasBackground) {
+        // Gunakan warna surface dengan alpha dari slider
+        MaterialTheme.colorScheme.surface.copy(alpha = alpha)
+    } else {
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.95f) // Default semi-transparent
+    }
+
     NavigationBar(
-        // Navbar boleh tetap berwarna atau dibuat semi-transparan disini
-        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+        containerColor = navContainerColor,
+        // Hapus elevasi tonal jika pakai background image agar lebih menyatu
+        tonalElevation = if (hasBackground) 0.dp else NavigationBarDefaults.Elevation,
         windowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
         )
@@ -343,7 +360,7 @@ private fun BottomBar(navController: NavHostController) {
 }
 
 @Composable
-private fun SideBar(navController: NavHostController, modifier: Modifier = Modifier) {
+private fun SideBar(navController: NavHostController, alpha: Float, modifier: Modifier = Modifier) {
     val navigator = navController.rememberDestinationsNavigator()
     val isManager = Natives.isManager
     val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
@@ -351,10 +368,21 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
         BottomBarDestination.entries.map { it.direction.route }.toSet()
     }
     val currentRoute = navController.currentBackStackEntry?.destination?.route
+
+    // [BARU] Logic pewarnaan SideBar transparan
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE) }
+    val hasBackground = remember(prefs.getString("background_uri", null)) { prefs.getString("background_uri", null) != null }
+
+    val navContainerColor = if (hasBackground) {
+        MaterialTheme.colorScheme.surface.copy(alpha = alpha)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
     NavigationRail(
         modifier = modifier,
-        // Ubah container menjadi Transparan agar background terlihat di Landscape mode
-        containerColor = Color.Transparent,
+        containerColor = navContainerColor,
     ) {
         Column(
             modifier = Modifier.fillMaxHeight(),
