@@ -26,39 +26,72 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.AutoAwesomeMotion
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.surfaceColorAtElevation
-import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Shape
 import androidx.core.content.pm.PackageInfoCompat
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
+import coil.request.ImageRequest
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.NavGraphs
@@ -68,45 +101,6 @@ import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDe
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.material.icons.filled.Android
-import androidx.compose.material.icons.filled.AutoAwesomeMotion
-import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.ui.draw.rotate
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import me.weishu.kernelsu.ui.util.getHeaderImage
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import coil.ImageLoader
-import coil.decode.GifDecoder
-import coil.decode.ImageDecoderDecoder
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
@@ -114,13 +108,13 @@ import me.weishu.kernelsu.getKernelVersion
 import me.weishu.kernelsu.ui.component.RebootListPopup
 import me.weishu.kernelsu.ui.component.rememberConfirmDialog
 import me.weishu.kernelsu.ui.util.checkNewVersion
+import me.weishu.kernelsu.ui.util.getHeaderImage
 import me.weishu.kernelsu.ui.util.getLayoutStyle
 import me.weishu.kernelsu.ui.util.getModuleCount
 import me.weishu.kernelsu.ui.util.getSELinuxStatus
 import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.rootAvailable
-import androidx.compose.material3.contentColorFor // Import penting untuk kontras
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>(start = true)
@@ -130,19 +124,18 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val kernelVersion = getKernelVersion()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
-    // --- LOGIC BACKGROUND ---
+    // --- LOGIC BACKGROUND & PREFERENCES ---
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    // Cek apakah background URI ada
     val hasBackground = remember { prefs.getString("background_uri", null) != null }
-
-    // Ambil nilai transparansi BACKGROUND dari Slider (default 0.5f)
     val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
-
-    // [BARU] Ambil nilai transparansi CARD dari Slider (default 0.8f)
     val cardAlpha = remember { prefs.getFloat("card_alpha", 0.8f) }
 
+    // Logic Hide Cards
+    val hideInfo = remember { prefs.getBoolean("hide_info", false) }
+    val hideDonate = remember { prefs.getBoolean("hide_donate", false) }
+    val hideLearnMore = remember { prefs.getBoolean("hide_learn_more", false) }
+
     Scaffold(
-        // --- WARNA DENGAN TRANSPARANSI TERKONTROL ---
         containerColor = if (hasBackground) {
             MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
         } else {
@@ -151,7 +144,6 @@ fun HomeScreen(navigator: DestinationsNavigator) {
         topBar = {
             TopBar(
                 scrollBehavior = scrollBehavior,
-                // TopBar juga mengikuti transparansi background agar seragam
                 backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
             )
         },
@@ -204,24 +196,33 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     message = stringResource(id = R.string.require_kernel_version).format(
                         ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL
                     ),
-                    cardAlpha = cardAlpha // [BARU] Kirim alpha ke WarningCard
+                    cardAlpha = cardAlpha
                 )
             }
             if (ksuVersion != null && !rootAvailable()) {
                 WarningCard(
                     message = stringResource(id = R.string.grant_root_failed),
-                    cardAlpha = cardAlpha // [BARU] Kirim alpha ke WarningCard
+                    cardAlpha = cardAlpha
                 )
             }
 
-            // [BARU] Kirim cardAlpha ke kartu lainnya
-            InfoCard(cardAlpha = cardAlpha)
-            DonateCard(cardAlpha = cardAlpha)
-            LearnMoreCard(cardAlpha = cardAlpha)
+            // Implementasi Hide Logic
+            if (!hideInfo) {
+                InfoCard(cardAlpha = cardAlpha)
+            }
+            if (!hideDonate) {
+                DonateCard(cardAlpha = cardAlpha)
+            }
+            if (!hideLearnMore) {
+                LearnMoreCard(cardAlpha = cardAlpha)
+            }
+
             Spacer(Modifier)
         }
     }
 }
+
+// ... (Sisa fungsi lain seperti UpdateCard, TopBar, StatusCard, WarningCard tetap sama seperti sebelumnya)
 
 @Composable
 fun UpdateCard() {
@@ -242,7 +243,6 @@ fun UpdateCard() {
     val title = stringResource(id = R.string.module_changelog)
     val updateText = stringResource(id = R.string.module_update)
 
-    // Baca prefs untuk cardAlpha di sini juga jika diperlukan, atau default 1f
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val cardAlpha = prefs.getFloat("card_alpha", 0.8f)
 
@@ -255,7 +255,7 @@ fun UpdateCard() {
         WarningCard(
             message = stringResource(id = R.string.new_version_available).format(newVersionCode),
             color = MaterialTheme.colorScheme.outlineVariant,
-            cardAlpha = cardAlpha // [BARU]
+            cardAlpha = cardAlpha
         ) {
             if (changelog.isEmpty()) {
                 uriHandler.openUri(newVersionUrl)
@@ -282,7 +282,6 @@ private fun TopBar(
     val isOfficialEnabled = prefs.getBoolean("enable_official_launcher", false)
     val appNameId = if (isOfficialEnabled) R.string.app_name else R.string.app_name_mambo
 
-    // Warna container mengikuti alpha background utama
     val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
 
     val scrolledColor = MaterialTheme.colorScheme.surface.copy(
@@ -345,11 +344,10 @@ private fun StatusCard(
             .build()
     }
 
-    // StatusCard tetap menggunakan background bening khusus (tidak pakai cardAlpha umum)
     val headerCardContent = @Composable { modifier: Modifier ->
         TonalCard(
             containerColor = Color.Transparent,
-            alpha = 1f, // StatusCard tetap solid/transparan khusus
+            alpha = 1f,
             modifier = modifier.clip(RoundedCornerShape(28.dp))
         ) {
             Box(
@@ -387,63 +385,61 @@ private fun StatusCard(
                         )
                 )
 
-                if (useClassicLayout) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.Bottom,
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                            Text(
-                                text = statusText,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = cs.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
+                CompositionLocalProvider(LocalContentColor provides Color.White) {
+                    if (useClassicLayout) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            verticalArrangement = Arrangement.Bottom,
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                                Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                                Text(
+                                    text = statusText,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                                Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                                Text(
+                                    text = versionText,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
                         }
-                        Spacer(Modifier.height(8.dp))
-                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                            Text(
-                                text = versionText,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = cs.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                        }
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.Bottom,
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                            Text(
-                                text = statusText,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = cs.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                            Text(
-                                text = versionText,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = cs.onSecondaryContainer,
-                                maxLines = 1,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            )
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.Bottom,
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                                Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                                Text(
+                                    text = statusText,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                                Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                                Text(
+                                    text = versionText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -455,15 +451,13 @@ private fun StatusCard(
         if (fullFeatured == true) {
             @Composable
             fun StatInfoCard(title: String, count: String, onClick: () -> Unit, itemModifier: Modifier) {
-                // StatCard menggunakan warna default surfaceColorAtElevation,
-                // bisa juga diberi alpha jika diinginkan. Di sini saya biarkan default/sedikit transparan.
                 val context = LocalContext.current
                 val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
                 val cardAlpha = remember { prefs.getFloat("card_alpha", 0.8f) }
 
                 TonalCard(
                     modifier = itemModifier,
-                    alpha = cardAlpha // [BARU] Terapkan alpha ke Stat Card
+                    alpha = cardAlpha
                 ) {
                     Column(
                         modifier = Modifier
@@ -479,9 +473,7 @@ private fun StatusCard(
                         Text(
                             text = count,
                             style = MaterialTheme.typography.bodyMedium,
-                            // Warna teks sekunder juga perlu kontras, diatur otomatis oleh TonalCard
-                            // tapi kita bisa override alpha-nya
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = LocalContentColor.current.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -549,12 +541,12 @@ private fun StatusCard(
 fun WarningCard(
     message: String,
     color: Color = MaterialTheme.colorScheme.error,
-    cardAlpha: Float = 1f, // [BARU] Parameter alpha
+    cardAlpha: Float = 1f,
     onClick: (() -> Unit)? = null
 ) {
     TonalCard(
         containerColor = color,
-        alpha = cardAlpha // [BARU]
+        alpha = cardAlpha
     ) {
         Row(
             modifier = Modifier
@@ -572,29 +564,24 @@ fun WarningCard(
 @Composable
 fun TonalCard(
     modifier: Modifier = Modifier,
-    alpha: Float = 1f, // [BARU] Parameter Alpha
+    alpha: Float = 1f,
     containerColor: Color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
     shape: Shape = RoundedCornerShape(20.dp),
     content: @Composable () -> Unit
 ) {
-    // 1. Hitung warna akhir container dengan alpha
     val adjustedContainerColor = containerColor.copy(alpha = alpha)
-
-    // 2. [FIX BUG TEXT COLOR]
-    // Cari warna konten yang kontras dengan warna container (meskipun transparan)
-    val contrastContentColor = MaterialTheme.colorScheme.contentColorFor(adjustedContainerColor)
+    val contrastContentColor = MaterialTheme.colorScheme.contentColorFor(containerColor)
 
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
             containerColor = adjustedContainerColor,
-            contentColor = contrastContentColor // Terapkan warna kontras ke teks
+            contentColor = contrastContentColor
         ),
         shape = shape
     ) {
-        // Pastikan children di dalam card juga menggunakan warna kontras
-        androidx.compose.runtime.CompositionLocalProvider(
-            androidx.compose.material3.LocalContentColor provides contrastContentColor
+        CompositionLocalProvider(
+            LocalContentColor provides contrastContentColor
         ) {
             content()
         }
@@ -602,11 +589,11 @@ fun TonalCard(
 }
 
 @Composable
-fun LearnMoreCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
+fun LearnMoreCard(cardAlpha: Float = 1f) {
     val uriHandler = LocalUriHandler.current
     val url = stringResource(R.string.home_learn_kernelsu_url)
 
-    TonalCard(alpha = cardAlpha) { // [BARU]
+    TonalCard(alpha = cardAlpha) {
         Row(modifier = Modifier
             .fillMaxWidth()
             .clickable {
@@ -622,9 +609,7 @@ fun LearnMoreCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
                 Text(
                     text = stringResource(R.string.home_click_to_learn_kernelsu),
                     style = MaterialTheme.typography.bodyMedium,
-                    // Kita bisa biarkan warna outline, atau ganti ke LocalContentColor.current.copy(alpha=0.7f)
-                    // agar lebih aman terhadap kontras background gelap
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = LocalContentColor.current.copy(alpha = 0.7f)
                 )
             }
         }
@@ -632,10 +617,10 @@ fun LearnMoreCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
 }
 
 @Composable
-fun DonateCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
+fun DonateCard(cardAlpha: Float = 1f) {
     val uriHandler = LocalUriHandler.current
 
-    TonalCard(alpha = cardAlpha) { // [BARU]
+    TonalCard(alpha = cardAlpha) {
         Row(modifier = Modifier
             .fillMaxWidth()
             .clickable {
@@ -651,7 +636,7 @@ fun DonateCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
                 Text(
                     text = stringResource(R.string.home_support_content),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = LocalContentColor.current.copy(alpha = 0.7f)
                 )
             }
         }
@@ -659,15 +644,11 @@ fun DonateCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
 }
 
 @Composable
-private fun InfoCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
+private fun InfoCard(cardAlpha: Float = 1f) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-
-    val isManager = Natives.isManager
-
-    // State expand
-    var expanded by rememberSaveable { mutableStateOf(false) }
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+    var expanded by rememberSaveable { mutableStateOf(false) }
 
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -676,7 +657,7 @@ private fun InfoCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
     )
 
     TonalCard(
-        alpha = cardAlpha, // [BARU]
+        alpha = cardAlpha,
         modifier = Modifier
             .fillMaxWidth()
             .clip(CardDefaults.shape)
@@ -714,7 +695,7 @@ private fun InfoCard(cardAlpha: Float = 1f) { // [BARU] parameter alpha
                             text = content,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 4.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = LocalContentColor.current.copy(alpha = 0.7f)
                         )
                     }
                 }
