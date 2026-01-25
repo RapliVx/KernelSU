@@ -33,10 +33,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -122,6 +124,11 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt, skipConfirma
     val isSafeMode = Natives.isSafeMode
     val confirmDialog = rememberConfirmDialog()
 
+    // --- [NEW] Background Logic ---
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val hasBackground = remember { prefs.getString("background_uri", null) != null }
+    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
+
     LaunchedEffect(flashIt, skipConfirmation) {
         if (isSafeMode && flashIt is FlashIt.FlashModules) {
             confirmDialog.showConfirm(
@@ -185,6 +192,12 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt, skipConfirma
     }
 
     Scaffold(
+        // --- [NEW] Container Transparency ---
+        containerColor = if (hasBackground) {
+            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
+        } else {
+            MaterialTheme.colorScheme.background
+        },
         topBar = {
             TopBar(
                 flashing,
@@ -203,7 +216,9 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt, skipConfirma
                         snackBarHost.showSnackbar("Log saved to ${file.absolutePath}")
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                // --- [NEW] Pass Alpha ---
+                backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
             )
         },
         floatingActionButton = {
@@ -244,6 +259,8 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt, skipConfirma
                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                 fontFamily = FontFamily.Monospace,
                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                // Ensure text is visible on transparent background (uses theme's onBackground)
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
     }
@@ -315,8 +332,15 @@ private fun TopBar(
     status: FlashingStatus,
     onBack: () -> Unit = {},
     onSave: () -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    backgroundAlpha: Float = 1f // [NEW] Alpha Parameter
 ) {
+    // [NEW] Calculate TopBar colors
+    val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
+    val scrolledColor = MaterialTheme.colorScheme.surface.copy(
+        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f)
+    )
+
     TopAppBar(
         title = {
             Text(
@@ -343,7 +367,12 @@ private fun TopBar(
             }
         },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
+        // [NEW] Apply colors
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = containerColor,
+            scrolledContainerColor = scrolledColor
+        )
     )
 }
 

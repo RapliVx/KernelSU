@@ -1,5 +1,6 @@
 package me.weishu.kernelsu.ui.screen
 
+import android.content.Context // [BARU]
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
@@ -69,7 +70,7 @@ fun TemplateEditorScreen(
     initialTemplate: TemplateViewModel.TemplateInfo,
     readOnly: Boolean = true,
 ) {
-
+    val context = LocalContext.current // [BARU]
     val isCreation = initialTemplate.id.isBlank()
     val autoSave = !isCreation
 
@@ -79,11 +80,22 @@ fun TemplateEditorScreen(
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
+    // --- [BARU] Logic Background ---
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val hasBackground = remember { prefs.getString("background_uri", null) != null }
+    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
+
     BackHandler {
         navigator.navigateBack(result = !readOnly)
     }
 
     Scaffold(
+        // --- [BARU] Transparency ---
+        containerColor = if (hasBackground) {
+            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
+        } else {
+            MaterialTheme.colorScheme.background
+        },
         topBar = {
             val author =
                 if (initialTemplate.author.isNotEmpty()) "@${initialTemplate.author}" else ""
@@ -94,7 +106,6 @@ fun TemplateEditorScreen(
             }
             val titleSummary = "${initialTemplate.id}$author$readOnlyHint"
             val saveTemplateFailed = stringResource(id = R.string.app_profile_template_save_failed)
-            val context = LocalContext.current
 
             TopBar(
                 title = if (isCreation) {
@@ -119,7 +130,9 @@ fun TemplateEditorScreen(
                         Toast.makeText(context, saveTemplateFailed, Toast.LENGTH_SHORT).show()
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                // --- [BARU] Pass Alpha ---
+                backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
@@ -257,8 +270,15 @@ private fun TopBar(
     onBack: () -> Unit,
     onDelete: () -> Unit = {},
     onSave: () -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    backgroundAlpha: Float = 1f // [BARU]
 ) {
+    // [BARU] Calculate Colors
+    val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
+    val scrolledColor = MaterialTheme.colorScheme.surface.copy(
+        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f)
+    )
+
     TopAppBar(
         title = {
             Column {
@@ -270,11 +290,13 @@ private fun TopBar(
                     )
                 }
             }
-        }, navigationIcon = {
+        },
+        navigationIcon = {
             IconButton(
                 onClick = onBack
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
-        }, actions = {
+        },
+        actions = {
             if (readOnly) {
                 return@TopAppBar
             }
@@ -292,7 +314,12 @@ private fun TopBar(
             }
         },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
+        // [BARU] Apply Colors
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = containerColor,
+            scrolledContainerColor = scrolledColor
+        )
     )
 }
 

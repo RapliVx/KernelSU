@@ -60,6 +60,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -76,6 +77,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -114,6 +116,36 @@ import me.weishu.kernelsu.ui.viewmodel.ModuleRepoViewModel
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import java.text.Collator
 import java.util.Locale
+
+// --- [NEW] Private TonalCard Definition ---
+// Menggunakan Card transparan yang sama seperti di Module.kt dan HomeScreen.kt
+// Didefinisikan private agar tidak bentrok
+@Composable
+private fun TonalCard(
+    modifier: Modifier = Modifier,
+    alpha: Float = 1f,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    content: @Composable () -> Unit
+) {
+    val adjustedColor = containerColor.copy(alpha = alpha)
+    // Warna konten disesuaikan agar kontras
+    val contentColor = MaterialTheme.colorScheme.onSurface
+
+    androidx.compose.material3.Card(
+        modifier = modifier,
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = adjustedColor,
+            contentColor = contentColor
+        )
+    ) {
+        // Paksa konten di dalam menggunakan warna kontras
+        androidx.compose.runtime.CompositionLocalProvider(
+            androidx.compose.material3.LocalContentColor provides contentColor
+        ) {
+            content()
+        }
+    }
+}
 
 @Parcelize
 data class ReleaseAssetArg(
@@ -163,6 +195,11 @@ fun ModuleRepoScreen(
     val repoSortByNameState = remember { mutableStateOf(prefs.getBoolean("module_repo_sort_name", false)) }
     val listState = rememberLazyListState()
 
+    // --- [NEW] Background Logic ---
+    val hasBackground = remember { prefs.getString("background_uri", null) != null }
+    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
+    val cardAlpha = remember { prefs.getFloat("card_alpha", 0.8f) }
+
     val offline = !isNetworkAvailable(context)
 
     LaunchedEffect(Unit) {
@@ -177,42 +214,63 @@ fun ModuleRepoScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
+        // --- [NEW] Transparency ---
+        containerColor = if (hasBackground) {
+            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
+        } else {
+            MaterialTheme.colorScheme.background
+        },
         topBar = {
-            SearchAppBar(
-                title = { Text(text = stringResource(R.string.module_repos)) },
-                onBackClick = { navigator.popBackStack() },
-                searchText = viewModel.search,
-                onSearchTextChange = { viewModel.search = it },
-                onClearClick = { viewModel.search = TextFieldValue("") },
-                scrollBehavior = scrollBehavior,
-                dropdownContent = {
-                    var showDropdown by remember { mutableStateOf(false) }
+            // [NEW] TopBar Color Calculation
+            val topBarColor = if (hasBackground) {
+                MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+            val contentColor = MaterialTheme.colorScheme.onSurface
 
-                    IconButton(
-                        onClick = { showDropdown = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = stringResource(id = R.string.settings)
-                        )
+            // [NEW] Wrapper Surface for SearchAppBar
+            Surface(
+                color = topBarColor,
+                contentColor = contentColor,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                SearchAppBar(
+                    title = { Text(text = stringResource(R.string.module_repos)) },
+                    onBackClick = { navigator.popBackStack() },
+                    searchText = viewModel.search,
+                    onSearchTextChange = { viewModel.search = it },
+                    onClearClick = { viewModel.search = TextFieldValue("") },
+                    scrollBehavior = scrollBehavior,
+                    dropdownContent = {
+                        var showDropdown by remember { mutableStateOf(false) }
 
-                        DropdownMenu(expanded = showDropdown, onDismissRequest = {
-                            showDropdown = false
-                        }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.module_repos_sort_name)) },
-                                trailingIcon = { Checkbox(repoSortByNameState.value, null) },
-                                onClick = {
-                                    repoSortByNameState.value = !repoSortByNameState.value
-                                    prefs.edit {
-                                        putBoolean("module_repo_sort_name", repoSortByNameState.value)
-                                    }
-                                }
+                        IconButton(
+                            onClick = { showDropdown = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = stringResource(id = R.string.settings)
                             )
+
+                            DropdownMenu(expanded = showDropdown, onDismissRequest = {
+                                showDropdown = false
+                            }) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.module_repos_sort_name)) },
+                                    trailingIcon = { Checkbox(repoSortByNameState.value, null) },
+                                    onClick = {
+                                        repoSortByNameState.value = !repoSortByNameState.value
+                                        prefs.edit {
+                                            putBoolean("module_repo_sort_name", repoSortByNameState.value)
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
-                }
-            )
+                )
+            }
         },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { innerPadding ->
@@ -259,7 +317,8 @@ fun ModuleRepoScreen(
                     val latestReleaseTime = remember(module.latestReleaseTime) { module.latestReleaseTime }
                     val moduleAuthor = stringResource(id = R.string.module_author)
 
-                    TonalCard(modifier = Modifier.fillMaxWidth()) {
+                    // [NEW] Use custom TonalCard with Alpha
+                    TonalCard(modifier = Modifier.fillMaxWidth(), alpha = cardAlpha) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -294,6 +353,7 @@ fun ModuleRepoScreen(
                                     fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                     fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                    // [NEW] Gunakan onSurfaceVariant agar terlihat di dark mode
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
@@ -308,7 +368,8 @@ fun ModuleRepoScreen(
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     text = module.summary,
-                                    color = MaterialTheme.colorScheme.outline,
+                                    // [NEW] Gunakan onSurface.copy(alpha) agar lebih fleksibel
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                                     fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                     fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
                                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
@@ -393,7 +454,26 @@ fun ModuleRepoDetailScreen(
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
+    // --- [NEW] Detail Screen Background Logic ---
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val hasBackground = remember { prefs.getString("background_uri", null) != null }
+    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
+    val cardAlpha = remember { prefs.getFloat("card_alpha", 0.8f) }
+
+    // [NEW] Colors
+    val containerColor = if (hasBackground) {
+        MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
+    } else {
+        MaterialTheme.colorScheme.background
+    }
+    val topBarContainerColor = if (hasBackground) {
+        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = backgroundAlpha)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+
     Scaffold(
+        containerColor = containerColor, // [NEW] Transparent
         topBar = {
             TopAppBar(
                 title = { Text(text = module.moduleName) },
@@ -416,7 +496,7 @@ fun ModuleRepoDetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor =  MaterialTheme.colorScheme.surfaceContainer,
+                    containerColor = topBarContainerColor, // [NEW] Transparent
                 )
             )
         },
@@ -487,7 +567,8 @@ fun ModuleRepoDetailScreen(
                         scope = scope,
                         onInstallModule = onInstallModule,
                         context = context,
-                        setPendingDownload = { pendingDownload = it }
+                        setPendingDownload = { pendingDownload = it },
+                        cardAlpha = cardAlpha // [NEW] Pass Alpha
                     )
                     2 -> InfoPage(
                         module = module,
@@ -500,7 +581,7 @@ fun ModuleRepoDetailScreen(
             }
             PrimaryTabRow(
                 selectedTabIndex = pagerState.currentPage,
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                containerColor = topBarContainerColor, // [NEW] Transparent Tabs
                 modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
             ) {
                 tabs.forEachIndexed { index, tab ->
@@ -542,10 +623,18 @@ private fun ReadmePage(
             ) {
                 item {
                     Column(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
-                        GithubMarkdown(
-                            content = readmeHtml,
-                            containerColor = MaterialTheme.colorScheme.surface
-                        )
+                        // Markdown container might need background if transparent
+                        Surface(
+                            shape = MaterialTheme.shapes.medium,
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f) // Slight opacity for readability
+                        ) {
+                            Box(modifier = Modifier.padding(8.dp)) {
+                                GithubMarkdown(
+                                    content = readmeHtml,
+                                    containerColor = Color.Transparent // Let surface handle it
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -575,6 +664,7 @@ fun ReleasesPage(
     onInstallModule: (Uri) -> Unit,
     context: Context,
     setPendingDownload: ((() -> Unit)) -> Unit,
+    cardAlpha: Float = 1f // [NEW] Alpha Param
 ) {
     val layoutDirection = LocalLayoutDirection.current
     LazyColumn(
@@ -595,7 +685,8 @@ fun ReleasesPage(
                 key = { it.tagName },
             ) { rel ->
                 val title = remember(rel.name, rel.tagName) { rel.name.ifBlank { rel.tagName } }
-                TonalCard {
+                // [NEW] Use TonalCard with Alpha
+                TonalCard(alpha = cardAlpha) {
                     Column(
                         modifier = Modifier.padding(vertical = 18.dp, horizontal = 22.dp)
                     ) {

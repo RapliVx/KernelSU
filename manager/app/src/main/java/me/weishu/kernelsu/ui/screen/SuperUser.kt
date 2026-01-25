@@ -1,5 +1,6 @@
 package me.weishu.kernelsu.ui.screen
 
+import android.content.Context
 import android.content.pm.ApplicationInfo
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -31,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -50,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -88,6 +92,12 @@ fun SuperUserScreen(
     val listState = rememberLazyListState()
     val pullToRefreshState = rememberPullToRefreshState()
 
+    // --- [NEW] Background Logic ---
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val hasBackground = remember { prefs.getString("background_uri", null) != null }
+    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
+
     val onRefresh: () -> Unit = {
         scope.launch {
             viewModel.loadAppList()
@@ -112,57 +122,78 @@ fun SuperUserScreen(
     }
 
     Scaffold(
+        // --- [NEW] Transparency ---
+        containerColor = if (hasBackground) {
+            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
+        } else {
+            MaterialTheme.colorScheme.background
+        },
         modifier = Modifier.pullToRefresh(
             state = pullToRefreshState,
             isRefreshing = viewModel.isRefreshing,
             onRefresh = onRefresh,
         ),
         topBar = {
-            SearchAppBar(
-                title = { Text(stringResource(R.string.superuser)) },
-                searchText = viewModel.search,
-                onSearchTextChange = { viewModel.search = it },
-                onClearClick = { viewModel.search = TextFieldValue("") },
-                dropdownContent = {
-                    var showDropdown by remember { mutableStateOf(false) }
+            // [NEW] TopBar Colors
+            val topBarColor = if (hasBackground) {
+                MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+            val contentColor = MaterialTheme.colorScheme.onSurface
 
-                    IconButton(
-                        onClick = { showDropdown = true },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = stringResource(id = R.string.settings)
-                        )
+            // [NEW] Wrapper Surface
+            Surface(
+                color = topBarColor,
+                contentColor = contentColor,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                SearchAppBar(
+                    title = { Text(stringResource(R.string.superuser)) },
+                    searchText = viewModel.search,
+                    onSearchTextChange = { viewModel.search = it },
+                    onClearClick = { viewModel.search = TextFieldValue("") },
+                    dropdownContent = {
+                        var showDropdown by remember { mutableStateOf(false) }
 
-                        DropdownMenu(expanded = showDropdown, onDismissRequest = {
-                            showDropdown = false
-                        }) {
-                            DropdownMenuItem(text = {
-                                Text(stringResource(R.string.refresh))
-                            }, onClick = {
-                                scope.launch {
-                                    viewModel.loadAppList()
-                                    listState.scrollToItem(0)
-                                }
+                        IconButton(
+                            onClick = { showDropdown = true },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = stringResource(id = R.string.settings)
+                            )
+
+                            DropdownMenu(expanded = showDropdown, onDismissRequest = {
                                 showDropdown = false
-                            })
-                            DropdownMenuItem(text = {
-                                Text(
-                                    if (viewModel.showSystemApps) {
-                                        stringResource(R.string.hide_system_apps)
-                                    } else {
-                                        stringResource(R.string.show_system_apps)
+                            }) {
+                                DropdownMenuItem(text = {
+                                    Text(stringResource(R.string.refresh))
+                                }, onClick = {
+                                    scope.launch {
+                                        viewModel.loadAppList()
+                                        listState.scrollToItem(0)
                                     }
-                                )
-                            }, onClick = {
-                                viewModel.updateShowSystemApps(!viewModel.showSystemApps)
-                                showDropdown = false
-                            })
+                                    showDropdown = false
+                                })
+                                DropdownMenuItem(text = {
+                                    Text(
+                                        if (viewModel.showSystemApps) {
+                                            stringResource(R.string.hide_system_apps)
+                                        } else {
+                                            stringResource(R.string.show_system_apps)
+                                        }
+                                    )
+                                }, onClick = {
+                                    viewModel.updateShowSystemApps(!viewModel.showSystemApps)
+                                    showDropdown = false
+                                })
+                            }
                         }
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
+                    },
+                    scrollBehavior = scrollBehavior
+                )
+            }
         },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { innerPadding ->

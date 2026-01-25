@@ -12,9 +12,18 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,10 +36,12 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,6 +56,8 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -71,7 +84,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -79,13 +94,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -96,9 +116,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -115,8 +134,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.layout.ContentScale
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ksuApp
@@ -136,25 +153,6 @@ import me.weishu.kernelsu.ui.util.undoUninstallModule
 import me.weishu.kernelsu.ui.util.uninstallModule
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.webui.WebUIActivity
-
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.zIndex
-import androidx.compose.material3.Surface
-
 import com.topjohnwu.superuser.io.SuFile
 import com.topjohnwu.superuser.Shell
 
@@ -171,6 +169,10 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
 
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+
+    // --- LOGIC BACKGROUND ---
+    val hasBackground = remember { prefs.getString("background_uri", null) != null }
+    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
 
     val modules = viewModel.moduleList
 
@@ -218,69 +220,92 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     }
 
     Scaffold(
+        // --- CONTAINER TRANSPARAN ---
+        containerColor = if (hasBackground) {
+            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
+        } else {
+            MaterialTheme.colorScheme.background
+        },
         modifier = Modifier.pullToRefresh(
             state = pullToRefreshState,
             isRefreshing = viewModel.isRefreshing,
             onRefresh = onRefresh,
         ),
         topBar = {
-            SearchAppBar(
-                title = { Text(stringResource(R.string.module)) },
-                searchText = viewModel.search,
-                onSearchTextChange = { viewModel.search = it },
-                onClearClick = { viewModel.search = TextFieldValue("") },
-                actionsContent = {
-                    IconButton(
-                        onClick = { navigator.navigate(ModuleRepoScreenDestination) }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.CloudDownload,
-                            contentDescription = stringResource(id = R.string.module_repos)
-                        )
-                    }
-                    RebootListPopup()
-                },
-                dropdownContent = {
-                    var showDropdown by remember { mutableStateOf(false) }
+            // [BARU] Hitung warna
+            val topBarColor = if (hasBackground) {
+                MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+            val contentColor = MaterialTheme.colorScheme.onSurface
 
-                    IconButton(
-                        onClick = { showDropdown = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = stringResource(id = R.string.settings)
-                        )
-
-                        DropdownMenu(expanded = showDropdown, onDismissRequest = {
-                            showDropdown = false
-                        }) {
-                            DropdownMenuItem(text = {
-                                Text(stringResource(R.string.module_sort_action_first))
-                            }, trailingIcon = {
-                                Checkbox(viewModel.sortActionFirst, null)
-                            }, onClick = {
-                                viewModel.sortActionFirst = !viewModel.sortActionFirst
-                                prefs.edit {
-                                    putBoolean("module_sort_action_first", viewModel.sortActionFirst)
-                                }
-                                scope.launch { viewModel.fetchModuleList() }
-                            })
-                            DropdownMenuItem(text = {
-                                Text(stringResource(R.string.module_sort_enabled_first))
-                            }, trailingIcon = {
-                                Checkbox(viewModel.sortEnabledFirst, null)
-                            }, onClick = {
-                                viewModel.sortEnabledFirst = !viewModel.sortEnabledFirst
-                                prefs.edit {
-                                    putBoolean("module_sort_enabled_first", viewModel.sortEnabledFirst)
-                                }
-                                scope.launch { viewModel.fetchModuleList() }
-                            })
+            // [FIX] Bungkus SearchAppBar dengan Surface untuk mengatur warna background & content
+            Surface(
+                color = topBarColor,
+                contentColor = contentColor,
+                modifier = Modifier.fillMaxWidth() // Pastikan lebar penuh
+            ) {
+                SearchAppBar(
+                    title = { Text(stringResource(R.string.module)) },
+                    searchText = viewModel.search,
+                    onSearchTextChange = { viewModel.search = it },
+                    onClearClick = { viewModel.search = TextFieldValue("") },
+                    // Hapus parameter 'containerColor' dan 'contentColor' yang error
+                    // Hapus parameter 'colors' jika SearchAppBar tidak mendukungnya
+                    actionsContent = {
+                        IconButton(
+                            onClick = { navigator.navigate(ModuleRepoScreenDestination) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CloudDownload,
+                                contentDescription = stringResource(id = R.string.module_repos)
+                            )
                         }
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-            )
+                        RebootListPopup()
+                    },
+                    dropdownContent = {
+                        var showDropdown by remember { mutableStateOf(false) }
+
+                        IconButton(
+                            onClick = { showDropdown = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = stringResource(id = R.string.settings)
+                            )
+
+                            DropdownMenu(expanded = showDropdown, onDismissRequest = {
+                                showDropdown = false
+                            }) {
+                                DropdownMenuItem(text = {
+                                    Text(stringResource(R.string.module_sort_action_first))
+                                }, trailingIcon = {
+                                    Checkbox(viewModel.sortActionFirst, null)
+                                }, onClick = {
+                                    viewModel.sortActionFirst = !viewModel.sortActionFirst
+                                    prefs.edit {
+                                        putBoolean("module_sort_action_first", viewModel.sortActionFirst)
+                                    }
+                                    scope.launch { viewModel.fetchModuleList() }
+                                })
+                                DropdownMenuItem(text = {
+                                    Text(stringResource(R.string.module_sort_enabled_first))
+                                }, trailingIcon = {
+                                    Checkbox(viewModel.sortEnabledFirst, null)
+                                }, onClick = {
+                                    viewModel.sortEnabledFirst = !viewModel.sortEnabledFirst
+                                    prefs.edit {
+                                        putBoolean("module_sort_enabled_first", viewModel.sortEnabledFirst)
+                                    }
+                                    scope.launch { viewModel.fetchModuleList() }
+                                })
+                            }
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                )
+            }
         },
         floatingActionButton = {
             if (!hideInstallButton) {
@@ -619,7 +644,14 @@ fun ModuleItem(
     onUpdate: (ModuleViewModel.ModuleInfo) -> Unit,
     onClick: (ModuleViewModel.ModuleInfo) -> Unit
 ) {
-    TonalCard(modifier = Modifier.fillMaxWidth()) {
+    // --- Card Alpha from Prefs ---
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val cardAlpha = remember { prefs.getFloat("card_alpha", 0.8f) }
+
+    // Gunakan TonalCard dari HomeScreen.kt (sudah ada di package yang sama)
+    // Cukup panggil dengan parameter alpha
+    TonalCard(modifier = Modifier.fillMaxWidth(), alpha = cardAlpha) {
 
         val textDecoration = if (!module.remove) null else TextDecoration.LineThrough
         val interactionSource = remember { MutableInteractionSource() }
@@ -685,7 +717,6 @@ fun ModuleItem(
             }
         }
 
-        // UBAH TIPE DATA KE Any? AGAR BISA STRING (URL) ATAU BYTEARRAY (FILE)
         val bannerData by produceState<Any?>(
             initialValue = null,
             module.id,
@@ -696,12 +727,10 @@ fun ModuleItem(
                     val b = module.banner?.trim().orEmpty()
                     if (b.isEmpty()) return@withContext null
 
-                    // LOGIKA BARU: Cek jika ini URL
                     if (b.startsWith("http://") || b.startsWith("https://")) {
-                        return@withContext b // Return String URL
+                        return@withContext b
                     }
 
-                    // Logika lama (File Lokal)
                     val rel = b.removePrefix("/")
                     val p1 = "/data/adb/modules/${module.id}/$rel"
                     val p2 = b
@@ -725,7 +754,6 @@ fun ModuleItem(
                 .clip(shape)
         ) {
 
-            // Banner
             if (!module.banner.isNullOrEmpty() && bannerData != null) {
                 val req = remember(bannerData, module.id, module.banner) {
                     ImageRequest.Builder(context)
@@ -750,14 +778,12 @@ fun ModuleItem(
                 )
             }
 
-            // Fade overlay
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(scrim)
             )
 
-            // Badges (Size / WebUI / Action)
             Row(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -767,7 +793,6 @@ fun ModuleItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
-                // SIZE badge
                 val size = moduleSizeMb
                 if (size != null && size > 0f) {
                     BadgeChip(
@@ -775,12 +800,10 @@ fun ModuleItem(
                     )
                 }
 
-                // WEBUI badge
                 if (module.hasWebUi) {
                     BadgeChip(text = "WEBUI")
                 }
 
-                // ACTION badge
                 if (module.hasActionScript) {
                     BadgeChip(
                         text = stringResource(R.string.action)
@@ -788,7 +811,6 @@ fun ModuleItem(
                 }
             }
 
-            // Clickable Content
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -825,7 +847,6 @@ fun ModuleItem(
                         .padding(end = 64.dp)
                 ) {
 
-                    // LOGIKA AUTO-RESIZE TITLE
                     val initialTitleStyle = MaterialTheme.typography.titleLarge
                     var titleStyle by remember { mutableStateOf(initialTitleStyle) }
                     var readyToDraw by remember { mutableStateOf(false) }
@@ -839,7 +860,6 @@ fun ModuleItem(
                         overflow = TextOverflow.Ellipsis,
                         onTextLayout = { textLayoutResult ->
                             if (textLayoutResult.didOverflowHeight) {
-                                // Kecilkan font sebesar 90% jika overflow
                                 val newSize = titleStyle.fontSize * 0.9f
                                 if (newSize > 14.sp) {
                                     titleStyle = titleStyle.copy(fontSize = newSize)
@@ -907,12 +927,12 @@ fun ModuleItem(
                 onCheckedChange = onCheckChanged,
                 interactionSource = if (!module.hasWebUi) interactionSource else null
             )
-// Action Buttons
+
             AnimatedVisibility(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(12.dp)
-                    .zIndex(2f), // biar tidak ketutup scrim
+                    .zIndex(2f),
                 visible = expanded,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
