@@ -222,8 +222,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     }
 }
 
-// ... (Sisa fungsi lain seperti UpdateCard, TopBar, StatusCard, WarningCard tetap sama seperti sebelumnya)
-
+// ... (UpdateCard tetap sama)
 @Composable
 fun UpdateCard() {
     val context = LocalContext.current
@@ -385,61 +384,65 @@ private fun StatusCard(
                         )
                 )
 
-                CompositionLocalProvider(LocalContentColor provides Color.White) {
-                    if (useClassicLayout) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(24.dp),
-                            verticalArrangement = Arrangement.Bottom,
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                                Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                                Text(
-                                    text = statusText,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                )
-                            }
-                            Spacer(Modifier.height(8.dp))
-                            Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                                Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                                Text(
-                                    text = versionText,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                )
-                            }
+                // --- HAPUS WRAPPER LOCAL CONTENT COLOR WHITE ---
+                // Agar text mengikuti warna Material You (cs.onSecondaryContainer)
+                if (useClassicLayout) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.Bottom,
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                            Text(
+                                text = statusText,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = cs.onSecondaryContainer, // [MATERIAL YOU] Warna teks mengikuti container
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
                         }
-                    } else {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.Bottom,
-                            horizontalAlignment = Alignment.Start
-                        ) {
-                            Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                                Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                                Text(
-                                    text = statusText,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                                Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                                Text(
-                                    text = versionText,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                                )
-                            }
+                        Spacer(Modifier.height(8.dp))
+                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                            Text(
+                                text = versionText,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = cs.onSecondaryContainer, // [MATERIAL YOU] Warna teks mengikuti container
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.Bottom,
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                            Text(
+                                text = statusText,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = cs.onSecondaryContainer, // [MATERIAL YOU]
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
+                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                            Text(
+                                text = versionText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = cs.onSecondaryContainer, // [MATERIAL YOU]
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
                         }
                     }
                 }
@@ -467,13 +470,14 @@ private fun StatusCard(
                     ) {
                         Text(
                             text = title,
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface // [MATERIAL YOU] Primary Text
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = count,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = LocalContentColor.current.copy(alpha = 0.8f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU] Secondary Text
                         )
                     }
                 }
@@ -555,7 +559,9 @@ fun WarningCard(
                 .padding(24.dp)
         ) {
             Text(
-                text = message, style = MaterialTheme.typography.bodyMedium
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onError // [MATERIAL YOU] Kontras dengan error container
             )
         }
     }
@@ -570,7 +576,9 @@ fun TonalCard(
     content: @Composable () -> Unit
 ) {
     val adjustedContainerColor = containerColor.copy(alpha = alpha)
-    val contrastContentColor = MaterialTheme.colorScheme.contentColorFor(containerColor)
+    // Gunakan onSurface secara eksplisit sebagai konten default
+    // Ini menjamin warna teks sesuai tema (Light/Dark) terlepas dari transparansi container
+    val contrastContentColor = MaterialTheme.colorScheme.onSurface
 
     Card(
         modifier = modifier,
@@ -603,13 +611,14 @@ fun LearnMoreCard(cardAlpha: Float = 1f) {
             Column {
                 Text(
                     text = stringResource(R.string.home_learn_kernelsu),
-                    style = MaterialTheme.typography.titleSmall
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface // [MATERIAL YOU]
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.home_click_to_learn_kernelsu),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = LocalContentColor.current.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU]
                 )
             }
         }
@@ -630,13 +639,14 @@ fun DonateCard(cardAlpha: Float = 1f) {
             Column {
                 Text(
                     text = stringResource(R.string.home_support_title),
-                    style = MaterialTheme.typography.titleSmall
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface // [MATERIAL YOU]
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.home_support_content),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = LocalContentColor.current.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU]
                 )
             }
         }
@@ -689,13 +699,14 @@ private fun InfoCard(cardAlpha: Float = 1f) {
                         Text(
                             text = label,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface // [MATERIAL YOU]
                         )
                         Text(
                             text = content,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 4.dp),
-                            color = LocalContentColor.current.copy(alpha = 0.7f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU]
                         )
                     }
                 }
@@ -776,7 +787,8 @@ private fun InfoCard(cardAlpha: Float = 1f) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
                         contentDescription = "Show more",
-                        modifier = Modifier.rotate(arrowRotation)
+                        modifier = Modifier.rotate(arrowRotation),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU]
                     )
                 }
             }

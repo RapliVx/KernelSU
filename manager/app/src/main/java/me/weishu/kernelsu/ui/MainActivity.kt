@@ -39,6 +39,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailDefaults
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
@@ -310,11 +311,12 @@ private fun BottomBar(navController: NavHostController, alpha: Float) {
     val prefs = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE) }
     val hasBackground = remember(prefs.getString("background_uri", null)) { prefs.getString("background_uri", null) != null }
 
+    // Gunakan NavigationBarDefaults.containerColor sebagai basis, bukan colorScheme.surface
+    // Ini memastikan warnanya konsisten dengan komponen Material 3 lainnya
     val navContainerColor = if (hasBackground) {
-        // Gunakan warna surface dengan alpha dari slider
-        MaterialTheme.colorScheme.surface.copy(alpha = alpha)
+        NavigationBarDefaults.containerColor.copy(alpha = alpha)
     } else {
-        MaterialTheme.colorScheme.surface.copy(alpha = 0.95f) // Default semi-transparent
+        NavigationBarDefaults.containerColor // Default
     }
 
     NavigationBar(
@@ -374,10 +376,11 @@ private fun SideBar(navController: NavHostController, alpha: Float, modifier: Mo
     val prefs = remember { context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE) }
     val hasBackground = remember(prefs.getString("background_uri", null)) { prefs.getString("background_uri", null) != null }
 
+    // Gunakan NavigationRailDefaults.ContainerColor sebagai basis
     val navContainerColor = if (hasBackground) {
-        MaterialTheme.colorScheme.surface.copy(alpha = alpha)
+        NavigationRailDefaults.ContainerColor.copy(alpha = alpha)
     } else {
-        MaterialTheme.colorScheme.surface
+        NavigationRailDefaults.ContainerColor
     }
 
     NavigationRail(
