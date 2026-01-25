@@ -212,4 +212,9 @@
     <string name="background_custom">Custom</string>
     <string name="background_default">Default</string>
     <string name="home_android">Android Version</string>
+    <string name="allow_shell">Allow Shell</string>
+    <string name="allow_shell_summary">Allow standard shell access</string>
+    <string name="enable_adb">Enable ADB</string>
+    <string name="enable_adb_summary">Enable USB debugging (ADB) after install</string>
+    <string name="safe_mode_module_disabled">Module installation is disabled in safe mode</string>
 </resources>

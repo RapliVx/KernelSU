@@ -8,9 +8,6 @@ import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.StringRes
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -34,7 +31,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -63,13 +59,13 @@ import com.maxkeppeler.sheets.list.models.ListOption
 import com.maxkeppeler.sheets.list.models.ListSelection
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.generated.destinations.AppProfileTemplateScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.getKernelVersion
 import me.weishu.kernelsu.ui.component.DialogHandle
+import me.weishu.kernelsu.ui.component.ExpressiveCheckboxItem
 import me.weishu.kernelsu.ui.component.ExpressiveDropdownItem
 import me.weishu.kernelsu.ui.component.ExpressiveList
 import me.weishu.kernelsu.ui.component.ExpressiveListItem
@@ -105,6 +101,8 @@ fun InstallScreen(navigator: DestinationsNavigator) {
     var partitionSelectionIndex by remember { mutableIntStateOf(0) }
     var partitionsState by remember { mutableStateOf<List<String>>(emptyList()) }
     var hasCustomSelected by remember { mutableStateOf(false) }
+    var allowShell by remember { mutableStateOf(false) }
+    var enableAdb by remember { mutableStateOf(false) }
 
     val onInstall = {
         installMethod?.let { method ->
@@ -121,7 +119,9 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                 boot = if (method is InstallMethod.SelectFile) method.uri else null,
                 lkm = lkmSelection,
                 ota = isOta,
-                partition = partitionSelection
+                partition = partitionSelection,
+                allowShell = allowShell,
+                enableAdb = enableAdb,
             )
             navigator.navigate(FlashScreenDestination(flashIt))
         }
@@ -164,7 +164,7 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                         lkmSelection = LkmSelection.KmiNone
                         Toast.makeText(
                             context,
-                            context.getString(R.string.install_only_support_ko_file),
+                            R.string.install_only_support_ko_file,
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -284,7 +284,7 @@ fun InstallScreen(navigator: DestinationsNavigator) {
 sealed class InstallMethod {
     data class SelectFile(
         val uri: Uri? = null,
-        @StringRes override val label: Int = R.string.select_file,
+        override val label: Int = R.string.select_file,
         override val summary: String?
     ) : InstallMethod()
 

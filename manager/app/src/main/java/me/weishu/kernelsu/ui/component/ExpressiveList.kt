@@ -15,11 +15,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -325,6 +327,40 @@ fun ExpressiveRadioItem(
                 selected = selected,
                 onClick = null,
                 enabled = enabled
+            )
+        },
+        supportingContent = summary?.let { { Text(it) } }
+    )
+}
+
+@Composable
+fun ExpressiveCheckboxItem(
+    title: String,
+    summary: String? = null,
+    checked: Boolean,
+    enabled: Boolean = true,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    ExpressiveListItem(
+        onClick = { onCheckedChange(!checked) },
+        modifier = Modifier.toggleable(
+            value = checked,
+            interactionSource = interactionSource,
+            role = Role.Checkbox,
+            enabled = enabled,
+            indication = LocalIndication.current,
+            onValueChange = onCheckedChange
+        ),
+        headlineContent = { Text(title) },
+        leadingContent = {
+            Checkbox(
+                checked = checked,
+                enabled = enabled,
+                onCheckedChange = onCheckedChange,
+                interactionSource = interactionSource,
+                modifier = Modifier.size(24.dp)
             )
         },
         supportingContent = summary?.let { { Text(it) } }

@@ -315,6 +315,8 @@ fun installBoot(
     lkm: LkmSelection,
     ota: Boolean,
     partition: String?,
+    allowShell: Boolean,
+    enableAdb: Boolean,
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit,
 ): FlashResult {
@@ -339,6 +341,14 @@ fun installBoot(
         " -f"
     } else {
         " -b ${bootFile.absolutePath}"
+    }
+
+    if (allowShell) {
+        cmd += " --allow-shell"
+    }
+
+    if (enableAdb) {
+        cmd += " --enable-adbd"
     }
 
     if (ota) {

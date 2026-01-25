@@ -158,4 +158,8 @@
     <string name="settings_selinux_summary">Atur mode enforcement SELinux.</string>
     <string name="settings_selinux_dialog_title">Atur Mode SELinux</string>
     <string name="settings_selinux_set_failed">Gagal mengatur mode SELinux</string>
+    <string name="allow_shell">Izinkan Shell</string>
+    <string name="allow_shell_summary">Izinkan akses shell standar</string>
+    <string name="enable_adb">Aktifkan ADB</string>
+    <string name="enable_adb_summary">Aktifkan debugging USB (ADB) setelah install</string>
 </resources>
