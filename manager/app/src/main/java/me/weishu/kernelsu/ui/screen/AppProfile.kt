@@ -76,7 +76,6 @@ import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.AppIconImage
 import me.weishu.kernelsu.ui.component.ExpressiveList
 import me.weishu.kernelsu.ui.component.ExpressiveListItem
-import me.weishu.kernelsu.ui.component.LabelText
 import me.weishu.kernelsu.ui.component.SwitchItem
 import me.weishu.kernelsu.ui.component.profile.AppProfileConfig
 import me.weishu.kernelsu.ui.component.profile.RootProfileConfig
