@@ -129,8 +129,16 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val kernelVersion = getKernelVersion()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
+    // --- [BARU] Check Background Prefs ---
+    // Cek apakah user mengaktifkan background image
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val hasBackground = remember { prefs.getString("background_uri", null) != null }
+
     Scaffold(
-        topBar = { TopBar(scrollBehavior = scrollBehavior) },
+        // --- [BARU] Transparent Container ---
+        // Jika ada background, buat Scaffold transparan agar gambar dari MainActivity terlihat
+        containerColor = if (hasBackground) Color.Transparent else MaterialTheme.colorScheme.background,
+        topBar = { TopBar(scrollBehavior = scrollBehavior, isTransparent = hasBackground) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { innerPadding ->
         Column(
@@ -249,18 +257,31 @@ fun UpdateCard() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TopBar(
-    scrollBehavior: TopAppBarScrollBehavior? = null
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    isTransparent: Boolean = false // --- [BARU] Parameter Transparan
 ) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val isOfficialEnabled = prefs.getBoolean("enable_official_launcher", false)
     val appNameId = if (isOfficialEnabled) R.string.app_name else R.string.app_name_mambo
 
+    // --- [BARU] Config Warna TopBar ---
+    val topBarColors = if (isTransparent) {
+        TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            // Saat discroll, beri sedikit efek background semi-transparan (Glass effect)
+            scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+        )
+    } else {
+        TopAppBarDefaults.topAppBarColors()
+    }
+
     TopAppBar(
         title = { Text(stringResource(appNameId)) },
         actions = { RebootListPopup() },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
+        colors = topBarColors // Apply Colors
     )
 }
 
