@@ -103,7 +103,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material.icons.filled.ViewInAr
+import androidx.compose.material3.Slider
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.font.FontWeight
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
@@ -493,8 +496,8 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             Spacer(Modifier.height(16.dp))
 
             // ================================================
-            // === [BARU] START: CONTROLLER APP BACKGROUND ===
-            // ================================================
+// === [BARU] START: CONTROLLER APP BACKGROUND ===
+// ================================================
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -567,9 +570,11 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     }
                 }
 
-                // Scale Options (Muncul hanya jika ada background)
+                // Opsi Lanjutan (Scale & Opacity) - Hanya muncul jika ada background
                 if (backgroundUri != null) {
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    // 1. Scale Toggle (Fill/Fit)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(
@@ -600,7 +605,6 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Gunakan Icon standar yang pasti ada
                                     Icon(
                                         imageVector = if (isFill) Icons.Filled.Crop else Icons.Filled.ViewInAr,
                                         contentDescription = null
@@ -609,6 +613,60 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                 }
                             }
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 2. Opacity Slider Controller
+                    // State slider (default 0.5f jika belum diset)
+                    var bgAlpha by remember { mutableFloatStateOf(prefs.getFloat("background_alpha", 0.5f)) }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Background Opacity",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            // Menampilkan nilai persen (misal: 50%)
+                            Text(
+                                text = "${(bgAlpha * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Slider(
+                            value = bgAlpha,
+                            onValueChange = { newValue ->
+                                bgAlpha = newValue
+                                prefs.edit().putFloat("background_alpha", newValue).apply()
+                            },
+                            valueRange = 0f..1f,
+                            steps = 19, // step per 5%
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Text(
+                            text = "Adjust visibility of the app theme over the image.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
                     }
                 }
             }

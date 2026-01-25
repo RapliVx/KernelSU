@@ -129,16 +129,30 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val kernelVersion = getKernelVersion()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
-    // --- [BARU] Check Background Prefs ---
-    // Cek apakah user mengaktifkan background image
+    // --- LOGIC BACKGROUND ---
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    // Cek apakah background URI ada
     val hasBackground = remember { prefs.getString("background_uri", null) != null }
+    // Ambil nilai transparansi dari Slider (default 0.5f jika tidak ada setting)
+    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
 
     Scaffold(
-        // --- [BARU] Transparent Container ---
-        // Jika ada background, buat Scaffold transparan agar gambar dari MainActivity terlihat
-        containerColor = if (hasBackground) Color.Transparent else MaterialTheme.colorScheme.background,
-        topBar = { TopBar(scrollBehavior = scrollBehavior, isTransparent = hasBackground) },
+        // --- WARNA DENGAN TRANSPARANSI TERKONTROL ---
+        // Jika ada background image: Gunakan warna tema ASLI (Putih/Hitam) tapi ubah Alpha-nya.
+        // Jika slider 0% -> Bening total (Gambar jelas).
+        // Jika slider 100% -> Warna solid (Gambar tertutup).
+        containerColor = if (hasBackground) {
+            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
+        } else {
+            MaterialTheme.colorScheme.background
+        },
+        topBar = {
+            TopBar(
+                scrollBehavior = scrollBehavior,
+                // TopBar juga mengikuti transparansi agar seragam
+                backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
+            )
+        },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { innerPadding ->
         Column(
@@ -182,9 +196,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     }
                 }
             )
-//            if (ksuVersion != null && !Natives.isLkmMode) {
-//                WarningCard(stringResource(id = R.string.home_gki_warning))
-//            }
+
             if (isManager && Natives.requireNewKernel()) {
                 WarningCard(
                     stringResource(id = R.string.require_kernel_version).format(
@@ -197,12 +209,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     stringResource(id = R.string.grant_root_failed)
                 )
             }
-//            val checkUpdate =
-//                LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
-//                    .getBoolean("check_update", true)
-//            if (checkUpdate) {
-//                UpdateCard()
-//            }
+
             InfoCard()
             DonateCard()
             LearnMoreCard()
@@ -258,30 +265,30 @@ fun UpdateCard() {
 @Composable
 private fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    isTransparent: Boolean = false // --- [BARU] Parameter Transparan
+    backgroundAlpha: Float = 1f // Parameter Alpha untuk TopBar
 ) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val isOfficialEnabled = prefs.getBoolean("enable_official_launcher", false)
     val appNameId = if (isOfficialEnabled) R.string.app_name else R.string.app_name_mambo
 
-    // --- [BARU] Config Warna TopBar ---
-    val topBarColors = if (isTransparent) {
-        TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent,
-            // Saat discroll, beri sedikit efek background semi-transparan (Glass effect)
-            scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-        )
-    } else {
-        TopAppBarDefaults.topAppBarColors()
-    }
+    // Menggunakan warna surface tema, tapi dengan Alpha yang disesuaikan slider
+    val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
+
+    // Saat discroll, kita bisa buat sedikit lebih solid atau tetap ikuti alpha
+    val scrolledColor = MaterialTheme.colorScheme.surface.copy(
+        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f) // Sedikit lebih solid saat scroll
+    )
 
     TopAppBar(
         title = { Text(stringResource(appNameId)) },
         actions = { RebootListPopup() },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         scrollBehavior = scrollBehavior,
-        colors = topBarColors // Apply Colors
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = containerColor,
+            scrolledContainerColor = scrolledColor
+        )
     )
 }
 
@@ -299,7 +306,6 @@ private fun StatusCard(
     val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
 
-    // --- LOGIC TEXT & DATA ---
     val workingMode = when (lkmMode) {
         null -> "LEGACY"
         true -> "LKM"
@@ -317,7 +323,6 @@ private fun StatusCard(
     else
         stringResource(R.string.home_not_installed)
 
-    // --- IMAGE LOADER ---
     val headerImageUri = context.getHeaderImage()
     val imageLoader = remember(context) {
         ImageLoader.Builder(context)
@@ -331,7 +336,6 @@ private fun StatusCard(
             .build()
     }
 
-    // --- HEADER CARD CONTENT ---
     val headerCardContent = @Composable { modifier: Modifier ->
         TonalCard(
             containerColor = Color.Transparent,
@@ -342,7 +346,6 @@ private fun StatusCard(
                     .fillMaxSize()
                     .clickable { onClickInstall() }
             ) {
-                // Background Image
                 if (headerImageUri != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
@@ -363,7 +366,6 @@ private fun StatusCard(
                     )
                 }
 
-                // Gradient Overlay
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -374,7 +376,6 @@ private fun StatusCard(
                         )
                 )
 
-                // Content Overlay
                 if (useClassicLayout) {
                     Column(
                         modifier = Modifier
@@ -473,7 +474,7 @@ private fun StatusCard(
                         title = stringResource(R.string.superuser),
                         count = getSuperuserCount().toString(),
                         onClick = onClickSuperuser,
-                        itemModifier = Modifier.weight(1f) // Fill width handled by Column
+                        itemModifier = Modifier.weight(1f)
                     )
                     StatInfoCard(
                         title = stringResource(R.string.module),
@@ -617,7 +618,6 @@ private fun InfoCard() {
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     val isManager = Natives.isManager
-    val ksuVersion = if (isManager) Natives.version else null
 
     // State expand
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -625,7 +625,7 @@ private fun InfoCard() {
 
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow), // Putaran smooth pelan
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "arrowRotation"
     )
 
@@ -748,7 +748,7 @@ private fun InfoCard() {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
                         contentDescription = "Show more",
-                        modifier = Modifier.rotate(arrowRotation) // Rotasi Smooth
+                        modifier = Modifier.rotate(arrowRotation)
                     )
                 }
             }
@@ -766,40 +766,12 @@ fun getManagerVersion(context: Context): Pair<String, Long> {
 @Composable
 private fun StatusCardPreview() {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Preview 1: Classic Layout (Working)
         StatusCard(
             kernelVersion = KernelVersion(5, 10, 101),
             ksuVersion = 1,
             lkmMode = null,
             fullFeatured = false,
-            useClassicLayout = true // Classic
-        )
-
-        // Preview 2: Modern Layout (Working + Full Featured)
-        StatusCard(
-            kernelVersion = KernelVersion(5, 10, 101),
-            ksuVersion = 20000,
-            lkmMode = true,
-            fullFeatured = true,
-            useClassicLayout = false // Modern
-        )
-
-        // Preview 3: Classic Layout (Not Installed)
-        StatusCard(
-            kernelVersion = KernelVersion(5, 10, 101),
-            ksuVersion = null,
-            lkmMode = true,
-            fullFeatured = true,
-            useClassicLayout = true // Classic
-        )
-
-        // Preview 4: Modern Layout (Unsupported)
-        StatusCard(
-            kernelVersion = KernelVersion(4, 10, 101),
-            ksuVersion = null,
-            lkmMode = false,
-            fullFeatured = false,
-            useClassicLayout = false // Modern
+            useClassicLayout = true
         )
     }
 }
@@ -809,9 +781,5 @@ private fun StatusCardPreview() {
 private fun WarningCardPreview() {
     Column {
         WarningCard(message = "Warning message")
-        WarningCard(
-            message = "Warning message ",
-            MaterialTheme.colorScheme.outlineVariant,
-            onClick = {})
     }
 }
