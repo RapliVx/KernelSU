@@ -19,6 +19,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box // --- NEW IMPORT ---
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -53,13 +54,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color // --- NEW IMPORT ---
+import androidx.compose.ui.layout.ContentScale // --- NEW IMPORT ---
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext // --- NEW IMPORT ---
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage // --- NEW IMPORT ---
+import coil.request.ImageRequest // --- NEW IMPORT ---
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.NavGraphs
@@ -118,11 +124,26 @@ class MainActivity : ComponentActivity() {
             }
 
             val prefs = remember { getSharedPreferences("settings", MODE_PRIVATE) }
+
+            // --- CUSTOMIZATION STATE START ---
+            // Menyimpan state background URI dan mode fill screen
+            var backgroundUri by remember { mutableStateOf(prefs.getString("background_uri", null)) }
+            var fillScreen by remember { mutableStateOf(prefs.getBoolean("background_fill_screen", false)) }
+            // --- CUSTOMIZATION STATE END ---
+
             val prefsListener = remember {
-                SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
                     if (key == "color_mode" || key == "key_color") {
                         appSettingsState.value = ThemeController.getAppSettings(this@MainActivity)
                     }
+                    // --- CUSTOMIZATION LISTENER START ---
+                    // Update tampilan realtime jika setting berubah
+                    else if (key == "background_uri") {
+                        backgroundUri = sharedPrefs.getString("background_uri", null)
+                    } else if (key == "background_fill_screen") {
+                        fillScreen = sharedPrefs.getBoolean("background_fill_screen", false)
+                    }
+                    // --- CUSTOMIZATION LISTENER END ---
                 }
             }
 
@@ -136,121 +157,136 @@ class MainActivity : ComponentActivity() {
             KernelSUTheme(
                 appSettings = appSettingsState.value
             ) {
-                val navController = rememberNavController()
-                val snackBarHostState = remember { SnackbarHostState() }
+                // --- BACKGROUND BOX WRAPPER START ---
+                // Kita bungkus seluruh UI dalam Box agar bisa menaruh Image di lapisan paling bawah
+                Box(modifier = Modifier.fillMaxSize()) {
 
-                val bottomBarRoutes = remember {
-                    BottomBarDestination.entries.map { it.direction.route }.toSet()
-                }
-
-                val navigator = navController.rememberDestinationsNavigator()
-
-                // --- PORTED BACK HANDLER START ---
-                // Mengambil state backstack saat ini untuk mengetahui posisi user
-                val currentBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = currentBackStackEntry?.destination?.route
-
-                // Mendapatkan route halaman utama (biasanya Home/Dashboard)
-                val homeDestination = BottomBarDestination.entries.firstOrNull()
-                val startRoute = homeDestination?.direction?.route
-
-                // Logika: Jika user ada di tab lain (bukan Home) tapi masih di BottomBar,
-                // tombol Back akan membawa user ke Home dulu, baru keluar.
-                if (homeDestination != null && startRoute != null) {
-                    BackHandler(enabled = currentRoute != startRoute && currentRoute in bottomBarRoutes) {
-                        navigator.navigate(homeDestination.direction) {
-                            popUpTo(NavGraphs.root) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                }
-                // --- PORTED BACK HANDLER END ---
-
-                LaunchedEffect(zipUri) {
-                    if (!zipUri.isNullOrEmpty()) {
-                        val flashIt = if (isAnyKernel) {
-                            FlashIt.FlashAnyKernel(zipUri.first())
-                        } else {
-                            FlashIt.FlashModules(zipUri)
-                        }
-                        navigator.navigate(
-                            FlashScreenDestination(flashIt)
+                    // 1. Render Background Image (Jika ada)
+                    if (backgroundUri != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(backgroundUri)
+                                .build(),
+                            contentDescription = "Background",
+                            contentScale = if (fillScreen) ContentScale.Crop else ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
-                }
 
-                val configuration = LocalConfiguration.current
-                val defaultTransitions = object : NavHostAnimatedDestinationStyle() {
-                    override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
-                        {
-                            if (targetState.destination.route !in bottomBarRoutes) {
-                                slideInHorizontally(initialOffsetX = { it })
-                            } else {
-                                fadeIn(animationSpec = tween(340))
+                    // 2. Render UI Aplikasi
+                    val navController = rememberNavController()
+                    val snackBarHostState = remember { SnackbarHostState() }
+
+                    val bottomBarRoutes = remember {
+                        BottomBarDestination.entries.map { it.direction.route }.toSet()
+                    }
+
+                    val navigator = navController.rememberDestinationsNavigator()
+                    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentRoute = currentBackStackEntry?.destination?.route
+
+                    val homeDestination = BottomBarDestination.entries.firstOrNull()
+                    val startRoute = homeDestination?.direction?.route
+
+                    if (homeDestination != null && startRoute != null) {
+                        BackHandler(enabled = currentRoute != startRoute && currentRoute in bottomBarRoutes) {
+                            navigator.navigate(homeDestination.direction) {
+                                popUpTo(NavGraphs.root) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         }
+                    }
 
-                    override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
-                        {
-                            if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
-                                slideOutHorizontally(targetOffsetX = { -it / 4 }) + fadeOut()
+                    LaunchedEffect(zipUri) {
+                        if (!zipUri.isNullOrEmpty()) {
+                            val flashIt = if (isAnyKernel) {
+                                FlashIt.FlashAnyKernel(zipUri.first())
                             } else {
-                                fadeOut(animationSpec = tween(340))
+                                FlashIt.FlashModules(zipUri)
                             }
+                            navigator.navigate(
+                                FlashScreenDestination(flashIt)
+                            )
                         }
+                    }
 
-                    override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
-                        {
-                            if (targetState.destination.route in bottomBarRoutes) {
-                                slideInHorizontally(initialOffsetX = { -it / 4 }) + fadeIn()
-                            } else {
-                                fadeIn(animationSpec = tween(340))
+                    val configuration = LocalConfiguration.current
+                    val defaultTransitions = object : NavHostAnimatedDestinationStyle() {
+                        override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
+                            {
+                                if (targetState.destination.route !in bottomBarRoutes) {
+                                    slideInHorizontally(initialOffsetX = { it })
+                                } else {
+                                    fadeIn(animationSpec = tween(340))
+                                }
                             }
-                        }
 
-                    override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
-                        {
-                            if (initialState.destination.route !in bottomBarRoutes) {
-                                scaleOut(targetScale = 0.9f) + fadeOut()
-                            } else {
-                                fadeOut(animationSpec = tween(340))
+                        override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
+                            {
+                                if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
+                                    slideOutHorizontally(targetOffsetX = { -it / 4 }) + fadeOut()
+                                } else {
+                                    fadeOut(animationSpec = tween(340))
+                                }
                             }
-                        }
-                }
-                Scaffold(
-                    bottomBar = {
-                        if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
-                            BottomBar(navController)
-                        }
-                    },
-                    contentWindowInsets = WindowInsets(0, 0, 0, 0)
-                ) { innerPadding ->
-                    CompositionLocalProvider(
-                        LocalSnackbarHost provides snackBarHostState,
-                    ) {
-                        if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                            Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
-                                SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
+
+                        override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
+                            {
+                                if (targetState.destination.route in bottomBarRoutes) {
+                                    slideInHorizontally(initialOffsetX = { -it / 4 }) + fadeIn()
+                                } else {
+                                    fadeIn(animationSpec = tween(340))
+                                }
+                            }
+
+                        override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
+                            {
+                                if (initialState.destination.route !in bottomBarRoutes) {
+                                    scaleOut(targetScale = 0.9f) + fadeOut()
+                                } else {
+                                    fadeOut(animationSpec = tween(340))
+                                }
+                            }
+                    }
+
+                    Scaffold(
+                        // Agar background terlihat, Scaffold harus transparan
+                        containerColor = Color.Transparent,
+                        bottomBar = {
+                            if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+                                BottomBar(navController)
+                            }
+                        },
+                        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+                    ) { innerPadding ->
+                        CompositionLocalProvider(
+                            LocalSnackbarHost provides snackBarHostState,
+                        ) {
+                            if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                                Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
+                                    // SideBar juga harus transparan
+                                    SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
+                                    DestinationsNavHost(
+                                        modifier = Modifier.weight(1f),
+                                        navGraph = NavGraphs.root,
+                                        navController = navController,
+                                        defaultTransitions = defaultTransitions
+                                    )
+                                }
+                            } else {
                                 DestinationsNavHost(
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.padding(innerPadding),
                                     navGraph = NavGraphs.root,
                                     navController = navController,
                                     defaultTransitions = defaultTransitions
                                 )
                             }
-                        } else {
-                            DestinationsNavHost(
-                                modifier = Modifier.padding(innerPadding),
-                                navGraph = NavGraphs.root,
-                                navController = navController,
-                                defaultTransitions = defaultTransitions
-                            )
                         }
                     }
-                }
+                } // --- BOX END ---
             }
         }
     }
@@ -266,6 +302,8 @@ private fun BottomBar(navController: NavHostController) {
     }
     val currentRoute = navController.currentBackStackEntry?.destination?.route
     NavigationBar(
+        // Navbar boleh tetap berwarna atau dibuat semi-transparan disini
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
         windowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
         )
@@ -315,7 +353,8 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
     val currentRoute = navController.currentBackStackEntry?.destination?.route
     NavigationRail(
         modifier = modifier,
-        containerColor = MaterialTheme.colorScheme.background,
+        // Ubah container menjadi Transparan agar background terlihat di Landscape mode
+        containerColor = Color.Transparent,
     ) {
         Column(
             modifier = Modifier.fillMaxHeight(),

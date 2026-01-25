@@ -99,7 +99,10 @@ import me.weishu.kernelsu.ui.util.clearHeaderImage
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import android.content.Intent
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.ViewColumn
+import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.runtime.saveable.rememberSaveable
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
@@ -145,6 +148,26 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
         }
 
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+
+    // === [BARU] START: VARIABLE & LAUNCHER BACKGROUND ===
+    var backgroundUri by remember { mutableStateOf(prefs.getString("background_uri", null)) }
+    var backgroundFill by remember { mutableStateOf(prefs.getBoolean("background_fill_screen", false)) }
+
+    val backgroundImagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            val uriStr = uri.toString()
+            prefs.edit().putString("background_uri", uriStr).apply()
+            backgroundUri = uriStr
+        }
+    }
+    // === [BARU] END: VARIABLE & LAUNCHER BACKGROUND ===
+
     var appSettings by remember { mutableStateOf(ThemeController.getAppSettings(context)) }
     var currentColorMode by remember { mutableStateOf(appSettings.colorMode) }
     var currentKeyColor by remember { mutableIntStateOf(appSettings.keyColor) }
@@ -466,6 +489,132 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     }
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ================================================
+            // === [BARU] START: CONTROLLER APP BACKGROUND ===
+            // ================================================
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                // Label Section
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Surface(
+                        modifier = Modifier.padding(4.dp),
+                        shape = RoundedCornerShape(999.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            text = "App Background",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // Button: Default vs Select Image
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        ButtonGroupDefaults.ConnectedSpaceBetween
+                    )
+                ) {
+                    val hasBg = backgroundUri != null
+                    val bgOptions = listOf(false, true) // false = Default, true = Custom
+
+                    bgOptions.forEachIndexed { index, isCustom ->
+                        ToggleButton(
+                            checked = if (isCustom) hasBg else !hasBg,
+                            onCheckedChange = { checked ->
+                                if (!checked) return@ToggleButton
+                                if (isCustom) {
+                                    backgroundImagePicker.launch(arrayOf("image/*"))
+                                } else {
+                                    prefs.edit().remove("background_uri").apply()
+                                    backgroundUri = null
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .semantics { role = Role.RadioButton },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                1 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            }
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (isCustom) Icons.Filled.Image else Icons.Filled.Close,
+                                    contentDescription = null
+                                )
+                                Text(if (isCustom) "Select Image" else "Default")
+                            }
+                        }
+                    }
+                }
+
+                // Scale Options (Muncul hanya jika ada background)
+                if (backgroundUri != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(
+                            ButtonGroupDefaults.ConnectedSpaceBetween
+                        )
+                    ) {
+                        val scaleOptions = listOf(false, true) // false = Fit, true = Fill
+
+                        scaleOptions.forEachIndexed { index, isFill ->
+                            ToggleButton(
+                                checked = backgroundFill == isFill,
+                                onCheckedChange = { checked ->
+                                    if (checked) {
+                                        backgroundFill = isFill
+                                        prefs.edit().putBoolean("background_fill_screen", isFill).apply()
+                                    }
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { role = Role.RadioButton },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    1 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                }
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Gunakan Icon standar yang pasti ada
+                                    Icon(
+                                        imageVector = if (isFill) Icons.Filled.Crop else Icons.Filled.ViewInAr,
+                                        contentDescription = null
+                                    )
+                                    Text(if (isFill) "Fill Screen" else "Fit Screen")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // === [BARU] END: CONTROLLER APP BACKGROUND ===
+
+            Spacer(Modifier.height(16.dp)) // Jarak penutup bawah
         }
     }
 }
