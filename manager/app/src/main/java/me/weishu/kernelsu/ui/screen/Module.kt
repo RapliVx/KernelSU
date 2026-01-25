@@ -98,7 +98,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -640,7 +641,7 @@ fun ModuleItem(
             targetValue = if (expanded)
                 BadgeAreaHeight + 8.dp   // expanded
             else
-                BadgeAreaHeight,        // collapsed
+                BadgeAreaHeight,         // collapsed
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioNoBouncy,
                 stiffness = Spring.StiffnessMedium
@@ -682,7 +683,9 @@ fun ModuleItem(
                 calculateModuleSizeMB(module.id)
             }
         }
-        val bannerData by produceState<ByteArray?>(
+
+        // UBAH TIPE DATA KE Any? AGAR BISA STRING (URL) ATAU BYTEARRAY (FILE)
+        val bannerData by produceState<Any?>(
             initialValue = null,
             module.id,
             module.banner
@@ -692,6 +695,12 @@ fun ModuleItem(
                     val b = module.banner?.trim().orEmpty()
                     if (b.isEmpty()) return@withContext null
 
+                    // LOGIKA BARU: Cek jika ini URL
+                    if (b.startsWith("http://") || b.startsWith("https://")) {
+                        return@withContext b // Return String URL
+                    }
+
+                    // Logika lama (File Lokal)
                     val rel = b.removePrefix("/")
                     val p1 = "/data/adb/modules/${module.id}/$rel"
                     val p2 = b
@@ -813,11 +822,35 @@ fun ModuleItem(
                         .align(Alignment.TopStart)
                         .padding(end = 64.dp)
                 ) {
+
+                    // LOGIKA AUTO-RESIZE TITLE
+                    val initialTitleStyle = MaterialTheme.typography.titleLarge
+                    var titleStyle by remember { mutableStateOf(initialTitleStyle) }
+                    var readyToDraw by remember { mutableStateOf(false) }
+
                     Text(
                         text = module.name,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = titleStyle,
                         fontWeight = FontWeight.SemiBold,
-                        textDecoration = textDecoration
+                        textDecoration = textDecoration,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { textLayoutResult ->
+                            if (textLayoutResult.didOverflowHeight) {
+                                // Kecilkan font sebesar 90% jika overflow
+                                val newSize = titleStyle.fontSize * 0.9f
+                                if (newSize > 14.sp) {
+                                    titleStyle = titleStyle.copy(fontSize = newSize)
+                                } else {
+                                    readyToDraw = true
+                                }
+                            } else {
+                                readyToDraw = true
+                            }
+                        },
+                        modifier = Modifier.drawWithContent {
+                            if (readyToDraw) drawContent()
+                        }
                     )
 
                     Text(
