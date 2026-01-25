@@ -154,7 +154,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 .padding(innerPadding)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             val isManager = Natives.isManager
@@ -222,7 +222,6 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     }
 }
 
-// ... (UpdateCard tetap sama)
 @Composable
 fun UpdateCard() {
     val context = LocalContext.current
@@ -384,8 +383,6 @@ private fun StatusCard(
                         )
                 )
 
-                // --- HAPUS WRAPPER LOCAL CONTENT COLOR WHITE ---
-                // Agar text mengikuti warna Material You (cs.onSecondaryContainer)
                 if (useClassicLayout) {
                     Column(
                         modifier = Modifier
@@ -400,7 +397,7 @@ private fun StatusCard(
                                 text = statusText,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = cs.onSecondaryContainer, // [MATERIAL YOU] Warna teks mengikuti container
+                                color = cs.onSecondaryContainer, // [MATERIAL YOU]
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
@@ -410,7 +407,7 @@ private fun StatusCard(
                             Text(
                                 text = versionText,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = cs.onSecondaryContainer, // [MATERIAL YOU] Warna teks mengikuti container
+                                color = cs.onSecondaryContainer, // [MATERIAL YOU]
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
@@ -471,13 +468,13 @@ private fun StatusCard(
                         Text(
                             text = title,
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface // [MATERIAL YOU] Primary Text
+                            color = MaterialTheme.colorScheme.onSurface // [MATERIAL YOU]
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = count,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU] Secondary Text
+                            color = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU]
                         )
                     }
                 }
@@ -561,7 +558,7 @@ fun WarningCard(
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onError // [MATERIAL YOU] Kontras dengan error container
+                color = MaterialTheme.colorScheme.onError // [MATERIAL YOU]
             )
         }
     }
@@ -576,8 +573,6 @@ fun TonalCard(
     content: @Composable () -> Unit
 ) {
     val adjustedContainerColor = containerColor.copy(alpha = alpha)
-    // Gunakan onSurface secara eksplisit sebagai konten default
-    // Ini menjamin warna teks sesuai tema (Light/Dark) terlepas dari transparansi container
     val contrastContentColor = MaterialTheme.colorScheme.onSurface
 
     Card(
