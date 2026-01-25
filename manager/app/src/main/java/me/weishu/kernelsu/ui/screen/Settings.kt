@@ -37,7 +37,6 @@ import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.filled.RemoveModerator
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -110,7 +109,6 @@ import me.weishu.kernelsu.ui.util.getFeatureStatus
 import me.weishu.kernelsu.ui.util.LocalSnackbarHost
 import me.weishu.kernelsu.ui.util.getBugreportFile
 import me.weishu.kernelsu.ui.util.getFeaturePersistValue
-import me.weishu.kernelsu.ui.util.isToolKitInstalled
 import me.weishu.kernelsu.ui.util.SELinuxMode
 import me.weishu.kernelsu.ui.util.getSELinuxModeRaw
 import me.weishu.kernelsu.ui.util.setSELinuxMode
