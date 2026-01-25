@@ -156,6 +156,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.material3.Surface
 
 import com.topjohnwu.superuser.io.SuFile
+import com.topjohnwu.superuser.Shell
 
 private val BadgeAreaHeight = 37.dp
 
@@ -678,7 +679,7 @@ fun ModuleItem(
         }
 
         val context = LocalContext.current
-        val moduleSizeMb by produceState<Float?>(initialValue = null, module.id) {
+        val moduleSizeMb by produceState<Float?>(initialValue = null, key1 = module.id) {
             value = withContext(Dispatchers.IO) {
                 calculateModuleSizeMB(module.id)
             }
@@ -767,9 +768,10 @@ fun ModuleItem(
             ) {
 
                 // SIZE badge
-                if (moduleSizeMb != null && moduleSizeMb!! > 0f) {
+                val size = moduleSizeMb
+                if (size != null && size > 0f) {
                     BadgeChip(
-                        text = String.format("%.2f MB", moduleSizeMb!!)
+                        text = String.format("%.2f MB", size)
                     )
                 }
 
@@ -1010,20 +1012,17 @@ fun ModuleItem(
 
 fun calculateModuleSizeMB(moduleId: String): Float {
     return try {
-        val dir = SuFile("/data/adb/modules/$moduleId")
-        if (!dir.exists()) return 0f
+        val result = Shell.cmd("du -sk /data/adb/modules/$moduleId").exec().out
 
-        fun folderSize(file: SuFile): Long {
-            return if (file.isFile) {
-                file.length()
-            } else {
-                file.listFiles()?.sumOf { folderSize(it) } ?: 0L
-            }
+        if (result.isNotEmpty()) {
+            val outputLine = result[0].trim()
+            val sizeInKb = outputLine.split("\\s+".toRegex()).firstOrNull()?.toLongOrNull() ?: 0L
+
+            sizeInKb / 1024f
+        } else {
+            0f
         }
-
-        val bytes = folderSize(dir)
-        bytes / (1024f * 1024f)
-    } catch (_: Exception) {
+    } catch (e: Exception) {
         0f
     }
 }
