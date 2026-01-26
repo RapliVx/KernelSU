@@ -1,6 +1,5 @@
 package me.weishu.kernelsu.ui.screen
 
-import android.content.Context
 import android.os.Environment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,19 +17,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -53,7 +49,6 @@ import java.util.Locale
 @Composable
 @Destination<RootGraph>
 fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String) {
-    val context = LocalContext.current
     var text by rememberSaveable { mutableStateOf("") }
     var tempText : String
     val logContent = rememberSaveable { StringBuilder() }
@@ -61,11 +56,6 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     var actionResult: Boolean
-
-    // --- [BARU] LOGIC BACKGROUND ---
-    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val hasBackground = remember { prefs.getString("background_uri", null) != null }
-    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
 
     LaunchedEffect(Unit) {
         if (text.isNotEmpty()) {
@@ -94,12 +84,6 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
     }
 
     Scaffold(
-        // --- [BARU] Container Transparan ---
-        containerColor = if (hasBackground) {
-            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
-        } else {
-            MaterialTheme.colorScheme.background
-        },
         topBar = {
             TopBar(
                 onBack = dropUnlessResumed {
@@ -116,9 +100,7 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
                         file.writeText(logContent.toString())
                         snackBarHost.showSnackbar("Log saved to ${file.absolutePath}")
                     }
-                },
-                // --- [BARU] Pass Alpha ---
-                backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackBarHost) }
@@ -141,8 +123,6 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                 fontFamily = FontFamily.Monospace,
                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                // Pastikan teks log terbaca
-                color = MaterialTheme.colorScheme.onBackground
             )
         }
     }
@@ -150,24 +130,9 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TopBar(
-    onBack: () -> Unit = {},
-    onSave: () -> Unit = {},
-    backgroundAlpha: Float = 1f // [BARU] Parameter Alpha
-) {
-    // [BARU] Hitung warna TopBar
-    val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
-    val scrolledColor = MaterialTheme.colorScheme.surface.copy(
-        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f)
-    )
-
+private fun TopBar(onBack: () -> Unit = {}, onSave: () -> Unit = {}) {
     TopAppBar(
         title = { Text(stringResource(R.string.action)) },
-        // [BARU] Apply Colors
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = containerColor,
-            scrolledContainerColor = scrolledColor
-        ),
         navigationIcon = {
             IconButton(
                 onClick = onBack

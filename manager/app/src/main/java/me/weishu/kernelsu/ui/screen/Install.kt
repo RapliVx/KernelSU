@@ -31,7 +31,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -104,11 +103,6 @@ fun InstallScreen(navigator: DestinationsNavigator) {
     var hasCustomSelected by remember { mutableStateOf(false) }
     var allowShell by remember { mutableStateOf(false) }
     var enableAdb by remember { mutableStateOf(false) }
-
-    // --- [BARU] LOGIC BACKGROUND ---
-    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val hasBackground = remember { prefs.getString("background_uri", null) != null }
-    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
 
     val onInstall = {
         installMethod?.let { method ->
@@ -187,18 +181,10 @@ fun InstallScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
-        // --- [BARU] Container Transparan ---
-        containerColor = if (hasBackground) {
-            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
-        } else {
-            MaterialTheme.colorScheme.background
-        },
         topBar = {
             TopBar(
                 onBack = dropUnlessResumed { navigator.popBackStack() },
-                scrollBehavior = scrollBehavior,
-                // --- [BARU] Pass Alpha ---
-                backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
+                scrollBehavior = scrollBehavior
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
@@ -462,15 +448,8 @@ fun rememberSelectKmiDialog(onSelected: (String?) -> Unit): DialogHandle {
 @Composable
 private fun TopBar(
     onBack: () -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-    backgroundAlpha: Float = 1f // [BARU] Parameter Alpha
+    scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
-    // [BARU] Hitung warna TopBar
-    val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
-    val scrolledColor = MaterialTheme.colorScheme.surface.copy(
-        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f)
-    )
-
     TopAppBar(
         title = { Text(stringResource(R.string.install)) }, navigationIcon = {
             IconButton(
@@ -478,12 +457,7 @@ private fun TopBar(
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
         },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        scrollBehavior = scrollBehavior,
-        // [BARU] Apply Colors
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = containerColor,
-            scrolledContainerColor = scrolledColor
-        )
+        scrollBehavior = scrollBehavior
     )
 }
 

@@ -1,6 +1,5 @@
 package me.weishu.kernelsu.ui.screen
 
-import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.layout.Box
@@ -45,7 +44,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -84,12 +82,6 @@ fun AppProfileTemplateScreen(
     val scope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val pullToRefreshState = rememberPullToRefreshState()
-    val context = LocalContext.current
-
-    // --- [NEW] Background Logic ---
-    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val hasBackground = remember { prefs.getString("background_uri", null) != null }
-    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
 
     LaunchedEffect(Unit) {
         if (viewModel.templateList.isEmpty()) {
@@ -116,12 +108,6 @@ fun AppProfileTemplateScreen(
     }
 
     Scaffold(
-        // --- [NEW] Transparency ---
-        containerColor = if (hasBackground) {
-            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
-        } else {
-            MaterialTheme.colorScheme.background
-        },
         modifier = Modifier.pullToRefresh(
             state = pullToRefreshState,
             isRefreshing = viewModel.isRefreshing,
@@ -129,6 +115,7 @@ fun AppProfileTemplateScreen(
         ),
         topBar = {
             val clipboardManager = LocalClipboardManager.current
+            val context = LocalContext.current
             val showToast = fun(msg: String) {
                 scope.launch(Dispatchers.Main) {
                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
@@ -167,9 +154,7 @@ fun AppProfileTemplateScreen(
                         }
                     }
                 },
-                scrollBehavior = scrollBehavior,
-                // --- [NEW] Pass Alpha ---
-                backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
+                scrollBehavior = scrollBehavior
             )
         },
         floatingActionButton = {
@@ -258,15 +243,8 @@ private fun TopBar(
     onSync: () -> Unit = {},
     onImport: () -> Unit = {},
     onExport: () -> Unit = {},
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-    backgroundAlpha: Float = 1f // [NEW] Alpha Parameter
+    scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
-    // [NEW] Calculate Colors
-    val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
-    val scrolledColor = MaterialTheme.colorScheme.surface.copy(
-        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f)
-    )
-
     TopAppBar(
         title = {
             Text(stringResource(R.string.settings_profile_template))
@@ -312,11 +290,6 @@ private fun TopBar(
             }
         },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        scrollBehavior = scrollBehavior,
-        // [NEW] Apply Colors
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = containerColor,
-            scrolledContainerColor = scrolledColor
-        )
+        scrollBehavior = scrollBehavior
     )
 }

@@ -26,72 +26,39 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Android
-import androidx.compose.material.icons.filled.AutoAwesomeMotion
-import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberTopAppBarState
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.surfaceColorAtElevation
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Shape
 import androidx.core.content.pm.PackageInfoCompat
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import coil.ImageLoader
-import coil.compose.AsyncImage
-import coil.decode.GifDecoder
-import coil.decode.ImageDecoderDecoder
-import coil.request.ImageRequest
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.NavGraphs
@@ -101,6 +68,45 @@ import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDe
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.AutoAwesomeMotion
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.ui.draw.rotate
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import me.weishu.kernelsu.ui.util.getHeaderImage
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.ImageLoader
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
@@ -108,7 +114,6 @@ import me.weishu.kernelsu.getKernelVersion
 import me.weishu.kernelsu.ui.component.RebootListPopup
 import me.weishu.kernelsu.ui.component.rememberConfirmDialog
 import me.weishu.kernelsu.ui.util.checkNewVersion
-import me.weishu.kernelsu.ui.util.getHeaderImage
 import me.weishu.kernelsu.ui.util.getLayoutStyle
 import me.weishu.kernelsu.ui.util.getModuleCount
 import me.weishu.kernelsu.ui.util.getSELinuxStatus
@@ -124,29 +129,8 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val kernelVersion = getKernelVersion()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
-    // --- LOGIC BACKGROUND & PREFERENCES ---
-    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val hasBackground = remember { prefs.getString("background_uri", null) != null }
-    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
-    val cardAlpha = remember { prefs.getFloat("card_alpha", 0.8f) }
-
-    // Logic Hide Cards
-    val hideInfo = remember { prefs.getBoolean("hide_info", false) }
-    val hideDonate = remember { prefs.getBoolean("hide_donate", false) }
-    val hideLearnMore = remember { prefs.getBoolean("hide_learn_more", false) }
-
     Scaffold(
-        containerColor = if (hasBackground) {
-            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
-        } else {
-            MaterialTheme.colorScheme.background
-        },
-        topBar = {
-            TopBar(
-                scrollBehavior = scrollBehavior,
-                backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
-            )
-        },
+        topBar = { TopBar(scrollBehavior = scrollBehavior) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { innerPadding ->
         Column(
@@ -154,7 +138,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 .padding(innerPadding)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             val isManager = Natives.isManager
@@ -190,33 +174,30 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     }
                 }
             )
-
+//            if (ksuVersion != null && !Natives.isLkmMode) {
+//                WarningCard(stringResource(id = R.string.home_gki_warning))
+//            }
             if (isManager && Natives.requireNewKernel()) {
                 WarningCard(
-                    message = stringResource(id = R.string.require_kernel_version).format(
+                    stringResource(id = R.string.require_kernel_version).format(
                         ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL
-                    ),
-                    cardAlpha = cardAlpha
+                    )
                 )
             }
             if (ksuVersion != null && !rootAvailable()) {
                 WarningCard(
-                    message = stringResource(id = R.string.grant_root_failed),
-                    cardAlpha = cardAlpha
+                    stringResource(id = R.string.grant_root_failed)
                 )
             }
-
-            // Implementasi Hide Logic
-            if (!hideInfo) {
-                InfoCard(cardAlpha = cardAlpha)
-            }
-            if (!hideDonate) {
-                DonateCard(cardAlpha = cardAlpha)
-            }
-            if (!hideLearnMore) {
-                LearnMoreCard(cardAlpha = cardAlpha)
-            }
-
+//            val checkUpdate =
+//                LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
+//                    .getBoolean("check_update", true)
+//            if (checkUpdate) {
+//                UpdateCard()
+//            }
+            InfoCard()
+            DonateCard()
+            LearnMoreCard()
             Spacer(Modifier)
         }
     }
@@ -241,9 +222,6 @@ fun UpdateCard() {
     val title = stringResource(id = R.string.module_changelog)
     val updateText = stringResource(id = R.string.module_update)
 
-    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val cardAlpha = prefs.getFloat("card_alpha", 0.8f)
-
     AnimatedVisibility(
         visible = newVersionCode > currentVersionCode,
         enter = fadeIn() + expandVertically(),
@@ -252,8 +230,7 @@ fun UpdateCard() {
         val updateDialog = rememberConfirmDialog(onConfirm = { uriHandler.openUri(newVersionUrl) })
         WarningCard(
             message = stringResource(id = R.string.new_version_available).format(newVersionCode),
-            color = MaterialTheme.colorScheme.outlineVariant,
-            cardAlpha = cardAlpha
+            MaterialTheme.colorScheme.outlineVariant
         ) {
             if (changelog.isEmpty()) {
                 uriHandler.openUri(newVersionUrl)
@@ -272,29 +249,18 @@ fun UpdateCard() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TopBar(
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-    backgroundAlpha: Float = 1f
+    scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val isOfficialEnabled = prefs.getBoolean("enable_official_launcher", false)
     val appNameId = if (isOfficialEnabled) R.string.app_name else R.string.app_name_mambo
 
-    val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
-
-    val scrolledColor = MaterialTheme.colorScheme.surface.copy(
-        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f)
-    )
-
     TopAppBar(
         title = { Text(stringResource(appNameId)) },
         actions = { RebootListPopup() },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        scrollBehavior = scrollBehavior,
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = containerColor,
-            scrolledContainerColor = scrolledColor
-        )
+        scrollBehavior = scrollBehavior
     )
 }
 
@@ -312,6 +278,7 @@ private fun StatusCard(
     val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
 
+    // --- LOGIC TEXT & DATA ---
     val workingMode = when (lkmMode) {
         null -> "LEGACY"
         true -> "LKM"
@@ -329,6 +296,7 @@ private fun StatusCard(
     else
         stringResource(R.string.home_not_installed)
 
+    // --- IMAGE LOADER ---
     val headerImageUri = context.getHeaderImage()
     val imageLoader = remember(context) {
         ImageLoader.Builder(context)
@@ -342,10 +310,10 @@ private fun StatusCard(
             .build()
     }
 
+    // --- HEADER CARD CONTENT ---
     val headerCardContent = @Composable { modifier: Modifier ->
         TonalCard(
             containerColor = Color.Transparent,
-            alpha = 1f,
             modifier = modifier.clip(RoundedCornerShape(28.dp))
         ) {
             Box(
@@ -353,6 +321,7 @@ private fun StatusCard(
                     .fillMaxSize()
                     .clickable { onClickInstall() }
             ) {
+                // Background Image
                 if (headerImageUri != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
@@ -373,6 +342,7 @@ private fun StatusCard(
                     )
                 }
 
+                // Gradient Overlay
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -383,6 +353,7 @@ private fun StatusCard(
                         )
                 )
 
+                // Content Overlay
                 if (useClassicLayout) {
                     Column(
                         modifier = Modifier
@@ -397,7 +368,7 @@ private fun StatusCard(
                                 text = statusText,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = cs.onSecondaryContainer, // [MATERIAL YOU]
+                                color = cs.onSecondaryContainer,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
@@ -407,7 +378,7 @@ private fun StatusCard(
                             Text(
                                 text = versionText,
                                 style = MaterialTheme.typography.labelMedium,
-                                color = cs.onSecondaryContainer, // [MATERIAL YOU]
+                                color = cs.onSecondaryContainer,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
@@ -426,7 +397,7 @@ private fun StatusCard(
                                 text = statusText,
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = cs.onSecondaryContainer, // [MATERIAL YOU]
+                                color = cs.onSecondaryContainer,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
                         }
@@ -436,7 +407,7 @@ private fun StatusCard(
                             Text(
                                 text = versionText,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = cs.onSecondaryContainer, // [MATERIAL YOU]
+                                color = cs.onSecondaryContainer,
                                 maxLines = 1,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
@@ -451,14 +422,7 @@ private fun StatusCard(
         if (fullFeatured == true) {
             @Composable
             fun StatInfoCard(title: String, count: String, onClick: () -> Unit, itemModifier: Modifier) {
-                val context = LocalContext.current
-                val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-                val cardAlpha = remember { prefs.getFloat("card_alpha", 0.8f) }
-
-                TonalCard(
-                    modifier = itemModifier,
-                    alpha = cardAlpha
-                ) {
+                TonalCard(modifier = itemModifier) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -467,14 +431,13 @@ private fun StatusCard(
                     ) {
                         Text(
                             text = title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface // [MATERIAL YOU]
+                            style = MaterialTheme.typography.bodyLarge
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = count,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU]
+                            color = cs.onSurfaceVariant
                         )
                     }
                 }
@@ -489,7 +452,7 @@ private fun StatusCard(
                         title = stringResource(R.string.superuser),
                         count = getSuperuserCount().toString(),
                         onClick = onClickSuperuser,
-                        itemModifier = Modifier.weight(1f)
+                        itemModifier = Modifier.weight(1f) // Fill width handled by Column
                     )
                     StatInfoCard(
                         title = stringResource(R.string.module),
@@ -540,15 +503,9 @@ private fun StatusCard(
 
 @Composable
 fun WarningCard(
-    message: String,
-    color: Color = MaterialTheme.colorScheme.error,
-    cardAlpha: Float = 1f,
-    onClick: (() -> Unit)? = null
+    message: String, color: Color = MaterialTheme.colorScheme.error, onClick: (() -> Unit)? = null
 ) {
-    TonalCard(
-        containerColor = color,
-        alpha = cardAlpha
-    ) {
+    TonalCard(containerColor = color) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -556,9 +513,7 @@ fun WarningCard(
                 .padding(24.dp)
         ) {
             Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onError // [MATERIAL YOU]
+                text = message, style = MaterialTheme.typography.bodyMedium
             )
         }
     }
@@ -567,36 +522,25 @@ fun WarningCard(
 @Composable
 fun TonalCard(
     modifier: Modifier = Modifier,
-    alpha: Float = 1f,
     containerColor: Color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
     shape: Shape = RoundedCornerShape(20.dp),
     content: @Composable () -> Unit
 ) {
-    val adjustedContainerColor = containerColor.copy(alpha = alpha)
-    val contrastContentColor = MaterialTheme.colorScheme.onSurface
-
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = adjustedContainerColor,
-            contentColor = contrastContentColor
-        ),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         shape = shape
     ) {
-        CompositionLocalProvider(
-            LocalContentColor provides contrastContentColor
-        ) {
-            content()
-        }
+        content()
     }
 }
 
 @Composable
-fun LearnMoreCard(cardAlpha: Float = 1f) {
+fun LearnMoreCard() {
     val uriHandler = LocalUriHandler.current
     val url = stringResource(R.string.home_learn_kernelsu_url)
 
-    TonalCard(alpha = cardAlpha) {
+    TonalCard {
         Row(modifier = Modifier
             .fillMaxWidth()
             .clickable {
@@ -606,14 +550,13 @@ fun LearnMoreCard(cardAlpha: Float = 1f) {
             Column {
                 Text(
                     text = stringResource(R.string.home_learn_kernelsu),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface // [MATERIAL YOU]
+                    style = MaterialTheme.typography.titleSmall
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.home_click_to_learn_kernelsu),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU]
+                    color = MaterialTheme.colorScheme.outline
                 )
             }
         }
@@ -621,10 +564,10 @@ fun LearnMoreCard(cardAlpha: Float = 1f) {
 }
 
 @Composable
-fun DonateCard(cardAlpha: Float = 1f) {
+fun DonateCard() {
     val uriHandler = LocalUriHandler.current
 
-    TonalCard(alpha = cardAlpha) {
+    TonalCard {
         Row(modifier = Modifier
             .fillMaxWidth()
             .clickable {
@@ -634,14 +577,13 @@ fun DonateCard(cardAlpha: Float = 1f) {
             Column {
                 Text(
                     text = stringResource(R.string.home_support_title),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface // [MATERIAL YOU]
+                    style = MaterialTheme.typography.titleSmall
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.home_support_content),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU]
+                    color = MaterialTheme.colorScheme.outline
                 )
             }
         }
@@ -649,20 +591,24 @@ fun DonateCard(cardAlpha: Float = 1f) {
 }
 
 @Composable
-private fun InfoCard(cardAlpha: Float = 1f) {
+private fun InfoCard() {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+
+    val isManager = Natives.isManager
+    val ksuVersion = if (isManager) Natives.version else null
+
+    // State expand
     var expanded by rememberSaveable { mutableStateOf(false) }
+    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
 
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        animationSpec = spring(stiffness = Spring.StiffnessLow), // Putaran smooth pelan
         label = "arrowRotation"
     )
 
     TonalCard(
-        alpha = cardAlpha,
         modifier = Modifier
             .fillMaxWidth()
             .clip(CardDefaults.shape)
@@ -694,14 +640,13 @@ private fun InfoCard(cardAlpha: Float = 1f) {
                         Text(
                             text = label,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface // [MATERIAL YOU]
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = content,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 4.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU]
+                            color = MaterialTheme.colorScheme.outline
                         )
                     }
                 }
@@ -782,8 +727,7 @@ private fun InfoCard(cardAlpha: Float = 1f) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
                         contentDescription = "Show more",
-                        modifier = Modifier.rotate(arrowRotation),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant // [MATERIAL YOU]
+                        modifier = Modifier.rotate(arrowRotation) // Rotasi Smooth
                     )
                 }
             }
@@ -801,12 +745,40 @@ fun getManagerVersion(context: Context): Pair<String, Long> {
 @Composable
 private fun StatusCardPreview() {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Preview 1: Classic Layout (Working)
         StatusCard(
             kernelVersion = KernelVersion(5, 10, 101),
             ksuVersion = 1,
             lkmMode = null,
             fullFeatured = false,
-            useClassicLayout = true
+            useClassicLayout = true // Classic
+        )
+
+        // Preview 2: Modern Layout (Working + Full Featured)
+        StatusCard(
+            kernelVersion = KernelVersion(5, 10, 101),
+            ksuVersion = 20000,
+            lkmMode = true,
+            fullFeatured = true,
+            useClassicLayout = false // Modern
+        )
+
+        // Preview 3: Classic Layout (Not Installed)
+        StatusCard(
+            kernelVersion = KernelVersion(5, 10, 101),
+            ksuVersion = null,
+            lkmMode = true,
+            fullFeatured = true,
+            useClassicLayout = true // Classic
+        )
+
+        // Preview 4: Modern Layout (Unsupported)
+        StatusCard(
+            kernelVersion = KernelVersion(4, 10, 101),
+            ksuVersion = null,
+            lkmMode = false,
+            fullFeatured = false,
+            useClassicLayout = false // Modern
         )
     }
 }
@@ -816,5 +788,9 @@ private fun StatusCardPreview() {
 private fun WarningCardPreview() {
     Column {
         WarningCard(message = "Warning message")
+        WarningCard(
+            message = "Warning message ",
+            MaterialTheme.colorScheme.outlineVariant,
+            onClick = {})
     }
 }

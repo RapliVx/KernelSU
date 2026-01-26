@@ -63,7 +63,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -129,25 +128,11 @@ import androidx.core.net.toUri
 fun SettingScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
-    val context = LocalContext.current // Moved context here for prefs access
-
-    // --- [BARU] LOGIC BACKGROUND ---
-    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val hasBackground = remember { prefs.getString("background_uri", null) != null }
-    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
 
     Scaffold(
-        // --- [BARU] Container Transparan ---
-        containerColor = if (hasBackground) {
-            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
-        } else {
-            MaterialTheme.colorScheme.background
-        },
         topBar = {
             TopBar(
-                scrollBehavior = scrollBehavior,
-                // --- [BARU] Pass Alpha ---
-                backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
+                scrollBehavior = scrollBehavior
             )
         },
         snackbarHost = { SnackbarHost(snackBarHost) },
@@ -166,9 +151,9 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 .verticalScroll(rememberScrollState())
         ) {
 
-            // context already defined above
+            val context = LocalContext.current
             val scope = rememberCoroutineScope()
-            // prefs already defined above
+            val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
             val exportBugreportLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.CreateDocument("application/gzip")
@@ -936,24 +921,12 @@ fun rememberUninstallDialog(onSelected: (UninstallType) -> Unit): DialogHandle {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TopBar(
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-    backgroundAlpha: Float = 1f // [BARU]
+    scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
-    // [BARU] Calculate Colors
-    val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
-    val scrolledColor = MaterialTheme.colorScheme.surface.copy(
-        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f)
-    )
-
     TopAppBar(
         title = { Text(stringResource(R.string.settings)) },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        scrollBehavior = scrollBehavior,
-        // [BARU] Apply Colors
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = containerColor,
-            scrolledContainerColor = scrolledColor
-        )
+        scrollBehavior = scrollBehavior
     )
 }
 

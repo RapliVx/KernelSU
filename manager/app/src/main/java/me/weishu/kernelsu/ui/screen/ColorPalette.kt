@@ -5,9 +5,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.content.Intent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -44,22 +41,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Brightness1
 import androidx.compose.material.icons.filled.Brightness3
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.Brightness7
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.ViewColumn
-import androidx.compose.material.icons.filled.ViewInAr
-import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,23 +54,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.expressiveLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -99,7 +81,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.compose.dropUnlessResumed
@@ -107,13 +90,21 @@ import com.materialkolor.rememberDynamicColorScheme
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.result.ResultBackNavigator
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Restore
+import me.weishu.kernelsu.ui.util.saveHeaderImage
+import me.weishu.kernelsu.ui.util.clearHeaderImage
+import me.weishu.kernelsu.ui.util.getHeaderImage
+import android.content.Intent
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.ViewColumn
+import androidx.compose.runtime.saveable.rememberSaveable
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
-import me.weishu.kernelsu.ui.util.clearHeaderImage
-import me.weishu.kernelsu.ui.util.getHeaderImage
 import me.weishu.kernelsu.ui.util.getLayoutStyle
-import me.weishu.kernelsu.ui.util.saveHeaderImage
 import me.weishu.kernelsu.ui.util.setLayoutStyle
 
 private val keyColorOptions = listOf(
@@ -154,55 +145,14 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
         }
 
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-
-    // === START: VARIABLE & LAUNCHER BACKGROUND ===
-    var backgroundUri by remember { mutableStateOf(prefs.getString("background_uri", null)) }
-    var backgroundFill by remember { mutableStateOf(prefs.getBoolean("background_fill_screen", false)) }
-
-    // Move Alpha State to Top Scope for Scaffold usage
-    var bgAlpha by remember { mutableFloatStateOf(prefs.getFloat("background_alpha", 0.5f)) }
-
-    val backgroundImagePicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            context.contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-            val uriStr = uri.toString()
-            prefs.edit().putString("background_uri", uriStr).apply()
-            backgroundUri = uriStr
-        }
-    }
-    // === END: VARIABLE & LAUNCHER BACKGROUND ===
-
     var appSettings by remember { mutableStateOf(ThemeController.getAppSettings(context)) }
     var currentColorMode by remember { mutableStateOf(appSettings.colorMode) }
     var currentKeyColor by remember { mutableIntStateOf(appSettings.keyColor) }
     var currentLauncherIcon by remember { mutableStateOf(prefs.getBoolean("enable_official_launcher", false)) }
 
-    // Logic Warna Transparan untuk Scaffold
-    val hasBg = backgroundUri != null
-    val scaffoldContainerColor = if (hasBg) {
-        MaterialTheme.colorScheme.background.copy(alpha = bgAlpha)
-    } else {
-        MaterialTheme.colorScheme.background
-    }
-    val topBarContainerColor = if (hasBg) {
-        MaterialTheme.colorScheme.surface.copy(alpha = bgAlpha)
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-
     Scaffold(
-        containerColor = scaffoldContainerColor, // [BARU] Terapkan transparansi
         topBar = {
             TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarContainerColor, // [BARU] Terapkan transparansi
-                    scrolledContainerColor = topBarContainerColor
-                ),
                 navigationIcon = {
                     IconButton(
                         onClick = dropUnlessResumed {
@@ -457,6 +407,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ) {
+                        // Ganti text dengan stringResource(R.string.card_layout) jika ada
                         Text(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             text = "Card Layout",
@@ -515,369 +466,6 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     }
                 }
             }
-
-            Spacer(Modifier.height(16.dp))
-
-            // ================================================
-            // === CONTROLLER APP BACKGROUND ===
-            // ================================================
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                // Label Section
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Surface(
-                        modifier = Modifier.padding(4.dp),
-                        shape = RoundedCornerShape(999.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ) {
-                        Text(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            text = "App Background",
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Button: Default vs Select Image
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(
-                        ButtonGroupDefaults.ConnectedSpaceBetween
-                    )
-                ) {
-                    val bgOptions = listOf(false, true) // false = Default, true = Custom
-
-                    bgOptions.forEachIndexed { index, isCustom ->
-                        ToggleButton(
-                            checked = if (isCustom) hasBg else !hasBg,
-                            onCheckedChange = { checked ->
-                                if (!checked) return@ToggleButton
-                                if (isCustom) {
-                                    backgroundImagePicker.launch(arrayOf("image/*"))
-                                } else {
-                                    prefs.edit().remove("background_uri").apply()
-                                    backgroundUri = null
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                1 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            }
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = if (isCustom) Icons.Filled.Image else Icons.Filled.Close,
-                                    contentDescription = null
-                                )
-                                Text(if (isCustom) "Select Image" else "Default")
-                            }
-                        }
-                    }
-                }
-
-                // Opsi Lanjutan (Scale & Opacity) - Hanya muncul jika ada background
-                if (backgroundUri != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // 1. Scale Toggle (Fill/Fit)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(
-                            ButtonGroupDefaults.ConnectedSpaceBetween
-                        )
-                    ) {
-                        val scaleOptions = listOf(false, true) // false = Fit, true = Fill
-
-                        scaleOptions.forEachIndexed { index, isFill ->
-                            ToggleButton(
-                                checked = backgroundFill == isFill,
-                                onCheckedChange = { checked ->
-                                    if (checked) {
-                                        backgroundFill = isFill
-                                        prefs.edit().putBoolean("background_fill_screen", isFill).apply()
-                                    }
-                                },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .semantics { role = Role.RadioButton },
-                                shapes = when (index) {
-                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                    1 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                                }
-                            ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = if (isFill) Icons.Filled.Crop else Icons.Filled.ViewInAr,
-                                        contentDescription = null
-                                    )
-                                    Text(if (isFill) "Fill Screen" else "Fit Screen")
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // 2. Opacity Sliders (Background & Cards)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
-                        // --- SLIDER 1: Background Opacity ---
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Background Opacity",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "${(bgAlpha * 100).toInt()}%",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Slider(
-                                value = bgAlpha,
-                                onValueChange = { newValue ->
-                                    bgAlpha = newValue
-                                    prefs.edit().putFloat("background_alpha", newValue).apply()
-                                },
-                                valueRange = 0f..1f,
-                                steps = 19,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        // --- SLIDER 2: Card Opacity ---
-                        var cardAlpha by remember { mutableFloatStateOf(prefs.getFloat("card_alpha", 0.8f)) }
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Card Opacity",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "${(cardAlpha * 100).toInt()}%",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Slider(
-                                value = cardAlpha,
-                                onValueChange = { newValue ->
-                                    cardAlpha = newValue
-                                    prefs.edit().putFloat("card_alpha", newValue).apply()
-                                },
-                                valueRange = 0f..1f,
-                                steps = 19,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // ================================================
-            // === [BARU] START: HOME CONTENT VISIBILITY ===
-            // ================================================
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                // Label
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Surface(
-                        modifier = Modifier.padding(4.dp),
-                        shape = RoundedCornerShape(999.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ) {
-                        Text(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            text = "Home Content Visibility",
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Toggle 1: Info Card
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-                ) {
-                    val infoOptions = listOf(false, true) // false = Visible, true = Hidden
-                    val hideInfo = prefs.getBoolean("hide_info", false)
-
-                    infoOptions.forEachIndexed { index, isHidden ->
-                        ToggleButton(
-                            checked = hideInfo == isHidden,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    prefs.edit().putBoolean("hide_info", isHidden).apply()
-                                    // Trigger recomposition might be needed if state is not hoisted,
-                                    // but usually prefs listener handles main/home screen update.
-                                    // For local switch visual update, we rely on reading prefs again or state variable.
-                                    // (Simplified here assuming direct interaction updates UI)
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                1 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            },
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = if (isHidden) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                    contentDescription = null
-                                )
-                                Text(if (isHidden) "Hide Info" else "Show Info")
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Toggle 2: Learn More
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-                ) {
-                    val learnMoreOptions = listOf(false, true) // false = Visible, true = Hidden
-                    val hideLearnMore = prefs.getBoolean("hide_learn_more", false)
-
-                    learnMoreOptions.forEachIndexed { index, isHidden ->
-                        ToggleButton(
-                            checked = hideLearnMore == isHidden,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    prefs.edit().putBoolean("hide_learn_more", isHidden).apply()
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                1 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            },
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = if (isHidden) Icons.Filled.VisibilityOff else Icons.Filled.School,
-                                    contentDescription = null
-                                )
-                                Text(if (isHidden) "Hide Learn More" else "Show Learn More")
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Toggle 3: Donate
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-                ) {
-                    val donateOptions = listOf(false, true) // false = Visible, true = Hidden
-                    val hideDonate = prefs.getBoolean("hide_donate", false)
-
-                    donateOptions.forEachIndexed { index, isHidden ->
-                        ToggleButton(
-                            checked = hideDonate == isHidden,
-                            onCheckedChange = { checked ->
-                                if (checked) {
-                                    prefs.edit().putBoolean("hide_donate", isHidden).apply()
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                1 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            },
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = if (isHidden) Icons.Filled.VisibilityOff else Icons.Filled.VolunteerActivism,
-                                    contentDescription = null
-                                )
-                                Text(if (isHidden) "Hide Donate" else "Show Donate")
-                            }
-                        }
-                    }
-                }
-            }
-            // === END: HOME CONTENT VISIBILITY ===
-
-            Spacer(Modifier.height(32.dp))
         }
     }
 }
@@ -1060,21 +648,5 @@ private fun ColorButton(color: Color, isSelected: Boolean, isDark: Boolean, onCl
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun TonalCard(
-    modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(20.dp),
-    content: @Composable () -> Unit
-) {
-    androidx.compose.material3.Card(
-        modifier = modifier,
-        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = containerColor),
-        shape = shape
-    ) {
-        content()
     }
 }

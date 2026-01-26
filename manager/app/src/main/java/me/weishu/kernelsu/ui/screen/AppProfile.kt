@@ -1,6 +1,5 @@
 package me.weishu.kernelsu.ui.screen
 
-import android.content.Context // [BARU]
 import android.os.Build
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
@@ -53,9 +52,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color // [BARU]
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext // [BARU]
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -103,18 +100,12 @@ fun AppProfileScreen(
     appInfo: SuperUserViewModel.AppInfo,
     resultNavigator: ResultBackNavigator<Boolean>,
 ) {
-    val context = LocalContext.current // [BARU]
     val snackBarHost = LocalSnackbarHost.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val scope = rememberCoroutineScope()
     val failToUpdateAppProfile = stringResource(R.string.failed_to_update_app_profile).format(appInfo.label)
     val failToUpdateSepolicy = stringResource(R.string.failed_to_update_sepolicy).format(appInfo.label)
     val suNotAllowed = stringResource(R.string.su_not_allowed).format(appInfo.label)
-
-    // --- [BARU] Logic Background ---
-    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val hasBackground = remember { prefs.getString("background_uri", null) != null }
-    val backgroundAlpha = remember { prefs.getFloat("background_alpha", 0.5f) }
 
     val packageName = appInfo.packageName
     val sameUidApps = remember(appInfo.uid) {
@@ -138,20 +129,12 @@ fun AppProfileScreen(
     }
 
     Scaffold(
-        // --- [BARU] Apply Transparency ---
-        containerColor = if (hasBackground) {
-            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha)
-        } else {
-            MaterialTheme.colorScheme.background
-        },
         topBar = {
             TopBar(
                 onBack = dropUnlessResumed { resultNavigator.navigateBack(result = true) },
                 scrollBehavior = scrollBehavior,
                 isUidGroup = isUidGroup,
-                packageName = appInfo.packageName,
-                // --- [BARU] Pass Alpha ---
-                backgroundAlpha = if (hasBackground) backgroundAlpha else 1f
+                packageName = appInfo.packageName
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackBarHost) },
@@ -255,7 +238,7 @@ private fun AppProfileInner(
                     }
                 },
                 leadingContent = appIcon,
-                trailingContent = {
+                trailingContent = { 
                     LabelText(
                         label = "UID$appUid",
                         modifier = Modifier.padding(top = 4.dp),
@@ -382,21 +365,9 @@ private fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null,
     isUidGroup: Boolean = false,
     packageName: String = "",
-    backgroundAlpha: Float = 1f // [BARU] Parameter Alpha
 ) {
-    // [BARU] Calculate Colors
-    val containerColor = MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha)
-    val scrolledColor = MaterialTheme.colorScheme.surface.copy(
-        alpha = (backgroundAlpha + 0.2f).coerceAtMost(0.95f)
-    )
-
     TopAppBar(
         title = { Text(stringResource(R.string.profile)) },
-        // [BARU] Apply Colors
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = containerColor,
-            scrolledContainerColor = scrolledColor
-        ),
         navigationIcon = {
             IconButton(
                 onClick = onBack
