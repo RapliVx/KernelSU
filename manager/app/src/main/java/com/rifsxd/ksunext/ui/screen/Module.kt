@@ -810,7 +810,7 @@ fun ModuleItem(
 ) {
     val viewModel = viewModel<ModuleViewModel>()
 
-    ElevatedCard(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)

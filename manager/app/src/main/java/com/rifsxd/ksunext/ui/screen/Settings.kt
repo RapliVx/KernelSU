@@ -134,11 +134,10 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 
             if (ksuVersion != null) {
 
-                ElevatedCard(
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(12.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = elevatedContainerColor)
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
@@ -230,11 +229,10 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     }
                 }
 
-                ElevatedCard(
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(12.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = elevatedContainerColor)
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp),
@@ -288,6 +286,26 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable {
+                                    navigator.navigate(MetaModuleInstallScreenDestination)
+                                },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            leadingContent = {
+                                Icon(Icons.Filled.Cloud, null)
+                            },
+                            headlineContent = {
+                                Text(
+                                    text = stringResource(R.string.meta_module_screen),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        )
+
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
                                     navigator.navigate(DeveloperScreenDestination)
                                 },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -320,11 +338,10 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-            ElevatedCard(
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(12.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = elevatedContainerColor)
             ) {
                 Column(
                     modifier = Modifier.padding(12.dp),

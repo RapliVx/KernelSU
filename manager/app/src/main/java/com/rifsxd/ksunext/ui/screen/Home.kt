@@ -768,7 +768,7 @@ private fun InfoCard(autoExpand: Boolean = false) {
         }
     }   
 
-    ElevatedCard {
+    Card {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1008,7 +1008,7 @@ fun IssueReportCard() {
     val githubIssueUrl = stringResource(R.string.issue_report_github_link)
     val telegramUrl = stringResource(R.string.issue_report_telegram_link)
 
-    ElevatedCard {
+    Card {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
