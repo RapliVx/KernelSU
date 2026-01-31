@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dergoogler.mmrl.ui.component.LabelItem
 import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
+import org.json.JSONArray
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URL
@@ -81,31 +82,9 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val essentialModules = listOf(
-        EssentialModule(
-            id = "KPatch-Next",
-            name = "KPatch Next",
-            description = "Standalone implementation of KPM support for Magisk/KernelSU",
-            author = "rifsxd, KOWX712",
-            repoUrl = "https://github.com/KernelSU-Next/KPatch-Next-Module"
-        ),
-        EssentialModule(
-            id = "ksu_toolkit",
-            name = "KernelSU Toolkit",
-            description = "Small extensions on top of KernelSU v3. Mostly for debugging purposes",
-            author = "backslashxx, KOWX712",
-            repoUrl = "https://github.com/rifsxd/ksu_toolkit"
-        ),
-        EssentialModule(
-            id = "bindhosts",
-            name = "Bindhosts",
-            description = "Systemless hosts for APatch, KernelSU and Magisk",
-            author = "backslashxx, KOWX712",
-            repoUrl = "https://github.com/bindhosts/bindhosts"
-        )
-    )
+    val modulesJsonUrl = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/essential_modules.json"
 
-    var moduleState by remember { mutableStateOf<EssentialModuleState>(EssentialModuleState.Success(essentialModules)) }
+    var moduleState by remember { mutableStateOf<EssentialModuleState>(EssentialModuleState.Loading) }
     var selectedModule by remember { mutableStateOf<EssentialModule?>(null) }
     var downloadingModuleId by remember { mutableStateOf<String?>(null) }
     var downloadedUri by remember { mutableStateOf<Uri?>(null) }
@@ -120,19 +99,58 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
 
     val moduleViewModel = viewModel<ModuleViewModel>()
 
-    val loadModules = suspend {
+    suspend fun fetchEssentialModulesFromJson(jsonUrl: String): List<EssentialModule>? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val conn = URL(jsonUrl).openConnection() as java.net.HttpURLConnection
+                conn.setRequestProperty("User-Agent", "KernelSU/${BuildConfig.VERSION_CODE}")
+                val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                conn.disconnect()
+
+                val arr = JSONArray(text)
+                val out = mutableListOf<EssentialModule>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    out += EssentialModule(
+                        id = obj.optString("id"),
+                        name = obj.optString("name"),
+                        description = obj.optString("description"),
+                        author = obj.optString("author"),
+                        repoUrl = obj.optString("repoUrl")
+                    )
+                }
+                out
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
+    suspend fun loadModules() {
         try {
+            moduleState = EssentialModuleState.Loading
+
+            val baseList = withContext(Dispatchers.IO) {
+                fetchEssentialModulesFromJson(modulesJsonUrl)
+            }
+
+            if (baseList == null) {
+                moduleState = EssentialModuleState.Error("Failed to load module list")
+                return
+            }
+
             moduleState = EssentialModuleState.Success(
-                essentialModules.map { it.copy(latestVersion = "", downloadUrl = "", isLoading = true) }
+                baseList.map { it.copy(latestVersion = "", downloadUrl = "", isLoading = true) }
             )
 
             kotlinx.coroutines.coroutineScope {
-                essentialModules.forEach { baseModule ->
+                baseList.forEach { baseModule ->
                     launch {
                         try {
                             val releaseInfo = withContext(Dispatchers.IO) { fetchLatestReleaseInfo(baseModule.repoUrl) }
                             val updated = baseModule.copy(
-                                latestVersion = releaseInfo?.version ?: "Unknown",
+                                latestVersion = releaseInfo?.version ?: "null",
                                 downloadUrl = releaseInfo?.zipUrl ?: "",
                                 isLoading = false
                             )
@@ -145,8 +163,7 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
                                 moduleState = EssentialModuleState.Success(mutable)
                             }
                         } catch (e: Exception) {
-                            // mark this module as failed-to-load but unlock UI
-                            val updated = baseModule.copy(latestVersion = "Unknown", downloadUrl = "", isLoading = false)
+                            val updated = baseModule.copy(latestVersion = "null", downloadUrl = "", isLoading = false)
                             val current = moduleState
                             if (current is EssentialModuleState.Success) {
                                 val mutable = current.modules.toMutableList()
@@ -175,7 +192,7 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
                 onBack = { navigator.popBackStack() },
                 onRefresh = {
                     scope.launch {
-                        moduleState = EssentialModuleState.Success(essentialModules)
+                        moduleState = EssentialModuleState.Loading
                         loadModules()
                     }
                 },
@@ -258,18 +275,13 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            "Error loading modules",
+                            text = stringResource(R.string.error_loading_modules),
                             style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            state.message,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp)
                         )
                         Button(
                             onClick = {
                                 scope.launch {
-                                    moduleState = EssentialModuleState.Success(essentialModules)
+                                    moduleState = EssentialModuleState.Loading
                                     loadModules()
                                 }
                             },

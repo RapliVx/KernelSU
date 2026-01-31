@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dergoogler.mmrl.ui.component.LabelItem
 import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
+import org.json.JSONArray
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URL
@@ -81,45 +82,9 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val metaModules = listOf(
-        MetaModule(
-            id = "meta-hybrid",
-            name = "Hybrid Mount",
-            description = "Next Generation Mounting Matemodule with OverlayFS and Magic Mount",
-            author = "Hybrid Mount Developers",
-            repoUrl = "https://github.com/Hybrid-Mount/meta-hybrid_mount"
-        ),
-        MetaModule(
-            id = "mountify",
-            name = "Mountify",
-            description = "Globally mounted modules via OverlayFS.",
-            author = "backslashxx, KOWX712",
-            repoUrl = "https://github.com/backslashxx/mountify"
-        ),
-        MetaModule(
-            id = "meta-mm",
-            name = "Meta Magic Mount",
-            description = "An implementation of a metamodule using Magic Mount",
-            author = "7a72",
-            repoUrl = "https://github.com/KernelSU-Modules-Repo/meta-mm"
-        ),
-        MetaModule(
-            id = "magic_mount_rs",
-            name = "Meta Magic Mount RS",
-            description = "An implementation of a metamodule using Magic Mount (Rust)",
-            author = "7a72, Tools-cx-app, YuzakiKokuban",
-            repoUrl = "https://github.com/Tools-cx-app/meta-magic_mount"
-        ),
-        MetaModule(
-            id = "meta-overlayfs",
-            name = "Meta OverlayFS",
-            description = "An implementation of a metamodule using OverlayFS",
-            author = "KernelSU Developers",
-            repoUrl = "https://github.com/KernelSU-Modules-Repo/meta-overlayfs"
-        )
-    )
+    val modulesJsonUrl = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/meta_modules.json"
 
-    var moduleState by remember { mutableStateOf<MetaModuleState>(MetaModuleState.Success(metaModules)) }
+    var moduleState by remember { mutableStateOf<MetaModuleState>(MetaModuleState.Loading) }
     var selectedModule by remember { mutableStateOf<MetaModule?>(null) }
     var downloadingModuleId by remember { mutableStateOf<String?>(null) }
     var downloadedUri by remember { mutableStateOf<Uri?>(null) }
@@ -134,19 +99,56 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
 
     val moduleViewModel = viewModel<ModuleViewModel>()
 
-    val loadModules = suspend {
+    suspend fun fetchMetaModulesFromJson(jsonUrl: String): List<MetaModule>? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val conn = URL(jsonUrl).openConnection() as java.net.HttpURLConnection
+                conn.setRequestProperty("User-Agent", "KernelSU/${BuildConfig.VERSION_CODE}")
+                val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                conn.disconnect()
+
+                val arr = JSONArray(text)
+                val out = mutableListOf<MetaModule>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    out += MetaModule(
+                        id = obj.optString("id"),
+                        name = obj.optString("name"),
+                        description = obj.optString("description"),
+                        author = obj.optString("author"),
+                        repoUrl = obj.optString("repoUrl")
+                    )
+                }
+                out
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
+    suspend fun loadModules() {
         try {
+            moduleState = MetaModuleState.Loading
+
+            val baseList = withContext(Dispatchers.IO) { fetchMetaModulesFromJson(modulesJsonUrl) }
+
+            if (baseList == null) {
+                moduleState = MetaModuleState.Error("Failed to load module list")
+                return
+            }
+
             moduleState = MetaModuleState.Success(
-                metaModules.map { it.copy(latestVersion = "", downloadUrl = "", isLoading = true) }
+                baseList.map { it.copy(latestVersion = "", downloadUrl = "", isLoading = true) }
             )
 
             kotlinx.coroutines.coroutineScope {
-                metaModules.forEach { baseModule ->
+                baseList.forEach { baseModule ->
                     launch {
                         try {
                             val releaseInfo = withContext(Dispatchers.IO) { fetchLatestReleaseInfo(baseModule.repoUrl) }
                             val updated = baseModule.copy(
-                                latestVersion = releaseInfo?.version ?: "Unknown",
+                                latestVersion = releaseInfo?.version ?: "null",
                                 downloadUrl = releaseInfo?.zipUrl ?: "",
                                 isLoading = false
                             )
@@ -159,7 +161,7 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
                                 moduleState = MetaModuleState.Success(mutable)
                             }
                         } catch (e: Exception) {
-                            val updated = baseModule.copy(latestVersion = "Unknown", downloadUrl = "", isLoading = false)
+                            val updated = baseModule.copy(latestVersion = "null", downloadUrl = "", isLoading = false)
                             val current = moduleState
                             if (current is MetaModuleState.Success) {
                                 val mutable = current.modules.toMutableList()
@@ -188,7 +190,7 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
                 onBack = { navigator.popBackStack() },
                 onRefresh = {
                     scope.launch {
-                        moduleState = MetaModuleState.Success(metaModules)
+                        moduleState = MetaModuleState.Loading
                         loadModules()
                     }
                 },
@@ -275,18 +277,13 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            "Error loading modules",
+                            text = stringResource(R.string.error_loading_modules),
                             style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            state.message,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp)
                         )
                         Button(
                             onClick = {
                                 scope.launch {
-                                    moduleState = MetaModuleState.Success(metaModules)
+                                    moduleState = MetaModuleState.Loading
                                     loadModules()
                                 }
                             },
