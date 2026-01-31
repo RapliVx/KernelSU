@@ -48,7 +48,7 @@ import java.io.InputStreamReader
 import java.net.URL
 import android.content.Intent
 
-data class MetaModule(
+data class EssentialModule(
     val id: String,
     val name: String,
     val description: String,
@@ -59,10 +59,10 @@ data class MetaModule(
     val isLoading: Boolean = true
 )
 
-sealed class MetaModuleState {
-    object Loading : MetaModuleState()
-    data class Success(val modules: List<MetaModule>) : MetaModuleState()
-    data class Error(val message: String) : MetaModuleState()
+sealed class EssentialModuleState {
+    object Loading : EssentialModuleState()
+    data class Success(val modules: List<EssentialModule>) : EssentialModuleState()
+    data class Error(val message: String) : EssentialModuleState()
 }
 
 /**
@@ -72,7 +72,7 @@ sealed class MetaModuleState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
+fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
     val context = LocalContext.current
@@ -81,46 +81,32 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val metaModules = listOf(
-        MetaModule(
-            id = "meta-hybrid",
-            name = "Hybrid Mount",
-            description = "Next Generation Mounting Matemodule with OverlayFS and Magic Mount",
-            author = "Hybrid Mount Developers",
-            repoUrl = "https://github.com/Hybrid-Mount/meta-hybrid_mount"
+    val essentialModules = listOf(
+        EssentialModule(
+            id = "KPatch-Next",
+            name = "KPatch Next",
+            description = "Standalone implementation of KPM support for Magisk/KernelSU",
+            author = "rifsxd, KOWX712",
+            repoUrl = "https://github.com/KernelSU-Next/KPatch-Next-Module"
         ),
-        MetaModule(
-            id = "mountify",
-            name = "Mountify",
-            description = "Globally mounted modules via OverlayFS.",
+        EssentialModule(
+            id = "ksu_toolkit",
+            name = "KernelSU Toolkit",
+            description = "Small extensions on top of KernelSU v3. Mostly for debugging purposes",
             author = "backslashxx, KOWX712",
-            repoUrl = "https://github.com/backslashxx/mountify"
+            repoUrl = "https://github.com/rifsxd/ksu_toolkit"
         ),
-        MetaModule(
-            id = "meta-mm",
-            name = "Meta Magic Mount",
-            description = "An implementation of a metamodule using Magic Mount",
-            author = "7a72",
-            repoUrl = "https://github.com/KernelSU-Modules-Repo/meta-mm"
-        ),
-        MetaModule(
-            id = "magic_mount_rs",
-            name = "Meta Magic Mount RS",
-            description = "An implementation of a metamodule using Magic Mount (Rust)",
-            author = "7a72, Tools-cx-app, YuzakiKokuban",
-            repoUrl = "https://github.com/Tools-cx-app/meta-magic_mount"
-        ),
-        MetaModule(
-            id = "meta-overlayfs",
-            name = "Meta OverlayFS",
-            description = "An implementation of a metamodule using OverlayFS",
-            author = "KernelSU Developers",
-            repoUrl = "https://github.com/KernelSU-Modules-Repo/meta-overlayfs"
+        EssentialModule(
+            id = "bindhosts",
+            name = "Bindhosts",
+            description = "Systemless hosts for APatch, KernelSU and Magisk",
+            author = "backslashxx, KOWX712",
+            repoUrl = "https://github.com/bindhosts/bindhosts"
         )
     )
 
-    var moduleState by remember { mutableStateOf<MetaModuleState>(MetaModuleState.Success(metaModules)) }
-    var selectedModule by remember { mutableStateOf<MetaModule?>(null) }
+    var moduleState by remember { mutableStateOf<EssentialModuleState>(EssentialModuleState.Success(essentialModules)) }
+    var selectedModule by remember { mutableStateOf<EssentialModule?>(null) }
     var downloadingModuleId by remember { mutableStateOf<String?>(null) }
     var downloadedUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -136,12 +122,12 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
 
     val loadModules = suspend {
         try {
-            moduleState = MetaModuleState.Success(
-                metaModules.map { it.copy(latestVersion = "", downloadUrl = "", isLoading = true) }
+            moduleState = EssentialModuleState.Success(
+                essentialModules.map { it.copy(latestVersion = "", downloadUrl = "", isLoading = true) }
             )
 
             kotlinx.coroutines.coroutineScope {
-                metaModules.forEach { baseModule ->
+                essentialModules.forEach { baseModule ->
                     launch {
                         try {
                             val releaseInfo = withContext(Dispatchers.IO) { fetchLatestReleaseInfo(baseModule.repoUrl) }
@@ -152,27 +138,28 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
                             )
 
                             val current = moduleState
-                            if (current is MetaModuleState.Success) {
+                            if (current is EssentialModuleState.Success) {
                                 val mutable = current.modules.toMutableList()
                                 val idx = mutable.indexOfFirst { it.id == baseModule.id }
                                 if (idx >= 0) mutable[idx] = updated else mutable.add(updated)
-                                moduleState = MetaModuleState.Success(mutable)
+                                moduleState = EssentialModuleState.Success(mutable)
                             }
                         } catch (e: Exception) {
+                            // mark this module as failed-to-load but unlock UI
                             val updated = baseModule.copy(latestVersion = "Unknown", downloadUrl = "", isLoading = false)
                             val current = moduleState
-                            if (current is MetaModuleState.Success) {
+                            if (current is EssentialModuleState.Success) {
                                 val mutable = current.modules.toMutableList()
                                 val idx = mutable.indexOfFirst { it.id == baseModule.id }
                                 if (idx >= 0) mutable[idx] = updated else mutable.add(updated)
-                                moduleState = MetaModuleState.Success(mutable)
+                                moduleState = EssentialModuleState.Success(mutable)
                             }
                         }
                     }
                 }
             }
         } catch (e: Exception) {
-            moduleState = MetaModuleState.Error(e.message ?: "Unknown error")
+            moduleState = EssentialModuleState.Error(e.message ?: "Unknown error")
         }
     }
 
@@ -188,7 +175,7 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
                 onBack = { navigator.popBackStack() },
                 onRefresh = {
                     scope.launch {
-                        moduleState = MetaModuleState.Success(metaModules)
+                        moduleState = EssentialModuleState.Success(essentialModules)
                         loadModules()
                     }
                 },
@@ -199,7 +186,7 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { paddingValues ->
         when (val state = moduleState) {
-            is MetaModuleState.Loading -> {
+            is EssentialModuleState.Loading -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -209,10 +196,8 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
                     CircularProgressIndicator()
                 }
             }
-            is MetaModuleState.Success -> {
+            is EssentialModuleState.Success -> {
                 val installedIds = moduleViewModel.moduleList.map { it.id }
-                
-                val hasInstalledMetaModule = state.modules.any { installedIds.contains(it.id) }
                 
                 LazyColumn(
                     modifier = Modifier
@@ -228,12 +213,10 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
                         
                         val isInstallEnabled = when {
                             downloadingModuleId != null && !isThisModuleDownloading -> false
-                            isInstalled -> true
-                            hasInstalledMetaModule -> false
                             else -> true
                         }
 
-                        MetaModuleCard(
+                        EssentialModuleCard(
                             module = module,
                             isInstalled = isInstalled,
                             isInstallEnabled = isInstallEnabled,
@@ -263,7 +246,7 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
                     }
                 }
             }
-            is MetaModuleState.Error -> {
+            is EssentialModuleState.Error -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -286,7 +269,7 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
                         Button(
                             onClick = {
                                 scope.launch {
-                                    moduleState = MetaModuleState.Success(metaModules)
+                                    moduleState = EssentialModuleState.Success(essentialModules)
                                     loadModules()
                                 }
                             },
@@ -302,13 +285,13 @@ fun MetaModuleInstallScreen(navigator: DestinationsNavigator) {
 }
 
 @Composable
-private fun MetaModuleCard(
-    module: MetaModule,
+private fun EssentialModuleCard(
+    module: EssentialModule,
     isInstalled: Boolean = false,
     isInstallEnabled: Boolean = true,
     isDownloading: Boolean = false,
     onCardClick: () -> Unit,
-    onDownload: (MetaModule) -> Unit,
+    onDownload: (EssentialModule) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -417,7 +400,7 @@ private fun TopBar(
     TopAppBar(
         title = {
             Text(
-                text = stringResource(R.string.meta_module_screen),
+                text = stringResource(R.string.essential_tool_screen),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
             )
@@ -437,7 +420,7 @@ private fun TopBar(
     )
 }
 
-private suspend fun fetchLatestReleaseInfo(repoUrl: String): ReleaseInfo? {
+private suspend fun fetchLatestReleaseInfo(repoUrl: String): ReleaseInfoEssential? {
     return withContext(Dispatchers.IO) {
         try {
             val latestUrl = "$repoUrl/releases/latest"
@@ -467,7 +450,7 @@ private suspend fun fetchLatestReleaseInfo(repoUrl: String): ReleaseInfo? {
                 .find(pageHtml)?.groupValues?.get(1)
             
             if (zipUrlMatch != null) {
-                return@withContext ReleaseInfo(
+                return@withContext ReleaseInfoEssential(
                     version = tagMatch,
                     zipUrl = "https://github.com$zipUrlMatch"
                 )
@@ -481,13 +464,13 @@ private suspend fun fetchLatestReleaseInfo(repoUrl: String): ReleaseInfo? {
     }
 }
 
-data class ReleaseInfo(
+data class ReleaseInfoEssential(
     val version: String,
     val zipUrl: String
 )
 
 @Preview
 @Composable
-private fun MetaModuleInstallScreenPreview() {
-    MetaModuleInstallScreen(EmptyDestinationsNavigator)
+private fun EssentialModuleInstallScreenPreview() {
+    EssentialModuleInstallScreen(EmptyDestinationsNavigator)
 }
