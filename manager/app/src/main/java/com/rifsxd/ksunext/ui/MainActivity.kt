@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.NavGraphs
+import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ModuleScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDestination
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
 
     var zipUri by mutableStateOf<ArrayList<Uri>?>(null)
     var navigateLoc by mutableStateOf("")
+    var moduleActionId by mutableStateOf<String?>(null)
     var amoledModeState = mutableStateOf(false)
     private val handler = Handler(Looper.getMainLooper())
 
@@ -79,7 +81,12 @@ class MainActivity : ComponentActivity() {
                 val snackBarHostState = remember { SnackbarHostState() }
                 val navigator = navController.rememberDestinationsNavigator()
 
-                LaunchedEffect(zipUri, navigateLoc) {
+                LaunchedEffect(zipUri, navigateLoc, moduleActionId) {
+                    if (moduleActionId != null) {
+                        navigator.navigate(ExecuteModuleActionScreenDestination(moduleActionId!!))
+                        moduleActionId = null
+                    }
+
                     if (!zipUri.isNullOrEmpty()) {
                         navigator.navigate(
                             FlashScreenDestination(
@@ -193,6 +200,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
+        val shortcutType = intent.getStringExtra("shortcut_type")
+        if (shortcutType == "module_action") {
+            moduleActionId = intent.getStringExtra("module_id")
+        }
+
         when (intent.action) {
             Intent.ACTION_VIEW -> {
                 zipUri =

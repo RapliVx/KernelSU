@@ -10,8 +10,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -38,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.dropUnlessResumed
@@ -69,6 +74,8 @@ import com.rifsxd.ksunext.ui.component.ConfirmResult
 import com.rifsxd.ksunext.ui.component.SearchAppBar
 import com.rifsxd.ksunext.ui.component.rememberConfirmDialog
 import com.rifsxd.ksunext.ui.component.rememberLoadingDialog
+import com.rifsxd.ksunext.ui.component.ShortcutDialog
+import com.rifsxd.ksunext.ui.util.module.Shortcut
 import com.rifsxd.ksunext.ui.util.*
 import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
 import com.rifsxd.ksunext.ui.webui.WebUIActivity
@@ -795,6 +802,7 @@ private fun ModuleList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ModuleItem(
     navigator: DestinationsNavigator,
@@ -809,13 +817,125 @@ fun ModuleItem(
     onExpandToggle: () -> Unit,
 ) {
     val viewModel = viewModel<ModuleViewModel>()
+    var showMenu by remember { mutableStateOf(false) }
+    var showShortcutDialog by remember { mutableStateOf(false) }
+    var shortcutType by remember { mutableStateOf("") }
+    val haptic = LocalHapticFeedback.current
+
+    val context = LocalContext.current
+
+    if (showShortcutDialog) {
+        ShortcutDialog(
+            initialName = module.name,
+            onDismiss = { showShortcutDialog = false },
+            onConfirm = { name, iconUri ->
+                showShortcutDialog = false
+                if (shortcutType == "action") {
+                    Shortcut.createModuleActionShortcut(context, module.id, name, iconUri)
+                } else if (shortcutType == "webui") {
+                    Shortcut.createModuleWebUiShortcut(context, module.id, name, iconUri)
+                }
+            }
+        )
+    }
+
+    if (module.hasWebUi || module.hasActionScript) {
+        if (showMenu) {
+            Dialog(
+                onDismissRequest = { showMenu = false }
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(0.95f),
+                ) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+                        Text(
+                            text = stringResource(R.string.module_shortcut),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Stacked buttons: top (WebUI) and bottom (Action)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            if (module.hasWebUi) {
+                                FilledTonalButton(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        showMenu = false
+                                        shortcutType = "webui"
+                                        showShortcutDialog = true
+                                    },
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.AutoMirrored.Outlined.Wysiwyg,
+                                        contentDescription = null
+                                    )
+                                    Text(
+                                        modifier = Modifier.padding(start = 8.dp),
+                                        text = stringResource(R.string.create_webui_shortcut),
+                                        fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+                                        fontSize = MaterialTheme.typography.labelMedium.fontSize
+                                    )
+                                }
+                            }
+
+                            if (module.hasActionScript) {
+                                FilledTonalButton(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        showMenu = false
+                                        shortcutType = "action"
+                                        showShortcutDialog = true
+                                    },
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.Outlined.Terminal,
+                                        contentDescription = null
+                                    )
+                                    Text(
+                                        modifier = Modifier.padding(start = 8.dp),
+                                        text = stringResource(R.string.create_action_shortcut),
+                                        fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+                                        fontSize = MaterialTheme.typography.labelMedium.fontSize
+                                    )
+                                }
+                            }
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(onClick = { showMenu = false }) {
+                                Text(stringResource(R.string.cancel))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
-            .clickable(
-                onClick = onExpandToggle
+            .combinedClickable(
+                onClick = onExpandToggle,
+                onLongClick = {
+                    showMenu = true
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
             )
     ) {
         Box(
@@ -823,6 +943,7 @@ fun ModuleItem(
                 .fillMaxWidth()
         ) {
             val context = LocalContext.current
+
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
             val useBanner = prefs.getBoolean("use_banner", true)
@@ -1322,5 +1443,16 @@ fun ModuleItemPreview() {
         isMetaModule = false,
         donate = ""
     )
-    ModuleItem(EmptyDestinationsNavigator, module, "", {}, {}, {}, {}, {}, false, {})
+    ModuleItem(
+        EmptyDestinationsNavigator,
+        module,
+        "",
+        {},
+        {},
+        {},
+        {},
+        {},
+        false,
+        {}
+    )
 }
