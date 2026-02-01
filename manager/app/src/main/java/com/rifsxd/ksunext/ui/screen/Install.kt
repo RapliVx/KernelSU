@@ -187,7 +187,7 @@ sealed class InstallMethod {
 
     data class AnyKernel(
         val uri: Uri? = null,
-        @param:StringRes override val label: Int = R.string.anykernel_install,
+        @param:StringRes override val label: Int = R.string.flash_anykernel,
         override val summary: String? = null
     ) : InstallMethod()
 

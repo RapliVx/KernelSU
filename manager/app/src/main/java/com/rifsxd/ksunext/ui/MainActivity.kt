@@ -88,10 +88,15 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (!zipUri.isNullOrEmpty()) {
+                        val uris = zipUri!!
+                        val component = intent?.component?.className
+                        val flashIt = when {
+                            component?.endsWith("FlashAnyKernel") == true -> FlashIt.FlashAnyKernel(uris.first())
+                            else -> FlashIt.FlashModules(uris)
+                        }
+                        
                         navigator.navigate(
-                            FlashScreenDestination(
-                                flashIt = FlashIt.FlashModules(zipUri!!)
-                            )
+                            FlashScreenDestination(flashIt = flashIt)
                         )
                         zipUri = null
                     }
