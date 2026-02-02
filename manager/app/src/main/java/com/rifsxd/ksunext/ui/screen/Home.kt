@@ -97,9 +97,6 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             TopBar(
                 kernelVersion,
                 ksuVersion,
-                onSettingsClick = {
-                    navigator.navigate(SettingScreenDestination)
-                },
                 onInstallClick = {
                     navigator.navigate(InstallScreenDestination)
                 },
@@ -113,7 +110,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 .padding(innerPadding)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -133,10 +130,10 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
-                        SuperuserCard(onClick = { navigator.navigate(SuperUserScreenDestination) })
+                        SuperuserCard()
                     }
                     Box(modifier = Modifier.weight(1f)) {
-                        ModuleCard(onClick = { navigator.navigate(ModuleScreenDestination) })
+                        ModuleCard()
                     }
                 }
             }
@@ -411,7 +408,6 @@ private fun TopBar(
     kernelVersion: KernelVersion,
     ksuVersion: Int?,
     onInstallClick: () -> Unit,
-    onSettingsClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     var isSpinning by remember { mutableStateOf(false) }
@@ -551,12 +547,6 @@ private fun TopBar(
                         RebootDropdownItem(id = R.string.reboot_edl, reason = "edl")
                     }
                 }
-            }
-            IconButton(onClick = onSettingsClick) {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = stringResource(id = R.string.settings)
-                )
             }
         },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),

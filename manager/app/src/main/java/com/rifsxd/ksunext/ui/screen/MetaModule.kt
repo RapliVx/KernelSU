@@ -81,7 +81,7 @@ fun MetaModuleScreen(navigator: DestinationsNavigator) {
 
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
-    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
     val modulesJsonUrl = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/meta_modules.json"
 
     var moduleState by remember { mutableStateOf<MetaModuleState>(MetaModuleState.Loading) }
@@ -187,7 +187,7 @@ fun MetaModuleScreen(navigator: DestinationsNavigator) {
     Scaffold(
         topBar = {
             TopBar(
-                onBack = { navigator.popBackStack() },
+                onBack = dropUnlessResumed { navigator.popBackStack() },
                 onRefresh = {
                     scope.launch {
                         moduleState = MetaModuleState.Loading

@@ -150,26 +150,17 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
             }
     }
 
-    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
 
     Scaffold(
         topBar = {
             SearchAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = dropUnlessResumed { navigator.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = null
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.module),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Black,
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.module),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                    )
                 },
                 searchText = viewModel.search,
                 onSearchTextChange = { viewModel.search = it },
@@ -454,7 +445,7 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
 
                     Box(
                         modifier = Modifier.padding(
-                            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
                         )
                     ) {
                         ExtendedFloatingActionButton(
@@ -708,7 +699,7 @@ private fun ModuleList(
             viewModel.fetchModuleList()
         }
     ) {
-        val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
 
         LazyColumn(
             state = listState,

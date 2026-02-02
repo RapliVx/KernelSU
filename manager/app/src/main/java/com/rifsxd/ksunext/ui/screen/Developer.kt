@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.edit
+import androidx.lifecycle.compose.dropUnlessResumed
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -45,7 +46,7 @@ fun DeveloperScreen(navigator: DestinationsNavigator) {
     Scaffold(
         topBar = {
             TopBar(
-                onBack = { navigator.popBackStack() },
+                onBack = dropUnlessResumed { navigator.popBackStack() },
                 scrollBehavior = scrollBehavior
             )
         },

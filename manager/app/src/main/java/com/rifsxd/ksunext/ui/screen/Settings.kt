@@ -77,7 +77,6 @@ fun SettingScreen(navigator: DestinationsNavigator) {
     Scaffold(
         topBar = {
             TopBar(
-                onBack = dropUnlessResumed { navigator.popBackStack() },
                 scrollBehavior = scrollBehavior
             )
         },
@@ -94,7 +93,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 .padding(paddingValues)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 116.dp)
         ) {
 
             val context = LocalContext.current
@@ -631,19 +630,14 @@ fun rememberUninstallDialog(onSelected: (UninstallType) -> Unit): DialogHandle {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TopBar(
-    onBack: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     TopAppBar(
         title = { Text(
-                text = stringResource(R.string.settings),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
-            ) }, navigationIcon = {
-            IconButton(
-                onClick = onBack
-            ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
-        },
+            text = stringResource(R.string.settings),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Black,
+        ) },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         scrollBehavior = scrollBehavior
     )

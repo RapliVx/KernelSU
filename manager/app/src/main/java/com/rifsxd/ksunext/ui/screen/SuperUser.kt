@@ -62,20 +62,11 @@ fun SuperUserScreen(navigator: DestinationsNavigator) {
         topBar = {
             SearchAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = dropUnlessResumed { navigator.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = null
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.superuser),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Black,
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.superuser),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                    )
                 },
                 searchText = viewModel.search,
                 onSearchTextChange = { viewModel.search = it },
@@ -135,7 +126,7 @@ fun SuperUserScreen(navigator: DestinationsNavigator) {
                     .fillMaxSize()
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
                 contentPadding = PaddingValues(
-                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
                 )
             ) {
                 items(

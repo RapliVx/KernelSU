@@ -17,12 +17,18 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
@@ -32,8 +38,11 @@ import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestin
 import com.ramcosta.composedestinations.generated.destinations.ModuleScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.SettingScreenDestination
+import com.ramcosta.composedestinations.utils.isRouteOnBackStackAsState
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
 import com.rifsxd.ksunext.Natives
+import com.rifsxd.ksunext.ksuApp
+import com.rifsxd.ksunext.ui.screen.BottomBarDestination
 import com.rifsxd.ksunext.ui.screen.FlashIt
 import com.rifsxd.ksunext.ui.theme.KernelSUTheme
 import com.rifsxd.ksunext.ui.util.*
@@ -51,7 +60,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        
+
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
@@ -79,7 +88,15 @@ class MainActivity : ComponentActivity() {
             KernelSUTheme(amoledMode = amoledModeState.value) {
                 val navController = rememberNavController()
                 val snackBarHostState = remember { SnackbarHostState() }
+                val currentDestination = navController.currentBackStackEntryAsState().value?.destination
+                val bottomBarRoutes = remember {
+                    BottomBarDestination.entries.map { it.direction.route }.toSet()
+                }
                 val navigator = navController.rememberDestinationsNavigator()
+                
+                // Track the last bottom bar destination index for directional animations
+                var lastBottomBarIndex by remember { mutableStateOf(0) }
+                var isBottomBarNavigation by remember { mutableStateOf(false) }
 
                 LaunchedEffect(zipUri, navigateLoc, moduleActionId) {
                     if (moduleActionId != null) {
@@ -118,72 +135,129 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                val showBottomBar = when (currentDestination?.route) {
+                    FlashScreenDestination.route -> false // Hide for FlashScreenDestination
+                    ExecuteModuleActionScreenDestination.route -> false // Hide for ExecuteModuleActionScreen
+                    else -> true
+                }
+
                 Scaffold(
                     contentWindowInsets = WindowInsets(0, 0, 0, 0)
                 ) { innerPadding ->
-                    CompositionLocalProvider(
-                        LocalSnackbarHost provides snackBarHostState,
-                    ) {
-                        DestinationsNavHost(
-                            modifier = Modifier
-                                .padding(innerPadding)
-                                .fillMaxSize(),
-                            navGraph = NavGraphs.root,
-                            navController = navController,
-                            defaultTransitions = object : NavHostAnimatedDestinationStyle() {
-                                // smooth forward enter
-                                override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-                                    slideInHorizontally(
-                                        initialOffsetX = { it }, // slide from right
-                                        animationSpec = tween(
-                                            durationMillis = 300,
-                                            easing = FastOutSlowInEasing
-                                        )
-                                    ) + fadeIn(
-                                        animationSpec = tween(300, easing = LinearOutSlowInEasing)
-                                    )
-                                }
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        CompositionLocalProvider(
+                            LocalSnackbarHost provides snackBarHostState,
+                        ) {
+                            DestinationsNavHost(
+                                modifier = Modifier
+                                    .padding(innerPadding)
+                                    .fillMaxSize(),
+                                navGraph = NavGraphs.root,
+                                navController = navController,
+                                defaultTransitions = object : NavHostAnimatedDestinationStyle() {
+                                    override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+                                        val targetRoute = targetState.destination.route
+                                        val initialRoute = initialState.destination.route
+                                        
+                                        // Check if both are bottom bar destinations
+                                        val targetIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == targetRoute }
+                                        val initialIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == initialRoute }
+                                        
+                                        if (targetIndex != -1 && initialIndex != -1) {
+                                            // Bottom bar navigation - use horizontal slide based on direction
+                                            val slideDirection = if (targetIndex > initialIndex) 1 else -1
+                                            slideInHorizontally(
+                                                initialOffsetX = { it * slideDirection },
+                                                animationSpec = tween(
+                                                    durationMillis = 300,
+                                                    easing = FastOutSlowInEasing
+                                                )
+                                            ) + fadeIn(
+                                                animationSpec = tween(300, easing = LinearOutSlowInEasing)
+                                            )
+                                        } else {
+                                            // Default navigation - slide from right
+                                            slideInHorizontally(
+                                                initialOffsetX = { it },
+                                                animationSpec = tween(
+                                                    durationMillis = 300,
+                                                    easing = FastOutSlowInEasing
+                                                )
+                                            ) + fadeIn(
+                                                animationSpec = tween(300, easing = LinearOutSlowInEasing)
+                                            )
+                                        }
+                                    }
 
-                                // smooth forward exit
-                                override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-                                    slideOutHorizontally(
-                                        targetOffsetX = { -it / 3 }, // subtle slide left
-                                        animationSpec = tween(
-                                            durationMillis = 300,
-                                            easing = FastOutSlowInEasing
-                                        )
-                                    ) + fadeOut(
-                                        animationSpec = tween(250, easing = LinearOutSlowInEasing)
-                                    )
-                                }
+                                    override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+                                        val targetRoute = targetState.destination.route
+                                        val initialRoute = initialState.destination.route
+                                        
+                                        val targetIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == targetRoute }
+                                        val initialIndex = BottomBarDestination.entries.indexOfFirst { it.direction.route == initialRoute }
+                                        
+                                        if (targetIndex != -1 && initialIndex != -1) {
+                                            // Bottom bar navigation - slide out in opposite direction
+                                            val slideDirection = if (targetIndex > initialIndex) -1 else 1
+                                            slideOutHorizontally(
+                                                targetOffsetX = { it * slideDirection / 3 },
+                                                animationSpec = tween(
+                                                    durationMillis = 300,
+                                                    easing = FastOutSlowInEasing
+                                                )
+                                            ) + fadeOut(
+                                                animationSpec = tween(250, easing = LinearOutSlowInEasing)
+                                            )
+                                        } else {
+                                            // Default navigation
+                                            slideOutHorizontally(
+                                                targetOffsetX = { -it / 3 },
+                                                animationSpec = tween(
+                                                    durationMillis = 300,
+                                                    easing = FastOutSlowInEasing
+                                                )
+                                            ) + fadeOut(
+                                                animationSpec = tween(250, easing = LinearOutSlowInEasing)
+                                            )
+                                        }
+                                    }
 
-                                // pop back enter (backward navigation)
-                                override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
-                                    slideInHorizontally(
-                                        initialOffsetX = { -it / 3 }, // subtle from left
-                                        animationSpec = tween(
-                                            durationMillis = 280,
-                                            easing = FastOutSlowInEasing
+                                    override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition = {
+                                        slideInHorizontally(
+                                            initialOffsetX = { -it / 3 },
+                                            animationSpec = tween(
+                                                durationMillis = 280,
+                                                easing = FastOutSlowInEasing
+                                            )
+                                        ) + fadeIn(
+                                            animationSpec = tween(280, easing = LinearOutSlowInEasing)
                                         )
-                                    ) + fadeIn(
-                                        animationSpec = tween(280, easing = LinearOutSlowInEasing)
-                                    )
-                                }
+                                    }
 
-                                // pop back exit
-                                override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
-                                    slideOutHorizontally(
-                                        targetOffsetX = { it / 3 }, // subtle slide right
-                                        animationSpec = tween(
-                                            durationMillis = 280,
-                                            easing = FastOutSlowInEasing
+                                    override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition = {
+                                        slideOutHorizontally(
+                                            targetOffsetX = { it / 3 },
+                                            animationSpec = tween(
+                                                durationMillis = 280,
+                                                easing = FastOutSlowInEasing
+                                            )
+                                        ) + fadeOut(
+                                            animationSpec = tween(250, easing = LinearOutSlowInEasing)
                                         )
-                                    ) + fadeOut(
-                                        animationSpec = tween(250, easing = LinearOutSlowInEasing)
-                                    )
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
+                        
+                        // Floating Bottom Bar as overlay
+                        AnimatedVisibility(
+                            visible = showBottomBar,
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                        ) {
+                            BottomBar(navController)
+                        }
                     }
                 }
             }
@@ -225,6 +299,94 @@ class MainActivity : ComponentActivity() {
             "ACTION_SETTINGS" -> navigateLoc = "settings"
             "ACTION_SUPERUSER" -> navigateLoc = "superuser"
             "ACTION_MODULES" -> navigateLoc = "modules"
+        }
+    }
+}
+
+@Composable
+private fun BottomBar(navController: NavHostController) {
+    val navigator = navController.rememberDestinationsNavigator()
+    val isManager = Natives.isManager
+    val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = 32.dp,
+                end = 32.dp,
+                top = 16.dp,
+                bottom = 16.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            ),
+        shape = MaterialTheme.shapes.extraLarge,
+        tonalElevation = 3.dp,
+        shadowElevation = 8.dp
+    ) {
+        NavigationBar(
+            tonalElevation = 0.dp,
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            windowInsets = WindowInsets(0.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+            BottomBarDestination.entries
+                .forEach { destination ->
+                    if (!fullFeatured && destination.rootRequired) return@forEach
+                    val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
+                    
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        androidx.compose.material3.Surface(
+                            onClick = {
+                                if (isCurrentDestOnBackStack) {
+                                    navigator.popBackStack(destination.direction, false)
+                                }
+                                navigator.navigate(destination.direction) {
+                                    popUpTo(NavGraphs.root) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            modifier = Modifier.size(64.dp),
+                            shape = MaterialTheme.shapes.large,
+                            color = if (isCurrentDestOnBackStack) {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            } else {
+                                androidx.compose.ui.graphics.Color.Transparent
+                            }
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            ) {
+                                if (isCurrentDestOnBackStack) {
+                                    Icon(
+                                        destination.iconSelected,
+                                        stringResource(destination.label),
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                } else {
+                                    Icon(
+                                        destination.iconNotSelected,
+                                        stringResource(destination.label)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

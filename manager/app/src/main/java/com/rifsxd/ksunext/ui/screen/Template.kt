@@ -157,7 +157,7 @@ fun AppProfileTemplateScreen(
             ) {
                 Box(
                     modifier = Modifier.padding(
-                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
                     )
                 ) {
                     ExtendedFloatingActionButton(
@@ -184,7 +184,7 @@ fun AppProfileTemplateScreen(
                 scope.launch { viewModel.fetchTemplates() }
             }
         ) {
-            val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
 
             LazyColumn(
                 state = listState,
