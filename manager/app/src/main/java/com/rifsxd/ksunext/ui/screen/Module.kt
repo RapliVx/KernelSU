@@ -128,29 +128,34 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
         contract = ActivityResultContracts.StartActivityForResult()
     ) { viewModel.fetchModuleList() }
 
-    val listState = rememberLazyListState()
-    var showFab by remember { mutableStateOf(true) }
+    val selectZipLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) {
+            return@rememberLauncherForActivityResult
+        }
+        val data = result.data ?: return@rememberLauncherForActivityResult
+        val clipData = data.clipData
 
-    LaunchedEffect(listState) {
-        var lastIndex = listState.firstVisibleItemIndex
-        var lastOffset = listState.firstVisibleItemScrollOffset
-
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .collect { (currIndex, currOffset) ->
-                val isScrollingDown = currIndex > lastIndex ||
-                    (currIndex == lastIndex && currOffset > lastOffset + 4)
-                val isScrollingUp = currIndex < lastIndex ||
-                    (currIndex == lastIndex && currOffset < lastOffset - 4)
-
-                when {
-                    isScrollingDown && showFab -> showFab = false
-                    isScrollingUp && !showFab -> showFab = true
-                }
-
-                lastIndex = currIndex
-                lastOffset = currOffset
+        val uris = mutableListOf<Uri>()
+        if (clipData != null) {
+            for (i in 0 until clipData.itemCount) {
+                clipData.getItemAt(i)?.uri?.let { uris.add(it) }
             }
+        } else {
+            data.data?.let { uris.add(it) }
+        }
+
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+
+        viewModel.updateZipUris(uris)
+
+        navigator.navigate(FlashScreenDestination(FlashIt.FlashModules(uris)))
+        viewModel.clearZipUris()
+        viewModel.markNeedRefresh()
     }
+
+    val listState = rememberLazyListState()
 
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
 
@@ -175,6 +180,23 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                             imageVector = Icons.Filled.Cloud,
                             contentDescription = stringResource(id = R.string.module_repo_screen)
                         )
+                    }
+
+                    if (!hideInstallButton) {
+                        IconButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                                    type = "application/zip"
+                                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                                }
+                                selectZipLauncher.launch(intent)
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = stringResource(id = R.string.module_install)
+                            )
+                        }
                     }
                 },
                 dropdownContent = {
@@ -404,68 +426,7 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                 scrollBehavior = scrollBehavior
             )
         },
-        floatingActionButton = {
-            if (!hideInstallButton) {
-                AnimatedVisibility(
-                    visible = showFab,
-                    enter = scaleIn(
-                        animationSpec = tween(200),
-                        initialScale = 0.8f
-                    ) + fadeIn(animationSpec = tween(400)),
-                    exit = scaleOut(
-                        animationSpec = tween(200),
-                        targetScale = 0.8f
-                    ) + fadeOut(animationSpec = tween(400))
-                ) {
-                    val moduleInstall = stringResource(id = R.string.module_install)
-                    val selectZipLauncher = rememberLauncherForActivityResult(
-                        contract = ActivityResultContracts.StartActivityForResult()
-                    ) { result ->
-                        if (result.resultCode != RESULT_OK) {
-                            return@rememberLauncherForActivityResult
-                        }
-                        val data = result.data ?: return@rememberLauncherForActivityResult
-                        val clipData = data.clipData
-
-                        val uris = mutableListOf<Uri>()
-                        if (clipData != null) {
-                            for (i in 0 until clipData.itemCount) {
-                                clipData.getItemAt(i)?.uri?.let { uris.add(it) }
-                            }
-                        } else {
-                            data.data?.let { uris.add(it) }
-                        }
-
-                        if (uris.isEmpty()) return@rememberLauncherForActivityResult
-
-                        viewModel.updateZipUris(uris)
-
-                        navigator.navigate(FlashScreenDestination(FlashIt.FlashModules(uris)))
-                        viewModel.clearZipUris()
-                        viewModel.markNeedRefresh()
-                    }
-
-                    Box(
-                        modifier = Modifier.padding(
-                            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
-                        )
-                    ) {
-                        ExtendedFloatingActionButton(
-                            onClick = {
-                                // Select the zip files to install
-                                val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                                    type = "application/zip"
-                                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                                }
-                                selectZipLauncher.launch(intent)
-                            },
-                            icon = { Icon(Icons.Filled.Add, moduleInstall) },
-                            text = { Text(text = moduleInstall) },
-                        )
-                    }
-                }
-            }
-        },
+        floatingActionButton = {},
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         snackbarHost = {
             SnackbarHost(

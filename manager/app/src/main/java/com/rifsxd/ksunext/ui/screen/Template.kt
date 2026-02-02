@@ -84,28 +84,6 @@ fun AppProfileTemplateScreen(
     }
 
     val listState = rememberLazyListState()
-    var showFab by remember { mutableStateOf(true) }
-
-    LaunchedEffect(listState) {
-        var lastIndex = listState.firstVisibleItemIndex
-        var lastOffset = listState.firstVisibleItemScrollOffset
-
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .collect { (currIndex, currOffset) ->
-                val isScrollingDown = currIndex > lastIndex ||
-                        (currIndex == lastIndex && currOffset > lastOffset + 4)
-                val isScrollingUp = currIndex < lastIndex ||
-                        (currIndex == lastIndex && currOffset < lastOffset - 4)
-
-                when {
-                    isScrollingDown && showFab -> showFab = false
-                    isScrollingUp && !showFab -> showFab = true
-                }
-
-                lastIndex = currIndex
-                lastOffset = currOffset
-            }
-    }
 
     Scaffold(
         topBar = {
@@ -116,64 +94,43 @@ fun AppProfileTemplateScreen(
                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 }
             }
-            TopBar(
-                onBack = dropUnlessResumed { navigator.popBackStack() },
-                onSync = {
-                    scope.launch { viewModel.fetchTemplates(true) }
-                },
-                onImport = {
-                    scope.launch {
-                        clipboard.getClipEntry()?.clipData?.getItemAt(0)?.text?.toString()?.let {
-                            if (it.isEmpty()) {
-                                showToast(context.getString(R.string.app_profile_template_import_empty))
-                                return@let
+                    TopBar(
+                        onBack = dropUnlessResumed { navigator.popBackStack() },
+                        onSync = {
+                            scope.launch { viewModel.fetchTemplates(true) }
+                        },
+                        onImport = {
+                            scope.launch {
+                                clipboard.getClipEntry()?.clipData?.getItemAt(0)?.text?.toString()?.let {
+                                    if (it.isEmpty()) {
+                                        showToast(context.getString(R.string.app_profile_template_import_empty))
+                                        return@let
+                                    }
+                                    viewModel.importTemplates(
+                                        it, {
+                                            showToast(context.getString(R.string.app_profile_template_import_success))
+                                            viewModel.fetchTemplates(false)
+                                        },
+                                        showToast
+                                    )
+                                }
                             }
-                            viewModel.importTemplates(
-                                it, {
-                                    showToast(context.getString(R.string.app_profile_template_import_success))
-                                    viewModel.fetchTemplates(false)
-                                },
-                                showToast
-                            )
-                        }
-                    }
-                },
-                onExport = {
-                    scope.launch {
-                        viewModel.exportTemplates(
-                            {
-                                showToast(context.getString(R.string.app_profile_template_export_empty))
-                            },
-                            {
-                                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("template", it))) }
-                            }
-                        )
+                        },
+                        onExport = {
+                            scope.launch {
+                                viewModel.exportTemplates(
+                                    {
+                                        showToast(context.getString(R.string.app_profile_template_export_empty))
+                                    },
+                                    {
+                                        scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("template", it))) }
+                                    }
+                                )
 
 
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
-        },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = showFab,
-                enter = scaleIn(
-                    animationSpec = tween(200),
-                    initialScale = 0.8f
-                ) + fadeIn(animationSpec = tween(400)),
-                exit = scaleOut(
-                    animationSpec = tween(200),
-                    targetScale = 0.8f
-                ) + fadeOut(animationSpec = tween(400))
-            ) {
-                Box(
-                    modifier = Modifier.padding(
-                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
-                    )
-                ) {
-                    ExtendedFloatingActionButton(
-                        onClick = {
+                            }
+                        },
+                        onCreate = {
                             navigator.navigate(
                                 TemplateEditorScreenDestination(
                                     TemplateViewModel.TemplateInfo(),
@@ -181,12 +138,10 @@ fun AppProfileTemplateScreen(
                                 )
                             )
                         },
-                        icon = { Icon(Icons.Filled.Add, null) },
-                        text = { Text(stringResource(id = R.string.app_profile_template_create)) },
+                        scrollBehavior = scrollBehavior
                     )
-                }
-            }
         },
+        floatingActionButton = {},
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { innerPadding ->
         PullToRefreshBox(
@@ -274,6 +229,7 @@ private fun TopBar(
     onSync: () -> Unit = {},
     onImport: () -> Unit = {},
     onExport: () -> Unit = {},
+    onCreate: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     TopAppBar(
@@ -294,6 +250,13 @@ private fun TopBar(
                 Icon(
                     Icons.Filled.Sync,
                     contentDescription = stringResource(id = R.string.app_profile_template_sync)
+                )
+            }
+
+            IconButton(onClick = onCreate) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = stringResource(id = R.string.app_profile_template_create)
                 )
             }
 
