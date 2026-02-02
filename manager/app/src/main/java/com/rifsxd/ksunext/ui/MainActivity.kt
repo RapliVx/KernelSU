@@ -361,6 +361,7 @@ private fun BottomBar(navController: NavHostController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp)
+                    .padding(horizontal = horizontalPadding)
                     .onSizeChanged { size ->
                         totalWidth = size.width
                     }
@@ -397,7 +398,7 @@ private fun BottomBar(navController: NavHostController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .fillMaxHeight(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
                     visibleDestinations.forEach { destination ->
