@@ -332,20 +332,25 @@ private fun BottomBar(navController: NavHostController) {
         label = "selectedIndex"
     )
 
+    val itemSize = 64.dp
+    val itemCount = visibleDestinations.size
+    val horizontalPadding = 12.dp
+
     Surface(
         modifier = Modifier
-            .fillMaxWidth()
+            .wrapContentWidth()
             .padding(
-                start = 32.dp,
-                end = 32.dp,
-                top = 16.dp,
-                bottom = 16.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                vertical = 16.dp + WindowInsets.navigationBars
+                    .asPaddingValues()
+                    .calculateBottomPadding()
             ),
         shape = MaterialTheme.shapes.extraLarge,
         tonalElevation = 3.dp,
         shadowElevation = 8.dp
     ) {
         NavigationBar(
+            modifier = Modifier
+                .width(itemSize * itemCount + horizontalPadding * 2),
             tonalElevation = 0.dp,
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             windowInsets = WindowInsets(0.dp)
