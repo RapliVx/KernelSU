@@ -50,6 +50,93 @@ import com.rifsxd.ksunext.ui.screen.BottomBarDestination
 import com.rifsxd.ksunext.ui.screen.FlashIt
 import com.rifsxd.ksunext.ui.theme.KernelSUTheme
 import com.rifsxd.ksunext.ui.util.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
+import kotlin.math.abs
+
+data class ScrollState(
+    val isScrollingDown: MutableState<Boolean>,
+    val scrollOffset: MutableState<Float>,
+    val previousScrollOffset: MutableState<Float>
+)
+
+val LocalScrollState = compositionLocalOf<ScrollState?> { null }
+
+@Composable
+fun rememberScrollConnection(
+    isScrollingDown: MutableState<Boolean>,
+    scrollOffset: MutableState<Float>,
+    previousScrollOffset: MutableState<Float>,
+    threshold: Float = 50f
+): NestedScrollConnection {
+    return remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val delta = available.y
+                
+                // Update scroll offset
+                val newOffset = scrollOffset.value + delta
+                scrollOffset.value = newOffset
+                
+                // Calculate the scroll delta from previous offset
+                val scrollDelta = previousScrollOffset.value - newOffset
+                
+                // Only update direction if scroll delta exceeds threshold
+                if (abs(scrollDelta) > threshold) {
+                    isScrollingDown.value = scrollDelta > 0
+                    previousScrollOffset.value = newOffset
+                }
+                
+                return Offset.Zero
+            }
+            
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                // Reset offset tracking after fling
+                previousScrollOffset.value = scrollOffset.value
+                return super.onPostFling(consumed, available)
+            }
+        }
+    }
+}
+
+fun Modifier.trackScroll(
+    isScrollingDown: MutableState<Boolean>,
+    scrollOffset: MutableState<Float>,
+    previousScrollOffset: MutableState<Float>,
+    threshold: Float = 50f
+): Modifier {
+    val scrollConnection = object : NestedScrollConnection {
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+            val delta = available.y
+            
+            // Update scroll offset
+            val newOffset = scrollOffset.value + delta
+            scrollOffset.value = newOffset
+            
+            // Calculate the scroll delta from previous offset
+            val scrollDelta = previousScrollOffset.value - newOffset
+            
+            // Only update direction if scroll delta exceeds threshold
+            if (abs(scrollDelta) > threshold) {
+                isScrollingDown.value = scrollDelta > 0
+                previousScrollOffset.value = newOffset
+            }
+            
+            return Offset.Zero
+        }
+        
+        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+            // Reset offset tracking after fling
+            previousScrollOffset.value = scrollOffset.value
+            return super.onPostFling(consumed, available)
+        }
+    }
+    
+    return this.nestedScroll(scrollConnection)
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -101,6 +188,11 @@ class MainActivity : ComponentActivity() {
                 // Track the last bottom bar destination index for directional animations
                 var lastBottomBarIndex by remember { mutableStateOf(0) }
                 var isBottomBarNavigation by remember { mutableStateOf(false) }
+                
+                // Scroll state for bottom bar visibility
+                val isScrollingDown = remember { mutableStateOf(false) }
+                val scrollOffset = remember { mutableStateOf(0f) }
+                val previousScrollOffset = remember { mutableStateOf(0f) }
 
                 LaunchedEffect(zipUri, navigateLoc, moduleActionId) {
                     if (moduleActionId != null) {
@@ -142,7 +234,7 @@ class MainActivity : ComponentActivity() {
                 val showBottomBar = when (currentDestination?.route) {
                     FlashScreenDestination.route -> false // Hide for FlashScreenDestination
                     ExecuteModuleActionScreenDestination.route -> false // Hide for ExecuteModuleActionScreen
-                    else -> true
+                    else -> !isScrollingDown.value
                 }
 
                 Scaffold(
@@ -151,6 +243,11 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.fillMaxSize()) {
                         CompositionLocalProvider(
                             LocalSnackbarHost provides snackBarHostState,
+                            LocalScrollState provides ScrollState(
+                                isScrollingDown = isScrollingDown,
+                                scrollOffset = scrollOffset,
+                                previousScrollOffset = previousScrollOffset
+                            )
                         ) {
                             DestinationsNavHost(
                                 modifier = Modifier

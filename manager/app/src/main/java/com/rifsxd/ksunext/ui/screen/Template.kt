@@ -24,6 +24,8 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import com.rifsxd.ksunext.ui.LocalScrollState
+import com.rifsxd.ksunext.ui.rememberScrollConnection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -57,6 +59,16 @@ fun AppProfileTemplateScreen(
     val viewModel = viewModel<TemplateViewModel>()
     val scope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    // Bottom bar scroll tracking
+    val bottomBarScrollState = LocalScrollState.current
+    val bottomBarScrollConnection = if (bottomBarScrollState != null) {
+        rememberScrollConnection(
+            isScrollingDown = bottomBarScrollState.isScrollingDown,
+            scrollOffset = bottomBarScrollState.scrollOffset,
+            previousScrollOffset = bottomBarScrollState.previousScrollOffset,
+            threshold = 30f
+        )
+    } else null
 
     LaunchedEffect(Unit) {
         if (viewModel.templateList.isEmpty()) {
@@ -190,7 +202,15 @@ fun AppProfileTemplateScreen(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    .let { modifier ->
+                        if (bottomBarScrollConnection != null) {
+                            modifier
+                                .nestedScroll(bottomBarScrollConnection)
+                                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                        } else {
+                            modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                        }
+                    },
                 contentPadding = PaddingValues(
                     bottom = 16.dp + navBarPadding
                 )

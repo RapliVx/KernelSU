@@ -46,6 +46,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import com.rifsxd.ksunext.ui.LocalScrollState
+import com.rifsxd.ksunext.ui.rememberScrollConnection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -489,10 +491,30 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
             }
 
             else -> {
+                // Bottom bar scroll tracking
+                val bottomBarScrollState = LocalScrollState.current
+                val bottomBarScrollConnection = if (bottomBarScrollState != null) {
+                    rememberScrollConnection(
+                        isScrollingDown = bottomBarScrollState.isScrollingDown,
+                        scrollOffset = bottomBarScrollState.scrollOffset,
+                        previousScrollOffset = bottomBarScrollState.previousScrollOffset,
+                        threshold = 30f
+                    )
+                } else null
+
                 ModuleList(
                     navigator,
                     viewModel = viewModel,
-                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                    modifier = Modifier
+                        .let { modifier ->
+                            if (bottomBarScrollConnection != null) {
+                                modifier
+                                    .nestedScroll(bottomBarScrollConnection)
+                                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                            } else {
+                                modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                            }
+                        },
                     boxModifier = Modifier.padding(innerPadding),
                     onInstallModule = {
                         navigator.navigate(FlashScreenDestination(FlashIt.FlashModules(listOf(it))))
@@ -703,9 +725,8 @@ private fun ModuleList(
 
         LazyColumn(
             state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()).nestedScrollConnection),
+            modifier = modifier
+                .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = remember {
                 PaddingValues(

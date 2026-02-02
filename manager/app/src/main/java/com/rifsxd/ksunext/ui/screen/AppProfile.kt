@@ -19,6 +19,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import com.rifsxd.ksunext.ui.LocalScrollState
+import com.rifsxd.ksunext.ui.rememberScrollConnection
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +62,16 @@ fun AppProfileScreen(
     val context = LocalContext.current
     val snackBarHost = LocalSnackbarHost.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    // Bottom bar scroll tracking
+    val bottomBarScrollState = LocalScrollState.current
+    val bottomBarScrollConnection = if (bottomBarScrollState != null) {
+        rememberScrollConnection(
+            isScrollingDown = bottomBarScrollState.isScrollingDown,
+            scrollOffset = bottomBarScrollState.scrollOffset,
+            previousScrollOffset = bottomBarScrollState.previousScrollOffset,
+            threshold = 30f
+        )
+    } else null
     val scope = rememberCoroutineScope()
     val viewModel: SuperUserViewModel = viewModel()
     val failToUpdateAppProfile = stringResource(R.string.failed_to_update_app_profile).format(appInfo.label)
@@ -88,7 +100,15 @@ fun AppProfileScreen(
         AppProfileInner(
             modifier = Modifier
                 .padding(paddingValues)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .let { modifier ->
+                    if (bottomBarScrollConnection != null) {
+                        modifier
+                            .nestedScroll(bottomBarScrollConnection)
+                            .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    } else {
+                        modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                    }
+                }
                 .verticalScroll(rememberScrollState()),
             packageName = appInfo.packageName,
             appLabel = appInfo.label,

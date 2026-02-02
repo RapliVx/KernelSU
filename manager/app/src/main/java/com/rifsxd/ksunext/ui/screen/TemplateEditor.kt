@@ -16,9 +16,12 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
+import com.rifsxd.ksunext.ui.LocalScrollState
+import com.rifsxd.ksunext.ui.rememberScrollConnection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +61,16 @@ fun TemplateEditorScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    // Bottom bar scroll tracking
+    val bottomBarScrollState = LocalScrollState.current
+    val bottomBarScrollConnection = if (bottomBarScrollState != null) {
+        rememberScrollConnection(
+            isScrollingDown = bottomBarScrollState.isScrollingDown,
+            scrollOffset = bottomBarScrollState.scrollOffset,
+            previousScrollOffset = bottomBarScrollState.previousScrollOffset,
+            threshold = 30f
+        )
+    } else null
 
     BackHandler {
         navigator.navigateBack(result = !readOnly)
@@ -107,8 +120,17 @@ fun TemplateEditorScreen(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .let { modifier ->
+                    if (bottomBarScrollConnection != null) {
+                        modifier
+                            .nestedScroll(bottomBarScrollConnection)
+                            .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    } else {
+                        modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                    }
+                }
                 .verticalScroll(rememberScrollState())
+                .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp)
                 .pointerInteropFilter {
                     // disable click and ripple if readOnly
                     readOnly

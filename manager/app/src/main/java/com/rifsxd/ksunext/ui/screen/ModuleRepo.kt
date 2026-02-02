@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import com.rifsxd.ksunext.ui.LocalScrollState
+import com.rifsxd.ksunext.ui.rememberScrollConnection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -77,6 +79,16 @@ sealed class ModuleRepoState {
 @Composable
 fun ModuleRepoScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    // Bottom bar scroll tracking
+    val bottomBarScrollState = LocalScrollState.current
+    val bottomBarScrollConnection = if (bottomBarScrollState != null) {
+        rememberScrollConnection(
+            isScrollingDown = bottomBarScrollState.isScrollingDown,
+            scrollOffset = bottomBarScrollState.scrollOffset,
+            previousScrollOffset = bottomBarScrollState.previousScrollOffset,
+            threshold = 30f
+        )
+    } else null
     val snackBarHost = LocalSnackbarHost.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -225,7 +237,15 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                        .let { modifier ->
+                            if (bottomBarScrollConnection != null) {
+                                modifier
+                                    .nestedScroll(bottomBarScrollConnection)
+                                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                            } else {
+                                modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                            }
+                        },
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp + 16.dp + navBarPadding),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {

@@ -15,6 +15,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import com.rifsxd.ksunext.ui.LocalScrollState
+import com.rifsxd.ksunext.ui.rememberScrollConnection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -66,7 +68,25 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
         Column(
             modifier = Modifier
                 .padding(paddingValues)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .let { modifier ->
+                    val bottomBarScrollState = LocalScrollState.current
+                    val bottomBarScrollConnection = if (bottomBarScrollState != null) {
+                        rememberScrollConnection(
+                            isScrollingDown = bottomBarScrollState.isScrollingDown,
+                            scrollOffset = bottomBarScrollState.scrollOffset,
+                            previousScrollOffset = bottomBarScrollState.previousScrollOffset,
+                            threshold = 30f
+                        )
+                    } else null
+
+                    if (bottomBarScrollConnection != null) {
+                        modifier
+                            .nestedScroll(bottomBarScrollConnection)
+                            .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    } else {
+                        modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                    }
+                }
                 .verticalScroll(rememberScrollState())
         ) {
 
