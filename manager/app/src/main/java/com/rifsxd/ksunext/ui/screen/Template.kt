@@ -96,9 +96,7 @@ fun AppProfileTemplateScreen(
             }
                     TopBar(
                         onBack = dropUnlessResumed { navigator.popBackStack() },
-                        onSync = {
-                            scope.launch { viewModel.fetchTemplates(true) }
-                        },
+                
                         onImport = {
                             scope.launch {
                                 clipboard.getClipEntry()?.clipData?.getItemAt(0)?.text?.toString()?.let {
@@ -148,7 +146,7 @@ fun AppProfileTemplateScreen(
             modifier = Modifier.padding(innerPadding),
             isRefreshing = viewModel.isRefreshing,
             onRefresh = {
-                scope.launch { viewModel.fetchTemplates() }
+                scope.launch { viewModel.fetchTemplates(true) }
             }
         ) {
             val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
@@ -226,7 +224,6 @@ private fun TemplateItem(
 @Composable
 private fun TopBar(
     onBack: () -> Unit,
-    onSync: () -> Unit = {},
     onImport: () -> Unit = {},
     onExport: () -> Unit = {},
     onCreate: () -> Unit = {},
@@ -246,13 +243,6 @@ private fun TopBar(
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
         },
         actions = {
-            IconButton(onClick = onSync) {
-                Icon(
-                    Icons.Filled.Sync,
-                    contentDescription = stringResource(id = R.string.app_profile_template_sync)
-                )
-            }
-
             IconButton(onClick = onCreate) {
                 Icon(
                     Icons.Filled.Add,
