@@ -34,6 +34,7 @@ fun SearchAppBar(
     onClearClick: () -> Unit,
     onBackClick: (() -> Unit)? = null,
     onConfirm: (() -> Unit)? = null,
+    actionsContent: @Composable (() -> Unit)? = null,
     dropdownContent: @Composable (() -> Unit)? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
@@ -110,10 +111,16 @@ fun SearchAppBar(
             AnimatedVisibility(
                 visible = !onSearch
             ) {
-                IconButton(
-                    onClick = { onSearch = true },
-                    content = { Icon(Icons.Filled.Search, null) }
-                )
+                Row {
+                    if (actionsContent != null) {
+                        actionsContent()
+                    }
+
+                    IconButton(
+                        onClick = { onSearch = true },
+                        content = { Icon(Icons.Filled.Search, null) }
+                    )
+                }
             }
 
             if (dropdownContent != null) {

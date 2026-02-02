@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Wysiwyg
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.AttachMoney
@@ -63,6 +64,7 @@ import com.dergoogler.mmrl.ui.component.LabelItem
 import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.ModuleRepoScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -172,6 +174,16 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                 searchText = viewModel.search,
                 onSearchTextChange = { viewModel.search = it },
                 onClearClick = { viewModel.search = "" },
+                actionsContent = {
+                    IconButton(
+                        onClick = { navigator.navigate(ModuleRepoScreenDestination) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Cloud,
+                            contentDescription = stringResource(id = R.string.module_repo_screen)
+                        )
+                    }
+                },
                 dropdownContent = {
                     var showDropdown by remember { mutableStateOf(false) }
                     IconButton(

@@ -49,7 +49,7 @@ import java.io.InputStreamReader
 import java.net.URL
 import android.content.Intent
 
-data class EssentialModule(
+data class MetaModule(
     val id: String,
     val name: String,
     val description: String,
@@ -60,10 +60,10 @@ data class EssentialModule(
     val isLoading: Boolean = true
 )
 
-sealed class EssentialModuleState {
-    object Loading : EssentialModuleState()
-    data class Success(val modules: List<EssentialModule>) : EssentialModuleState()
-    data class Error(val message: String) : EssentialModuleState()
+sealed class MetaModuleState {
+    object Loading : MetaModuleState()
+    data class Success(val modules: List<MetaModule>) : MetaModuleState()
+    data class Error(val message: String) : MetaModuleState()
 }
 
 /**
@@ -73,7 +73,7 @@ sealed class EssentialModuleState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
-fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
+fun MetaModuleScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
     val context = LocalContext.current
@@ -82,10 +82,10 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val modulesJsonUrl = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/essential_modules.json"
+    val modulesJsonUrl = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/meta_modules.json"
 
-    var moduleState by remember { mutableStateOf<EssentialModuleState>(EssentialModuleState.Loading) }
-    var selectedModule by remember { mutableStateOf<EssentialModule?>(null) }
+    var moduleState by remember { mutableStateOf<MetaModuleState>(MetaModuleState.Loading) }
+    var selectedModule by remember { mutableStateOf<MetaModule?>(null) }
     var downloadingModuleId by remember { mutableStateOf<String?>(null) }
     var downloadedUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -99,7 +99,7 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
 
     val moduleViewModel = viewModel<ModuleViewModel>()
 
-    suspend fun fetchEssentialModulesFromJson(jsonUrl: String): List<EssentialModule>? {
+    suspend fun fetchMetaModulesFromJson(jsonUrl: String): List<MetaModule>? {
         return withContext(Dispatchers.IO) {
             try {
                 val conn = URL(jsonUrl).openConnection() as java.net.HttpURLConnection
@@ -108,10 +108,10 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
                 conn.disconnect()
 
                 val arr = JSONArray(text)
-                val out = mutableListOf<EssentialModule>()
+                val out = mutableListOf<MetaModule>()
                 for (i in 0 until arr.length()) {
                     val obj = arr.getJSONObject(i)
-                    out += EssentialModule(
+                    out += MetaModule(
                         id = obj.optString("id"),
                         name = obj.optString("name"),
                         description = obj.optString("description"),
@@ -129,18 +129,16 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
 
     suspend fun loadModules() {
         try {
-            moduleState = EssentialModuleState.Loading
+            moduleState = MetaModuleState.Loading
 
-            val baseList = withContext(Dispatchers.IO) {
-                fetchEssentialModulesFromJson(modulesJsonUrl)
-            }
+            val baseList = withContext(Dispatchers.IO) { fetchMetaModulesFromJson(modulesJsonUrl) }
 
             if (baseList == null) {
-                moduleState = EssentialModuleState.Error("Failed to load module list")
+                moduleState = MetaModuleState.Error("Failed to load module list")
                 return
             }
 
-            moduleState = EssentialModuleState.Success(
+            moduleState = MetaModuleState.Success(
                 baseList.map { it.copy(latestVersion = "", downloadUrl = "", isLoading = true) }
             )
 
@@ -156,27 +154,27 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
                             )
 
                             val current = moduleState
-                            if (current is EssentialModuleState.Success) {
+                            if (current is MetaModuleState.Success) {
                                 val mutable = current.modules.toMutableList()
                                 val idx = mutable.indexOfFirst { it.id == baseModule.id }
                                 if (idx >= 0) mutable[idx] = updated else mutable.add(updated)
-                                moduleState = EssentialModuleState.Success(mutable)
+                                moduleState = MetaModuleState.Success(mutable)
                             }
                         } catch (e: Exception) {
                             val updated = baseModule.copy(latestVersion = "null", downloadUrl = "", isLoading = false)
                             val current = moduleState
-                            if (current is EssentialModuleState.Success) {
+                            if (current is MetaModuleState.Success) {
                                 val mutable = current.modules.toMutableList()
                                 val idx = mutable.indexOfFirst { it.id == baseModule.id }
                                 if (idx >= 0) mutable[idx] = updated else mutable.add(updated)
-                                moduleState = EssentialModuleState.Success(mutable)
+                                moduleState = MetaModuleState.Success(mutable)
                             }
                         }
                     }
                 }
             }
         } catch (e: Exception) {
-            moduleState = EssentialModuleState.Error(e.message ?: "Unknown error")
+            moduleState = MetaModuleState.Error(e.message ?: "Unknown error")
         }
     }
 
@@ -192,7 +190,7 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
                 onBack = { navigator.popBackStack() },
                 onRefresh = {
                     scope.launch {
-                        moduleState = EssentialModuleState.Loading
+                        moduleState = MetaModuleState.Loading
                         loadModules()
                     }
                 },
@@ -203,7 +201,7 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { paddingValues ->
         when (val state = moduleState) {
-            is EssentialModuleState.Loading -> {
+            is MetaModuleState.Loading -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -213,8 +211,10 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
                     CircularProgressIndicator()
                 }
             }
-            is EssentialModuleState.Success -> {
+            is MetaModuleState.Success -> {
                 val installedIds = moduleViewModel.moduleList.map { it.id }
+                
+                val hasInstalledMetaModule = state.modules.any { installedIds.contains(it.id) }
                 
                 LazyColumn(
                     modifier = Modifier
@@ -230,10 +230,12 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
                         
                         val isInstallEnabled = when {
                             downloadingModuleId != null && !isThisModuleDownloading -> false
+                            isInstalled -> true
+                            hasInstalledMetaModule -> false
                             else -> true
                         }
 
-                        EssentialModuleCard(
+                        MetaModuleCard(
                             module = module,
                             isInstalled = isInstalled,
                             isInstallEnabled = isInstallEnabled,
@@ -263,7 +265,7 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
                     }
                 }
             }
-            is EssentialModuleState.Error -> {
+            is MetaModuleState.Error -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -281,7 +283,7 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
                         Button(
                             onClick = {
                                 scope.launch {
-                                    moduleState = EssentialModuleState.Loading
+                                    moduleState = MetaModuleState.Loading
                                     loadModules()
                                 }
                             },
@@ -297,13 +299,13 @@ fun EssentialModuleInstallScreen(navigator: DestinationsNavigator) {
 }
 
 @Composable
-private fun EssentialModuleCard(
-    module: EssentialModule,
+private fun MetaModuleCard(
+    module: MetaModule,
     isInstalled: Boolean = false,
     isInstallEnabled: Boolean = true,
     isDownloading: Boolean = false,
     onCardClick: () -> Unit,
-    onDownload: (EssentialModule) -> Unit,
+    onDownload: (MetaModule) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -412,7 +414,7 @@ private fun TopBar(
     TopAppBar(
         title = {
             Text(
-                text = stringResource(R.string.essential_tool_screen),
+                text = stringResource(R.string.meta_module_screen),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black,
             )
@@ -432,7 +434,7 @@ private fun TopBar(
     )
 }
 
-private suspend fun fetchLatestReleaseInfo(repoUrl: String): ReleaseInfoEssential? {
+private suspend fun fetchLatestReleaseInfo(repoUrl: String): ReleaseInfo? {
     return withContext(Dispatchers.IO) {
         try {
             val latestUrl = "$repoUrl/releases/latest"
@@ -462,7 +464,7 @@ private suspend fun fetchLatestReleaseInfo(repoUrl: String): ReleaseInfoEssentia
                 .find(pageHtml)?.groupValues?.get(1)
             
             if (zipUrlMatch != null) {
-                return@withContext ReleaseInfoEssential(
+                return@withContext ReleaseInfo(
                     version = tagMatch,
                     zipUrl = "https://github.com$zipUrlMatch"
                 )
@@ -476,13 +478,13 @@ private suspend fun fetchLatestReleaseInfo(repoUrl: String): ReleaseInfoEssentia
     }
 }
 
-data class ReleaseInfoEssential(
+data class ReleaseInfo(
     val version: String,
     val zipUrl: String
 )
 
 @Preview
 @Composable
-private fun EssentialModuleInstallScreenPreview() {
-    EssentialModuleInstallScreen(EmptyDestinationsNavigator)
+private fun MetaModuleScreenPreview() {
+    MetaModuleScreen(EmptyDestinationsNavigator)
 }

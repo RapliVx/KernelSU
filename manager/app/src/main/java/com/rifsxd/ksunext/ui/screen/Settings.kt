@@ -286,46 +286,6 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable {
-                                    navigator.navigate(EssentialModuleInstallScreenDestination)
-                                },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            leadingContent = {
-                                Icon(Icons.Filled.HomeRepairService, null)
-                            },
-                            headlineContent = {
-                                Text(
-                                    text = stringResource(R.string.essential_tool_screen),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        )
-
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    navigator.navigate(MetaModuleInstallScreenDestination)
-                                },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            leadingContent = {
-                                Icon(Icons.Filled.Cloud, null)
-                            },
-                            headlineContent = {
-                                Text(
-                                    text = stringResource(R.string.meta_module_screen),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        )
-
-                        ListItem(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
                                     navigator.navigate(DeveloperScreenDestination)
                                 },
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
