@@ -17,12 +17,16 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -309,6 +313,25 @@ private fun BottomBar(navController: NavHostController) {
     val isManager = Natives.isManager
     val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
 
+    // Get current selected index with visible destinations
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+    val visibleDestinations = remember(fullFeatured) {
+        BottomBarDestination.entries.filter { fullFeatured || !it.rootRequired }
+    }
+    val selectedIndex = visibleDestinations.indexOfFirst { 
+        navController.isRouteOnBackStackAsState(it.direction).value 
+    }.coerceAtLeast(0)
+    
+    // Animate the indicator position with jelly/spring effect
+    val animatedSelectedIndex by animateFloatAsState(
+        targetValue = selectedIndex.toFloat(),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "selectedIndex"
+    )
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -327,59 +350,89 @@ private fun BottomBar(navController: NavHostController) {
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             windowInsets = WindowInsets(0.dp)
         ) {
-            Row(
+            var totalWidth by remember { mutableStateOf(0) }
+            
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(80.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    .height(80.dp)
+                    .onSizeChanged { size ->
+                        totalWidth = size.width
+                    }
             ) {
-            BottomBarDestination.entries
-                .forEach { destination ->
-                    if (!fullFeatured && destination.rootRequired) return@forEach
-                    val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
-                    
+                // Animated sliding indicator
+                if (totalWidth > 0 && visibleDestinations.isNotEmpty()) {
+                    val itemWidth = totalWidth / visibleDestinations.size
                     Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
+                            .fillMaxHeight()
+                            .padding(vertical = 8.dp)
+                            .offset {
+                                androidx.compose.ui.unit.IntOffset(
+                                    x = (itemWidth * animatedSelectedIndex).toInt(),
+                                    y = 0
+                                )
+                            }
+                            .width(with(LocalDensity.current) { itemWidth.toDp() }),
                         contentAlignment = androidx.compose.ui.Alignment.Center
                     ) {
-                        androidx.compose.material3.Surface(
-                            onClick = {
-                                if (isCurrentDestOnBackStack) {
-                                    navigator.popBackStack(destination.direction, false)
-                                }
-                                navigator.navigate(destination.direction) {
-                                    popUpTo(NavGraphs.root) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            modifier = Modifier.size(64.dp),
-                            shape = MaterialTheme.shapes.large,
-                            color = if (isCurrentDestOnBackStack) {
-                                MaterialTheme.colorScheme.secondaryContainer
-                            } else {
-                                androidx.compose.ui.graphics.Color.Transparent
-                            }
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = MaterialTheme.shapes.large
+                                )
+                        )
+                    }
+                }
+                
+                // Navigation items
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    visibleDestinations.forEach { destination ->
+                        val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
+                        
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = androidx.compose.ui.Alignment.Center
+                            androidx.compose.material3.Surface(
+                                onClick = {
+                                    if (isCurrentDestOnBackStack) {
+                                        navigator.popBackStack(destination.direction, false)
+                                    }
+                                    navigator.navigate(destination.direction) {
+                                        popUpTo(NavGraphs.root) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                modifier = Modifier.size(64.dp),
+                                shape = MaterialTheme.shapes.large,
+                                color = androidx.compose.ui.graphics.Color.Transparent
                             ) {
-                                if (isCurrentDestOnBackStack) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = androidx.compose.ui.Alignment.Center
+                                ) {
                                     Icon(
-                                        destination.iconSelected,
+                                        if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
                                         stringResource(destination.label),
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                } else {
-                                    Icon(
-                                        destination.iconNotSelected,
-                                        stringResource(destination.label)
+                                        tint = if (isCurrentDestOnBackStack) {
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
                                     )
                                 }
                             }
