@@ -62,6 +62,7 @@ data class ModuleRepo(
     val description: String,
     val author: String,
     val repoUrl: String,
+    val visibility: Int = 1,
     val latestVersion: String = "",
     val downloadUrl: String = "",
     val isLoading: Boolean = true
@@ -156,7 +157,8 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
                         name = obj.optString("name"),
                         description = obj.optString("description"),
                         author = obj.optString("author"),
-                        repoUrl = obj.optString("repoUrl")
+                        repoUrl = obj.optString("repoUrl"),
+                        visibility = obj.optInt("visibility", 1)
                     )
                 }
                 out
@@ -180,12 +182,15 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
                 return
             }
 
+            // Filter out modules with visibility = 0
+            val visibleModules = baseList.filter { it.visibility == 1 }
+
             moduleState = ModuleRepoState.Success(
-                baseList.map { it.copy(latestVersion = "", downloadUrl = "", isLoading = true) }
+                visibleModules.map { it.copy(latestVersion = "", downloadUrl = "", isLoading = true) }
             )
 
             kotlinx.coroutines.coroutineScope {
-                baseList.forEach { baseModule ->
+                visibleModules.forEach { baseModule ->
                     launch {
                         try {
                             val releaseInfo = withContext(Dispatchers.IO) { fetchLatestReleaseInfo(baseModule.repoUrl) }
