@@ -49,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dergoogler.mmrl.ui.component.LabelItem
 import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
+import com.rifsxd.ksunext.ui.component.SearchAppBar
 import org.json.JSONArray
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -121,6 +122,7 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
     }
     var showEditDialog by remember { mutableStateOf(false) }
     var editedUrl by remember { mutableStateOf(modulesJsonUrl) }
+    var searchText by remember { mutableStateOf("") }
 
     var moduleState by remember { mutableStateOf<ModuleRepoState>(ModuleRepoState.Loading) }
     var selectedModule by remember { mutableStateOf<ModuleRepo?>(null) }
@@ -287,20 +289,50 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
 
     Scaffold(
         topBar = {
-            TopBar(
-                onBack = dropUnlessResumed { navigator.popBackStack() },
-                onRefresh = {
-                    scope.launch {
-                        moduleState = ModuleRepoState.Loading
-                        loadModules()
+            SearchAppBar(
+                title = {
+                    Text(
+                        text = stringResource(R.string.module_repo_screen),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                    )
+                },
+                searchText = searchText,
+                onSearchTextChange = { searchText = it },
+                onClearClick = { searchText = "" },
+                onBackClick = dropUnlessResumed { navigator.popBackStack() },
+                actionsContent = {
+                    IconButton(
+                        onClick = {
+                            editedUrl = modulesJsonUrl
+                            showEditDialog = true
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = "Edit JSON URL"
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            navigator.navigate(MetaModuleScreenDestination)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.SettingsSuggest,
+                            contentDescription = stringResource(id = R.string.module_repo_screen)
+                        )
                     }
                 },
-                onMetaModuleClick = {
-                    navigator.navigate(MetaModuleScreenDestination)
-                },
-                onEditUrl = {
-                    editedUrl = modulesJsonUrl
-                    showEditDialog = true
+                dropdownContent = {
+                    IconButton(onClick = {
+                        scope.launch {
+                            moduleState = ModuleRepoState.Loading
+                            loadModules()
+                        }
+                    }) {
+                        Icon(Icons.Default.Sync, contentDescription = "Refresh")
+                    }
                 },
                 scrollBehavior = scrollBehavior
             )
@@ -322,6 +354,21 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
             is ModuleRepoState.Success -> {
                 val installedIds = moduleViewModel.moduleList.map { it.id }
                 
+                // Filter modules based on search text
+                val filteredModules = if (searchText.isBlank()) {
+                    state.modules
+                } else {
+                    state.modules.filter { module ->
+                        module.name.contains(searchText, ignoreCase = true) ||
+                        module.description.contains(searchText, ignoreCase = true) ||
+                        module.author.contains(searchText, ignoreCase = true) ||
+                        module.id.contains(searchText, ignoreCase = true)
+                    }
+                }
+                
+                // Sort modules alphabetically by name (A to Z)
+                val sortedModules = filteredModules.sortedBy { it.name.lowercase() }
+                
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -338,7 +385,7 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp + 16.dp + navBarPadding),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(state.modules) { module ->
+                    items(sortedModules) { module ->
                         val isInstalled = installedIds.contains(module.id)
                         val isThisModuleDownloading = downloadingModuleId == module.id
                         

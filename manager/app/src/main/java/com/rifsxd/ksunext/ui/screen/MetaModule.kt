@@ -228,6 +228,9 @@ fun MetaModuleScreen(navigator: DestinationsNavigator) {
                 
                 val hasInstalledMetaModule = state.modules.any { installedIds.contains(it.id) }
                 
+                // Sort modules alphabetically by name (A to Z)
+                val sortedModules = state.modules.sortedBy { it.name.lowercase() }
+                
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -244,7 +247,7 @@ fun MetaModuleScreen(navigator: DestinationsNavigator) {
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp + 16.dp + navBarPadding),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(state.modules) { module ->
+                    items(sortedModules) { module ->
                         val isInstalled = installedIds.contains(module.id)
                         val isThisModuleDownloading = downloadingModuleId == module.id
                         
