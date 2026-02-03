@@ -1,6 +1,7 @@
 package com.rifsxd.ksunext.ui.screen
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,6 +72,23 @@ sealed class ModuleRepoState {
     data class Error(val message: String) : ModuleRepoState()
 }
 
+// SharedPreferences helper functions
+private const val PREFS_NAME = "module_repo_prefs"
+private const val KEY_JSON_URL = "json_url"
+private const val DEFAULT_JSON_URL = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/modules.json"
+
+private fun getModuleRepoPrefs(context: Context): SharedPreferences {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+}
+
+private fun saveJsonUrl(context: Context, url: String) {
+    getModuleRepoPrefs(context).edit().putString(KEY_JSON_URL, url).apply()
+}
+
+private fun loadJsonUrl(context: Context): String {
+    return getModuleRepoPrefs(context).getString(KEY_JSON_URL, DEFAULT_JSON_URL) ?: DEFAULT_JSON_URL
+}
+
 /**
  * @author rifsxd
  * @date 2026/1/29.
@@ -96,7 +115,12 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
-    val modulesJsonUrl = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/refs/heads/main/modules.json"
+    
+    var modulesJsonUrl by remember { 
+        mutableStateOf(loadJsonUrl(context)) 
+    }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var editedUrl by remember { mutableStateOf(modulesJsonUrl) }
 
     var moduleState by remember { mutableStateOf<ModuleRepoState>(ModuleRepoState.Loading) }
     var selectedModule by remember { mutableStateOf<ModuleRepo?>(null) }
@@ -194,10 +218,71 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(modulesJsonUrl) {
         scope.launch {
             loadModules()
         }
+    }
+
+    // Edit URL Dialog
+    if (showEditDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showEditDialog = false
+                editedUrl = modulesJsonUrl
+            },
+            title = { Text("Edit JSON URL") },
+            text = {
+                Column {
+                    Text(
+                        text = "Enter the module repository JSON URL:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = editedUrl,
+                        onValueChange = { editedUrl = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        maxLines = 3,
+                        placeholder = { Text("https://...") }
+                    )
+                    
+                    // Reset to default button
+                    TextButton(
+                        onClick = { 
+                            editedUrl = DEFAULT_JSON_URL
+                        },
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Text("Reset to Default")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (editedUrl.isNotBlank()) {
+                            modulesJsonUrl = editedUrl
+                            saveJsonUrl(context, editedUrl)
+                            showEditDialog = false
+                        }
+                    }
+                ) {
+                    Text("Apply")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showEditDialog = false
+                        editedUrl = modulesJsonUrl
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -212,6 +297,10 @@ fun ModuleRepoScreen(navigator: DestinationsNavigator) {
                 },
                 onMetaModuleClick = {
                     navigator.navigate(MetaModuleScreenDestination)
+                },
+                onEditUrl = {
+                    editedUrl = modulesJsonUrl
+                    showEditDialog = true
                 },
                 scrollBehavior = scrollBehavior
             )
@@ -433,6 +522,7 @@ private fun TopBar(
     onBack: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onMetaModuleClick: () -> Unit = {},
+    onEditUrl: () -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     TopAppBar(
@@ -449,6 +539,14 @@ private fun TopBar(
             }
         },
         actions = {
+            IconButton(
+                onClick = onEditUrl
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Edit JSON URL"
+                )
+            }
             IconButton(
                 onClick = onMetaModuleClick
             ) {
