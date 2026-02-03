@@ -76,13 +76,15 @@ fun SettingScreen(navigator: DestinationsNavigator) {
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
 
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
+
     Scaffold(
         topBar = {
             TopBar(
                 scrollBehavior = scrollBehavior
             )
         },
-        snackbarHost = { SnackbarHost(snackBarHost) },
+        snackbarHost = { SnackbarHost(snackBarHost, modifier = Modifier.padding(bottom = navBarPadding)) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { paddingValues ->
         // Bottom bar scroll tracking

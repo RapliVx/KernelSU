@@ -87,6 +87,8 @@ fun AppProfileScreen(
         mutableStateOf(initialProfile)
     }
 
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
+
     Scaffold(
         topBar = {
             TopBar(
@@ -94,7 +96,7 @@ fun AppProfileScreen(
                 scrollBehavior = scrollBehavior
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackBarHost) },
+        snackbarHost = { SnackbarHost(snackBarHost, modifier = Modifier.padding(bottom = navBarPadding)) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { paddingValues ->
         AppProfileInner(

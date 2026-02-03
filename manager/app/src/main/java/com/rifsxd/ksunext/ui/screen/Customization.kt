@@ -23,6 +23,7 @@ import com.rifsxd.ksunext.ui.rememberScrollConnection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.compose.dropUnlessResumed
 import com.rifsxd.ksunext.ui.MainActivity
@@ -68,6 +69,8 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
 
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
+
     Scaffold(
         topBar = {
             TopBar(
@@ -77,7 +80,7 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                 scrollBehavior = scrollBehavior
             )
         },
-        snackbarHost = { SnackbarHost(snackBarHost) },
+        snackbarHost = { SnackbarHost(snackBarHost, modifier = Modifier.padding(bottom = navBarPadding)) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { paddingValues ->
     

@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.dropUnlessResumed
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
@@ -48,6 +49,8 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
 
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
+    
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
 
     Scaffold(
         topBar = {
@@ -58,7 +61,7 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
                 scrollBehavior = scrollBehavior
             )
         },
-        snackbarHost = { SnackbarHost(snackBarHost) },
+        snackbarHost = { SnackbarHost(snackBarHost, modifier = Modifier.padding(bottom = navBarPadding)) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { paddingValues ->
         val loadingDialog = rememberLoadingDialog()

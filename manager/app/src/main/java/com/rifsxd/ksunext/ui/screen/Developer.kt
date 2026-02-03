@@ -14,6 +14,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.rifsxd.ksunext.ui.LocalScrollState
 import com.rifsxd.ksunext.ui.rememberScrollConnection
 import androidx.compose.ui.res.stringResource
@@ -55,6 +56,8 @@ fun DeveloperScreen(navigator: DestinationsNavigator) {
     val isManager = Natives.isManager
     val ksuVersion = if (isManager) Natives.version else null
 
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 112.dp
+
     Scaffold(
         topBar = {
             TopBar(
@@ -62,7 +65,7 @@ fun DeveloperScreen(navigator: DestinationsNavigator) {
                 scrollBehavior = scrollBehavior
             )
         },
-        snackbarHost = { SnackbarHost(snackBarHost) },
+        snackbarHost = { SnackbarHost(snackBarHost, modifier = Modifier.padding(bottom = navBarPadding)) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { paddingValues ->
 
