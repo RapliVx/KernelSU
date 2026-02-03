@@ -19,11 +19,13 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -441,7 +443,7 @@ private fun BottomBar(navController: NavHostController) {
                     .asPaddingValues()
                     .calculateBottomPadding()
             ),
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = MaterialTheme.shapes.large,
         tonalElevation = 3.dp,
         shadowElevation = 8.dp
     ) {
@@ -507,37 +509,33 @@ private fun BottomBar(navController: NavHostController) {
                                 .fillMaxHeight(),
                             contentAlignment = androidx.compose.ui.Alignment.Center
                         ) {
-                            androidx.compose.material3.Surface(
-                                onClick = {
-                                    if (isCurrentDestOnBackStack) {
-                                        navigator.popBackStack(destination.direction, false)
-                                    }
-                                    navigator.navigate(destination.direction) {
-                                        popUpTo(NavGraphs.root) {
-                                            saveState = true
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(MaterialTheme.shapes.large)
+                                    .clickable {
+                                        if (isCurrentDestOnBackStack) {
+                                            navigator.popBackStack(destination.direction, false)
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                modifier = Modifier.size(64.dp),
-                                shape = MaterialTheme.shapes.large,
-                                color = androidx.compose.ui.graphics.Color.Transparent
+                                        navigator.navigate(destination.direction) {
+                                            popUpTo(NavGraphs.root) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                contentAlignment = androidx.compose.ui.Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = androidx.compose.ui.Alignment.Center
-                                ) {
-                                    Icon(
-                                        if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
-                                        stringResource(destination.label),
-                                        tint = if (isCurrentDestOnBackStack) {
-                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        }
-                                    )
-                                }
+                                Icon(
+                                    if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
+                                    stringResource(destination.label),
+                                    tint = if (isCurrentDestOnBackStack) {
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
                             }
                         }
                     }
