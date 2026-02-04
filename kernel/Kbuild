@@ -88,5 +88,6 @@ else
 $(info -- You have not integrated susfs in your kernel yet.)
 $(info -- Read: https://gitlab.com/simonpunk/susfs4ksu)
 endif
+endif
 
 # Keep a new line here!! Because someone may append config
