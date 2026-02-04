@@ -88,10 +88,5 @@ else
 $(info -- You have not integrated susfs in your kernel yet.)
 $(info -- Read: https://gitlab.com/simonpunk/susfs4ksu)
 endif
-else
-ifneq ($(strip $(CONFIG_KPROBES)),y)
-$(error KSU requires Kprobes; enable it (defconfig))
-endif
-endif
 
 # Keep a new line here!! Because someone may append config
