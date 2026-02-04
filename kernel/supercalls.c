@@ -808,112 +808,84 @@ static inline void ksu_copy_reply_user(unsigned long user_ptr, unsigned long rep
 // https://wiki.c2.com/?ThreeStarProgrammer
 static int ksu_handle_change_spoof_uname(unsigned long arg4)
 {
-	// only root is allowed for this command
-	if (!ksu_require_root())
-		return 0;
+    // only root is allowed for this command
+    if (!ksu_require_root())
+        return 0;
 
-	char release_buf[65];
-	char version_buf[65];
-	static char original_release_buf[65] = {0};
-	static char original_version_buf[65] = {0};
+    char release_buf[65];
+    char version_buf[65];
+    static char original_release_buf[65] = {0};
+    static char original_version_buf[65] = {0};
 
-	// basically void * void __user * void __user *arg
-	// arg4 is a user ptr. to a user ptr. (**)
-	// no deref. from userspace; pull next ptr. via copy_from_user
-	void __user **u_ppptr = (void __user **)arg4;
+    // basically void * void __user * void __user *arg
+    // arg4 is a user ptr. to a user ptr. (**)
+    // no deref. from userspace; pull next ptr. via copy_from_user
+    void __user **u_ppptr = (void __user **)arg4;
 
-	// user pointer storage
-	// init this as zero so this works on 32-on-64 compat (LE)
-	uint64_t u_pptr = 0;
-	uint64_t u_ptr = 0;
+    // user pointer storage
+    // init this as zero so this works on 32-on-64 compat (LE)
+    uint64_t u_pptr = 0;
+    uint64_t u_ptr = 0;
 
-	unsigned long reply = arg4;
+    unsigned long reply = arg4;
 
-	pr_info("sys_reboot: u_ppptr: 0x%lx\n", (uintptr_t)u_ppptr);
+    pr_info("sys_reboot: u_ppptr: 0x%lx\n", (uintptr_t)u_ppptr);
 
-	// arg here is ***, pull out user-space ** via copy_from_user (safe)
-	if (copy_from_user(&u_pptr, u_ppptr, sizeof(u_pptr)))
-		return 0;
+    // arg here is ***, pull out user-space ** via copy_from_user (safe)
+    if (copy_from_user(&u_pptr, u_ppptr, sizeof(u_pptr)))
+        return 0;
 
-	pr_info("sys_reboot: u_pptr: 0x%lx\n", (uintptr_t)u_pptr);
+    pr_info("sys_reboot: u_pptr: 0x%lx\n", (uintptr_t)u_pptr);
 
-	// now we got the __user **
-	// we cannot dereference this as this is __user
-	// we just do another copy_from_user to get it
-	// pull out user-space * (safe)
-	if (copy_from_user(&u_ptr, (void __user *)u_pptr, sizeof(u_ptr)))
-		return 0;
+    // now we got the __user **
+    // we cannot dereference this as this is __user
+    // we just do another copy_from_user to get it
+    // pull out user-space * (safe)
+    if (copy_from_user(&u_ptr, (void __user *)u_pptr, sizeof(u_ptr)))
+        return 0;
 
-	pr_info("sys_reboot: u_ptr: 0x%lx\n", (uintptr_t)u_ptr);
+    pr_info("sys_reboot: u_ptr: 0x%lx\n", (uintptr_t)u_ptr);
 
-	// for release
-	if (strncpy_from_user(release_buf, (char __user *)u_ptr, sizeof(release_buf)) < 0)
-		return 0;
-	release_buf[sizeof(release_buf) - 1] = '\0';
+    // for release
+    if (strncpy_from_user(release_buf, (char __user *)u_ptr, sizeof(release_buf)) < 0)
+        return 0;
+    release_buf[sizeof(release_buf) - 1] = '\0';
 
-	// for version
-	if (strncpy_from_user(version_buf,
-				(char __user *)(u_ptr + strlen(release_buf) + 1),
-				sizeof(version_buf)) < 0)
-		return 0;
-	version_buf[sizeof(version_buf) - 1] = '\0';
+    // for version
+    if (strncpy_from_user(version_buf,
+                (char __user *)(u_ptr + strlen(release_buf) + 1),
+                sizeof(version_buf)) < 0)
+        return 0;
+    version_buf[sizeof(version_buf) - 1] = '\0';
 
-	if (original_release_buf[0] == '\0') {
-		struct new_utsname *u_curr = utsname();
-		// we save current version as the original before modifying
-		strncpy(original_release_buf, u_curr->release, sizeof(original_release_buf));
-		strncpy(original_version_buf, u_curr->version, sizeof(original_version_buf));
-		pr_info("sys_reboot: original uname saved: %s %s\n",
-			original_release_buf, original_version_buf);
-	}
-
-	// so user can reset
-	if (!strcmp(release_buf, "default") || !strcmp(version_buf, "default")) {
-		memcpy(release_buf, original_release_buf, sizeof(release_buf));
-		memcpy(version_buf, original_version_buf, sizeof(version_buf));
-	}
-
-	pr_info("sys_reboot: spoofing kernel to: %s - %s\n",
-		release_buf, version_buf);
-
-#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME 
-    // If linker finds them -> Great. If not -> They become NULL (no error).
-    extern bool __attribute__((weak)) susfs_uname_is_active(void);
-    extern int __attribute__((weak)) susfs_set_uname_from_kernel(const char *release, const char *version);
-    bool handled_by_susfs = false;
-    // Check if symbols exist (Not NULL)
-    if (susfs_uname_is_active && susfs_set_uname_from_kernel) {
-        if (susfs_uname_is_active()) {
-            // SuSFS spoof on; return success
-            handled_by_susfs = true;
-        } else {
-            // SuSFS spoof off; try setting it
-            int ret = susfs_set_uname_from_kernel(release_buf, version_buf);
-            if (ret < 0)
-                reply = (unsigned long)ret;
-            handled_by_susfs = true;
-        }
+    if (original_release_buf[0] == '\0') {
+        struct new_utsname *u_curr = utsname();
+        // we save current version as the original before modifying
+        strncpy(original_release_buf, u_curr->release, sizeof(original_release_buf));
+        strncpy(original_version_buf, u_curr->version, sizeof(original_version_buf));
+        pr_info("sys_reboot: original uname saved: %s %s\n",
+            original_release_buf, original_version_buf);
     }
-    // Fallback: If SUSFS missing or failed, use Standard KSU method
-    if (!handled_by_susfs) {
-        struct new_utsname *u = utsname();
-        down_write(&uts_sem);
-        strncpy(u->release, release_buf, sizeof(u->release));
-        strncpy(u->version, version_buf, sizeof(u->version));
-        up_write(&uts_sem);
+
+    // so user can reset
+    if (!strcmp(release_buf, "default") || !strcmp(version_buf, "default")) {
+        memcpy(release_buf, original_release_buf, sizeof(release_buf));
+        memcpy(version_buf, original_version_buf, sizeof(version_buf));
     }
-#else
+
+    pr_info("sys_reboot: spoofing kernel to: %s - %s\n",
+        release_buf, version_buf);
+    
     struct new_utsname *u = utsname();
-	
+
     down_write(&uts_sem);
     strncpy(u->release, release_buf, sizeof(u->release));
     strncpy(u->version, version_buf, sizeof(u->version));
     up_write(&uts_sem);
-#endif
 
-	// we write our confirmation on **
-	ksu_copy_reply_user(arg4, reply);
-	return 0;
+    // we write our confirmation on **
+    ksu_copy_reply_user(arg4, reply);
+    return 0;
 }
 
 #ifndef CONFIG_KSU_SUSFS
