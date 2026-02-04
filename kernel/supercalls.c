@@ -876,27 +876,39 @@ static int ksu_handle_change_spoof_uname(unsigned long arg4)
 	pr_info("sys_reboot: spoofing kernel to: %s - %s\n",
 		release_buf, version_buf);
 
-#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-	int ret = 0;
-	extern bool susfs_uname_is_active(void);
-	extern int susfs_set_uname_from_kernel(const char *release, const char *version);
-
-	if (susfs_uname_is_active()) {
-	// SuSFS spoof on; return success (allows toolkit to change its config. (i.e. on-boot apply))
-	// no changes (original reply (arg4))
-	} else {
-	// SuSFS spoof off; toolkit updates spoof buffer via helper
-		ret = susfs_set_uname_from_kernel(release_buf, version_buf);
-		if (ret < 0)
-			reply = (unsigned long)ret; // fail-path
-	}
+#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME 
+    // If linker finds them -> Great. If not -> They become NULL (no error).
+    extern bool __attribute__((weak)) susfs_uname_is_active(void);
+    extern int __attribute__((weak)) susfs_set_uname_from_kernel(const char *release, const char *version);
+    bool handled_by_susfs = false;
+    // Check if symbols exist (Not NULL)
+    if (susfs_uname_is_active && susfs_set_uname_from_kernel) {
+        if (susfs_uname_is_active()) {
+            // SuSFS spoof on; return success
+            handled_by_susfs = true;
+        } else {
+            // SuSFS spoof off; try setting it
+            int ret = susfs_set_uname_from_kernel(release_buf, version_buf);
+            if (ret < 0)
+                reply = (unsigned long)ret;
+            handled_by_susfs = true;
+        }
+    }
+    // Fallback: If SUSFS missing or failed, use Standard KSU method
+    if (!handled_by_susfs) {
+        struct new_utsname *u = utsname();
+        down_write(&uts_sem);
+        strncpy(u->release, release_buf, sizeof(u->release));
+        strncpy(u->version, version_buf, sizeof(u->version));
+        up_write(&uts_sem);
+    }
 #else
-	struct new_utsname *u = utsname();
-
-	down_write(&uts_sem);
-	strncpy(u->release, release_buf, sizeof(u->release));
-	strncpy(u->version, version_buf, sizeof(u->version));
-	up_write(&uts_sem);
+    struct new_utsname *u = utsname();
+	
+    down_write(&uts_sem);
+    strncpy(u->release, release_buf, sizeof(u->release));
+    strncpy(u->version, version_buf, sizeof(u->version));
+    up_write(&uts_sem);
 #endif
 
 	// we write our confirmation on **
