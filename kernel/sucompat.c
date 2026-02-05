@@ -2,6 +2,7 @@
 #include <linux/preempt.h>
 #include <linux/printk.h>
 #include <linux/mm.h>
+#include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
 #include <linux/pgtable.h>
 #else
@@ -12,7 +13,6 @@
 #include <linux/cred.h>
 #include <linux/fs.h>
 #include <linux/types.h>
-#include <linux/version.h>
 #include <linux/sched/task_stack.h>
 #include <linux/ptrace.h>
 #ifdef CONFIG_KSU_SUSFS
@@ -21,6 +21,15 @@
 #include "selinux/selinux.h"
 #include "objsec.h"
 #endif // #ifdef CONFIG_KSU_SUSFS
+
+/* Backport selinux_inode function for Kernels < 5.0
+* In kernel 4.14, we take it directly from inode->i_security
+*/
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
+#ifndef selinux_inode
+#define selinux_inode(inode) ((struct inode_security_struct *)(inode)->i_security)
+#endif
+#endif
 
 #include "allowlist.h"
 #include "feature.h"
