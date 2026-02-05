@@ -21,12 +21,7 @@ struct watch_dir {
 
 static struct fsnotify_group *g;
 
-/* --- BAGIAN 1: LOGIKA PEMILIHAN VERSI KERNEL --- */
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
-/* ==============================================
- * FOR GLE KERNEL 5.9+ (GKI)
- * ============================================== */
 
 static int ksu_handle_inode_event(struct fsnotify_mark *mark, u32 mask,
                                   struct inode *inode, struct inode *dir,
@@ -37,7 +32,6 @@ static int ksu_handle_inode_event(struct fsnotify_mark *mark, u32 mask,
     if (mask & FS_ISDIR)
         return 0;
         
-    // Cek packages.list menggunakan struct qstr
     if (file_name->len == 13 &&
         !memcmp(file_name->name, "packages.list", 13)) {
         pr_info("packages.list detected: %d\n", mask);
@@ -51,9 +45,6 @@ static const struct fsnotify_ops ksu_ops = {
 };
 
 #else
-/* ==============================================
- * FOR NON-GKI KERNEL < 5.9
- * ============================================== */
 
 static int ksu_handle_event(struct fsnotify_group *group,
                             struct inode *inode,
@@ -68,7 +59,6 @@ static int ksu_handle_event(struct fsnotify_group *group,
     if (mask & FS_ISDIR)
         return 0;
 
-    // Cek packages.list menggunakan raw char* (strlen manual)
     if (strlen(file_name) == 13 &&
         !memcmp(file_name, "packages.list", 13)) {
         pr_info("packages.list detected: %d\n", mask);
@@ -81,15 +71,18 @@ static const struct fsnotify_ops ksu_ops = {
     .handle_event = ksu_handle_event,
 };
 
-/* Wrapper: fsnotify_add_inode_mark tidak ada di 4.14, kita buat manual */
+/* Wrapper fsnotify_add_inode_mark
+* Adjusted for error log: expected 4 arguments.
+* Removed the 'group' argument since it's already inside 'mark'.
+*/
 static inline int fsnotify_add_inode_mark(struct fsnotify_mark *mark,
                                           struct inode *inode, int allow_dups)
 {
-    return fsnotify_add_mark(mark, mark->group, inode, NULL, allow_dups);
+    /* Signature: mark, inode, mnt (NULL), allow_dups */
+    return fsnotify_add_mark(mark, inode, NULL, allow_dups);
 }
 
 #endif
-/* --- AKHIR LOGIKA VERSI --- */
 
 
 static int add_mark_on_inode(struct inode *inode, u32 mask,
