@@ -18,6 +18,12 @@
 #include <linux/workqueue.h>
 #include <linux/uio.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
+#ifndef TWA_RESUME
+#define TWA_RESUME true
+#endif
+#endif
+
 #include "manager.h"
 #include "allowlist.h"
 #include "arch.h"

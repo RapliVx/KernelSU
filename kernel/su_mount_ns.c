@@ -15,6 +15,12 @@
 #include <linux/version.h>
 #include <uapi/linux/mount.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
+#ifndef TWA_RESUME
+#define TWA_RESUME true
+#endif
+#endif
+
 #include "arch.h"
 #include "klog.h" // IWYU pragma: keep
 #include "ksu.h"

@@ -9,6 +9,14 @@
 #include <linux/path.h>
 #include <linux/printk.h>
 #include <linux/types.h>
+#include <linux/version.h>
+
+// Adapt TWA RESUME From Rissu (RKSU)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
+#ifndef TWA_RESUME
+#define TWA_RESUME true
+#endif
+#endif
 
 #include "kernel_umount.h"
 #include "klog.h" // IWYU pragma: keep
