@@ -16,7 +16,7 @@
 #define EXPECTED_HASH_RSUNTK                                                   \
     "f415f4ed9435427e1fdf7f1fccd4dbc07b3d6b8751e4dbcec6f19671f427870b"
 
-// KOWX712/KernelSU (Ditambahkan agar tidak error di apk_sign.c)
+// KOWX712/KernelSU 
 #define EXPECTED_SIZE_KOWX712 0x375
 #define EXPECTED_HASH_KOWX712                                                   \
     "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588"
@@ -36,17 +36,17 @@
 #define EXPECTED_HASH_RESUKISU                                                 \
     "d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64"
 
-// RapliVx/KernelSU (MamboSU) (Ditambahkan agar support MamboSU)
+// RapliVx/KernelSU (MamboSU) 
 #define EXPECTED_SIZE_MAMBO 0x384
 #define EXPECTED_HASH_MAMBO                                                    \
     "a9462b8b98ea1ca7901b0cbdcebfaa35f0aa95e51b01d66e6b6d2c81b97746d8"
 
-// KernelSU-Next/KernelSU-Next (Ditambahkan agar support Next)
+// KernelSU-Next/KernelSU-Next 
 #define EXPECTED_SIZE_NEXT 0x3e6
 #define EXPECTED_HASH_NEXT                                                     \
     "79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7"
     
-// KernelSU-WILD/KernelSU-WILD (Ditambahkan agar support WILD)
+// KernelSU-WILD/KernelSU-WILD
 #define EXPECTED_SIZE_WILD 0x381
 #define EXPECTED_HASH_WILD                                                     \
     "52d52d8c8bfbe53dc2b6ff1c613184e2c03013e090fe8905d8e3d5dc2658c2e4"
