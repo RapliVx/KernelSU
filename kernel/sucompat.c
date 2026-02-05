@@ -334,29 +334,3 @@ void ksu_sucompat_exit()
 {
 	ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT);
 }
-
-static int ksu_handle_fstat_common_ret(unsigned long fd, void *statbuf, bool is_stat64)
-{
-	
-	if (!statbuf)
-		return 0;
-    
-	if (!is_su_allowed())
-		return 0;
-    
-	return 0;
-}
-
-int ksu_handle_newfstat_ret(unsigned int *fd, struct stat __user **statbuf)
-{
-	if (!fd || !statbuf) return 0;
-	return ksu_handle_fstat_common_ret(*fd, *statbuf, false);
-}
-
-#ifdef CONFIG_COMPAT
-int ksu_handle_fstat64_ret(unsigned long *fd, struct stat64 __user **statbuf)
-{
-	if (!fd || !statbuf) return 0;
-	return ksu_handle_fstat_common_ret(*fd, *statbuf, true);
-}
-#endif
