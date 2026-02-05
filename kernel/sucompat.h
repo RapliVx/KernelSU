@@ -1,6 +1,7 @@
 #ifndef __KSU_H_SUCOMPAT
 #define __KSU_H_SUCOMPAT
 #include <linux/types.h>
+#include <uapi/asm-generic/stat.h>
 
 extern bool ksu_su_compat_enabled;
 
@@ -18,5 +19,10 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags);
 int ksu_handle_execve_sucompat(const char __user **filename_user,
                                void *__never_use_argv, void *__never_use_envp,
                                int *__never_use_flags);
+
+int ksu_handle_newfstat_ret(unsigned int *fd, struct stat __user **statbuf);
+#ifdef CONFIG_COMPAT
+int ksu_handle_fstat64_ret(unsigned long *fd, struct stat64 __user **statbuf);
+#endif
 
 #endif

@@ -22,6 +22,14 @@
 #include "ksu.h"
 #include "file_wrapper.h"
 
+#ifdef CONFIG_KSU_TAMPER_SYSCALL_TABLE
+#ifdef CONFIG_ARM64
+#include "syscall_table_hook.c"
+#elif defined(CONFIG_ARM)
+#include "syscall_table_hook_arm.c"
+#endif
+#endif // #ifdef CONFIG_KSU_TAMPER_SYSCALL_TABLE
+
 struct cred *ksu_cred;
 
 int __init kernelsu_init(void)
@@ -44,6 +52,10 @@ int __init kernelsu_init(void)
 	ksu_feature_init();
 
 	ksu_supercalls_init();
+
+#ifdef CONFIG_KSU_TAMPER_SYSCALL_TABLE
+    ksu_syscall_table_hook_init();
+#endif // #ifdef CONFIG_KSU_TAMPER_SYSCALL_TABLE
 
 #ifndef CONFIG_KSU_SUSFS
 	ksu_syscall_hook_manager_init();
