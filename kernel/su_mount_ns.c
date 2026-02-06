@@ -26,23 +26,6 @@
 #endif
 #endif
 
-/* --- START BACKPORT FIX FOR KERNEL 4.14 --- */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 17, 0)
-
-/* 1. Wrapper untuk ksys_close -> sys_close */
-static inline long ksys_close(unsigned int fd)
-{
-    return sys_close(fd);
-}
-
-/* 2. Wrapper untuk ksys_unshare -> sys_unshare */
-static inline long ksys_unshare(unsigned long unshare_flags)
-{
-    return sys_unshare(unshare_flags);
-}
-
-#endif
-
 #include "arch.h"
 #include "klog.h" // IWYU pragma: keep
 #include "ksu.h"
