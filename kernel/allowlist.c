@@ -22,13 +22,6 @@
 #include <linux/compiler_types.h>
 #endif
 
-// Adapt TWA RESUME From Rissu (RKSU)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
-#ifndef TWA_RESUME
-#define TWA_RESUME true
-#endif
-#endif
-
 #include "klog.h" // IWYU pragma: keep
 #include "ksud.h"
 #include "selinux/selinux.h"
