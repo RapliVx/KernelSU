@@ -43,6 +43,11 @@
 #define EXPECTED_HASH_RESUKISU                                                 \
     "d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64"
 
+// KernelSU-WILD/KernelSU-WILD
+#define EXPECTED_SIZE_WILD 0x381
+#define EXPECTED_HASH_WILD                                                     \
+    "52d52d8c8bfbe53dc2b6ff1c613184e2c03013e090fe8905d8e3d5dc2658c2e4"
+
 // RapliVx/KernelSU (MamboSU)
 #define EXPECTED_SIZE_MAMBO 0x384
 #define EXPECTED_HASH_MAMBO \
