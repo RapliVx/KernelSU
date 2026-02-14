@@ -93,8 +93,8 @@ jobs:
         if: matrix.variant == 'spoofed'
         run: |
           word1="com"
-          word2=$(tr -dc 'a-z' < /dev/urandom | head -c 6) # 6 huruf acak
-          word3=$(tr -dc 'a-z' < /dev/urandom | head -c 7) # 7 huruf acak
+          word2=$(tr -dc 'a-z' < /dev/urandom 2>/dev/null | head -c 6) 
+          word3=$(tr -dc 'a-z' < /dev/urandom 2>/dev/null | head -c 7)
           
           echo "Spoofing Package to: $word1.$word2.$word3"
           
@@ -110,10 +110,9 @@ jobs:
               -e "s/me_weishu_kernelsu/${word1}_${word2}_${word3}/g" {} +
           
           if [ -f "./app/build.gradle.kts" ]; then
+             sed -i 's/outputFileName = "KernelSU_${managerVersionName}_${managerVersionCode}-\$name.apk"/outputFileName = "MamboSU_${managerVersionName}_${managerVersionCode}-\$name.apk"/' ./app/build.gradle.kts
              sed -i 's/\.apk"/-spoofed.apk"/' ./app/build.gradle.kts
           fi
-          
-          echo "Spoof applied successfully."
 
       - name: Setup need_upload
         id: need_upload
