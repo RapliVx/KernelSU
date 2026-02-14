@@ -74,6 +74,10 @@ jobs:
     defaults:
       run:
         working-directory: ./manager
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [original, spoofed]
 
     steps:
       - name: Checkout
@@ -81,8 +85,35 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Custom package name
+      - name: Using Original Package Name
+        if: matrix.variant == 'original'
         run: bash custom.sh
+
+      - name: Using Random Package Name
+        if: matrix.variant == 'spoofed'
+        run: |
+          word1="com"
+          word2=$(tr -dc 'a-z' < /dev/urandom | head -c 6) # 6 huruf acak
+          word3=$(tr -dc 'a-z' < /dev/urandom | head -c 7) # 7 huruf acak
+          
+          echo "Spoofing Package to: $word1.$word2.$word3"
+          
+          export word1 word2 word3
+
+          find . -depth -type d -name 'me' -execdir mv {} "$word1" \;
+          find . -depth -type d -name 'weishu' -execdir mv {} "$word2" \;
+          find . -depth -type d -name 'kernelsu' -execdir mv {} "$word3" \;
+
+          find . -type f -not -path '*/.git/*' -exec sed -i \
+              -e "s/me\.weishu\.kernelsu/$word1.$word2.$word3/g" \
+              -e "s/me\/weishu\/kernelsu/$word1\/$word2\/$word3/g" \
+              -e "s/me_weishu_kernelsu/${word1}_${word2}_${word3}/g" {} +
+          
+          if [ -f "./app/build.gradle.kts" ]; then
+             sed -i 's/\.apk"/-spoofed.apk"/' ./app/build.gradle.kts
+          fi
+          
+          echo "Spoof applied successfully."
 
       - name: Setup need_upload
         id: need_upload
@@ -152,14 +183,14 @@ jobs:
         uses: actions/upload-artifact@v5
         if: ${{ github.event_name != 'pull_request' || github.ref_type == 'tag' }}
         with:
-          name: manager
+          name: manager-${{ matrix.variant }}
           path: manager/app/build/outputs/apk/release/*.apk
 
       - name: Upload mappings
         uses: actions/upload-artifact@v5
         if: ${{ github.event_name != 'pull_request' || github.ref_type == 'tag' }}
         with:
-          name: "mappings"
+          name: mappings-${{ matrix.variant }}
           path: "manager/app/build/outputs/mapping/release/"
 
       - name: Bot session cache
@@ -178,7 +209,7 @@ jobs:
           MESSAGE_THREAD_ID: ${{ vars.MESSAGE_THREAD_ID }}
           GITHUB_EVENT: ${{ toJson(github.event) }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TITLE: Manager
+          TITLE: Manager (${{ matrix.variant }})
           BRANCH: ${{ github.ref_name }}
         run: |
           if [ ! -z "${{ secrets.BOT_TOKEN }}" ]; then
