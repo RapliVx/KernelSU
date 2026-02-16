@@ -257,7 +257,12 @@ private fun TopBar(
     val appNameId = if (isOfficialEnabled) R.string.app_name else R.string.app_name_mambo
 
     TopAppBar(
-        title = { Text(stringResource(appNameId)) },
+        title = {
+            Text(
+                text = stringResource(appNameId),
+                fontWeight = FontWeight.Bold
+            )
+        },
         actions = { RebootListPopup() },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         scrollBehavior = scrollBehavior

@@ -179,7 +179,12 @@ fun ModuleRepoScreen(
     Scaffold(
         topBar = {
             SearchAppBar(
-                title = { Text(text = stringResource(R.string.module_repos)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.module_repos),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 onBackClick = { navigator.popBackStack() },
                 searchText = viewModel.search,
                 onSearchTextChange = { viewModel.search = it },

@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.annotation.RootGraph
 import kotlinx.coroutines.Dispatchers
@@ -90,7 +91,12 @@ fun QuickShellScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("QuickShell") },
+                title = {
+                    Text(
+                        text = "QuickShell",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 actions = {
                     IconButton(onClick = { logs.clear() }) {
                         Icon(Icons.Outlined.Delete, contentDescription = null)
@@ -122,7 +128,7 @@ fun QuickShellScreen() {
                         singleLine = false,
                         minLines = 1,
                         maxLines = 6,
-                        placeholder = { Text("Input Command/Script…") },
+                        placeholder = { Text("Input Command") },
                         trailingIcon = {
                             IconButton(
                                 onClick = { runCommand() },

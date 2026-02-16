@@ -119,7 +119,12 @@ fun SuperUserScreen(
         ),
         topBar = {
             SearchAppBar(
-                title = { Text(stringResource(R.string.superuser)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.superuser),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 searchText = viewModel.search,
                 onSearchTextChange = { viewModel.search = it },
                 onClearClick = { viewModel.search = TextFieldValue("") },

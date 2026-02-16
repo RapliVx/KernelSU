@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -247,7 +248,10 @@ private fun TopBar(
 ) {
     TopAppBar(
         title = {
-            Text(stringResource(R.string.settings_profile_template))
+            Text(
+                text = stringResource(R.string.settings_profile_template),
+                fontWeight = FontWeight.Bold
+            )
         },
         navigationIcon = {
             IconButton(
