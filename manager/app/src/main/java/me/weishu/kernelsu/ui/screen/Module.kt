@@ -829,8 +829,10 @@ fun ModuleItem(
                         .align(Alignment.TopStart)
                         .padding(end = 64.dp)
                 ) {
-                    var titleFontSize by remember { mutableStateOf(MaterialTheme.typography.titleLarge.fontSize) }
-                    var titleLineHeight by remember { mutableStateOf(MaterialTheme.typography.titleLarge.lineHeight) }
+                    val defaultTitleSize = MaterialTheme.typography.titleLarge.fontSize
+                    val defaultLineHeight = MaterialTheme.typography.titleLarge.lineHeight
+                    var titleFontSize by remember { mutableStateOf(defaultTitleSize) }
+                    var titleLineHeight by remember { mutableStateOf(defaultLineHeight) }
 
                     Text(
                         text = module.name,
