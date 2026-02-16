@@ -829,49 +829,44 @@ fun ModuleItem(
                         .align(Alignment.TopStart)
                         .padding(end = 64.dp)
                 ) {
-
-                    // LOGIKA AUTO-RESIZE TITLE
-                    val initialTitleStyle = MaterialTheme.typography.titleLarge
-                    var titleStyle by remember { mutableStateOf(initialTitleStyle) }
-                    var readyToDraw by remember { mutableStateOf(false) }
+                    var titleFontSize by remember { mutableStateOf(MaterialTheme.typography.titleLarge.fontSize) }
+                    var titleLineHeight by remember { mutableStateOf(MaterialTheme.typography.titleLarge.lineHeight) }
 
                     Text(
                         text = module.name,
-                        style = titleStyle,
+                        color = cs.onSurface,
+                        fontSize = titleFontSize,
+                        lineHeight = titleLineHeight,
                         fontWeight = FontWeight.SemiBold,
                         textDecoration = textDecoration,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         onTextLayout = { textLayoutResult ->
-                            if (textLayoutResult.didOverflowHeight) {
-                                // Kecilkan font sebesar 90% jika overflow
-                                val newSize = titleStyle.fontSize * 0.9f
-                                if (newSize > 14.sp) {
-                                    titleStyle = titleStyle.copy(fontSize = newSize)
-                                } else {
-                                    readyToDraw = true
+                            if (textLayoutResult.hasVisualOverflow) {
+                                if (titleFontSize > 14.sp) {
+                                    titleFontSize *= 0.9f
+                                    titleLineHeight *= 0.9f
                                 }
-                            } else {
-                                readyToDraw = true
                             }
-                        },
-                        modifier = Modifier.drawWithContent {
-                            if (readyToDraw) drawContent()
                         }
                     )
+
+                    Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
                         text = "$moduleVersion: ${module.version}",
                         color = cs.onSurface.copy(alpha = 0.78f),
                         textDecoration = textDecoration,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                        fontWeight = FontWeight.Medium
                     )
 
                     Text(
                         text = "$moduleAuthor: ${module.author}",
                         color = cs.onSurface.copy(alpha = 0.78f),
                         textDecoration = textDecoration,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                        fontWeight = FontWeight.Medium
                     )
 
                     val descTop by animateDpAsState(
@@ -880,7 +875,7 @@ fun ModuleItem(
                     )
 
                     val descMaxLines by animateIntAsState(
-                        targetValue = if (expanded) 3 else 1,
+                        targetValue = if (expanded) 10 else 2,
                         label = "descMaxLines"
                     )
 
@@ -897,7 +892,8 @@ fun ModuleItem(
                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                         maxLines = descMaxLines,
                         overflow = TextOverflow.Ellipsis,
-                        textDecoration = textDecoration
+                        textDecoration = textDecoration,
+                        lineHeight = 16.sp
                     )
                 }
             }
