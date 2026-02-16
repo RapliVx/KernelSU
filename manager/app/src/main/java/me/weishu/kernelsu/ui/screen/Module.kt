@@ -829,8 +829,8 @@ fun ModuleItem(
                         .align(Alignment.TopStart)
                         .padding(end = 64.dp)
                 ) {
-                    val defaultTitleSize = MaterialTheme.typography.titleLarge.fontSize
-                    val defaultLineHeight = MaterialTheme.typography.titleLarge.lineHeight
+                    val defaultTitleSize = MaterialTheme.typography.titleMedium.fontSize
+                    val defaultLineHeight = MaterialTheme.typography.titleMedium.lineHeight
                     var titleFontSize by remember { mutableStateOf(defaultTitleSize) }
                     var titleLineHeight by remember { mutableStateOf(defaultLineHeight) }
 
@@ -845,7 +845,7 @@ fun ModuleItem(
                         overflow = TextOverflow.Ellipsis,
                         onTextLayout = { textLayoutResult ->
                             if (textLayoutResult.hasVisualOverflow) {
-                                if (titleFontSize > 14.sp) {
+                                if (titleFontSize > 12.sp) {
                                     titleFontSize *= 0.9f
                                     titleLineHeight *= 0.9f
                                 }
