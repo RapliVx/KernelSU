@@ -162,4 +162,8 @@
     <string name="allow_shell_summary">Izinkan akses shell standar</string>
     <string name="enable_adb">Aktifkan ADB</string>
     <string name="enable_adb_summary">Aktifkan debugging USB (ADB) setelah install</string>
+    <string name="module_repos">Module Repo</string>
+    <string name="module_repos_sort_update_first">Pembaruan terbaru</string>
+    <string name="module_repos_sort_name">Urutkan berdasarkan nama</string>
+    <string name="module_repos_source_code">Kode sumber</string>
 </resources>
