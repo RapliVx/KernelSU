@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +51,8 @@ import com.topjohnwu.superuser.Shell
 @Composable
 fun QuickShellScreen() {
     var cmd by rememberSaveable { mutableStateOf("") }
+    var isRunning by rememberSaveable { mutableStateOf(false) }
+
     val logs = remember { mutableStateListOf<String>() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -62,6 +65,7 @@ fun QuickShellScreen() {
         val script = cmd.trim()
         if (script.isEmpty()) return
 
+        isRunning = true
         append("[start] ---- TIME: ${System.currentTimeMillis()} ----")
 
         val stdoutCb = object : CallbackList<String>() {
@@ -80,8 +84,26 @@ fun QuickShellScreen() {
             .submit { result ->
                 scope.launch(Dispatchers.Main) {
                     append("[exit] code=${result.code}")
+                    isRunning = false
                 }
             }
+    }
+
+    fun cancelCommand() {
+        scope.launch(Dispatchers.IO) {
+            try {
+                Shell.getCachedShell()?.close()
+
+                launch(Dispatchers.Main) {
+                    append("!! [CANCELLED] Process terminated by user !!")
+                    isRunning = false
+                }
+            } catch (e: Exception) {
+                launch(Dispatchers.Main) {
+                    append("Error cancelling: ${e.message}")
+                }
+            }
+        }
     }
 
     LaunchedEffect(logs.size) {
@@ -98,8 +120,14 @@ fun QuickShellScreen() {
                     )
                 },
                 actions = {
+                    IconButton(
+                        onClick = { cancelCommand() },
+                        enabled = isRunning
+                    ) {
+                        Icon(Icons.Outlined.Close, contentDescription = "Stop Command")
+                    }
                     IconButton(onClick = { logs.clear() }) {
-                        Icon(Icons.Outlined.Delete, contentDescription = null)
+                        Icon(Icons.Outlined.Delete, contentDescription = "Clear Logs")
                     }
                 }
             )
@@ -132,9 +160,9 @@ fun QuickShellScreen() {
                         trailingIcon = {
                             IconButton(
                                 onClick = { runCommand() },
-                                enabled = cmd.isNotBlank()
+                                enabled = cmd.isNotBlank() && !isRunning
                             ) {
-                                Icon(Icons.Outlined.PlayArrow, contentDescription = null)
+                                Icon(Icons.Outlined.PlayArrow, contentDescription = "Run")
                             }
                         }
                     )
