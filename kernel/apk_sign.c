@@ -25,12 +25,12 @@ static const apk_sign_key_t apk_sign_keys[] = {
     { EXPECTED_SIZE_KOWX712,  EXPECTED_HASH_KOWX712 },
     { EXPECTED_SIZE_RSUNTK,   EXPECTED_HASH_RSUNTK },
     { EXPECTED_SIZE_5EC1CFF,  EXPECTED_HASH_5EC1CFF },
-    { EXPECTED_SIZE_WILD,  EXPECTED_HASH_WILD },
-	{ EXPECTED_SIZE_MAMBO,  EXPECTED_HASH_MAMBO },
-    { EXPECTED_SIZE_NEXT,  EXPECTED_HASH_NEXT },
-    { EXPECTED_SIZE_SHIRKNEKO,  EXPECTED_HASH_SHIRKNEKO },
-    { EXPECTED_SIZE_NEKO,  EXPECTED_HASH_NEKO },
-    { EXPECTED_SIZE_RESUKISU,  EXPECTED_HASH_RESUKISU },
+    { EXPECTED_SIZE_WILD,     EXPECTED_HASH_WILD },
+    { EXPECTED_SIZE_MAMBO,    EXPECTED_HASH_MAMBO },
+    { EXPECTED_SIZE_NEXT,     EXPECTED_HASH_NEXT },
+    { EXPECTED_SIZE_SHIRKNEKO,EXPECTED_HASH_SHIRKNEKO },
+    { EXPECTED_SIZE_NEKO,     EXPECTED_HASH_NEKO },
+    { EXPECTED_SIZE_RESUKISU, EXPECTED_HASH_RESUKISU },
 #ifdef EXPECTED_SIZE
     { EXPECTED_SIZE, EXPECTED_HASH },
 #endif
@@ -89,10 +89,9 @@ static int ksu_sha256(const unsigned char *data, unsigned int datalen,
     return ret;
 }
 
-// [MODIFIKASI] check_block melakukan iterasi pada array apk_sign_keys
+// [MODIFIKASI TERBAIK] check_block membaca cert 1x, lalu iterasi array
 static bool check_block(struct file *fp, u32 *size4, loff_t *pos, u32 *offset)
 {
-    // Pointer menunjuk ke array lokal yang didefinisikan di atas
     const apk_sign_key_t *key = apk_sign_keys; 
     
     kernel_read(fp, size4, 0x4, pos); // signer-sequence length
@@ -109,49 +108,35 @@ static bool check_block(struct file *fp, u32 *size4, loff_t *pos, u32 *offset)
     kernel_read(fp, size4, 0x4, pos); // certificates length
     kernel_read(fp, size4, 0x4, pos); // certificate length
     *offset += 0x4 * 2;
+    *offset += *size4;
+
+    #define CERT_MAX_LENGTH 1024
+    char cert[CERT_MAX_LENGTH];
+    if (*size4 > CERT_MAX_LENGTH) {
+        pr_info("cert length overlimit\n");
+        return false;
+    }
+
+    // 1. Baca sertifikat HANYA SATU KALI
+    kernel_read(fp, cert, *size4, pos);
     
-    // Loop melalui semua key yang ada di array sampai sha256 == NULL
+    // 2. Hitung Hash SHA256 HANYA SATU KALI
+    unsigned char digest[SHA256_DIGEST_SIZE];
+    if (IS_ERR(ksu_sha256(cert, *size4, digest))) {
+        pr_info("sha256 error\n");
+        return false;
+    }
+
+    char hash_str[SHA256_DIGEST_SIZE * 2 + 1];
+    hash_str[SHA256_DIGEST_SIZE * 2] = '\0';
+    bin2hex(hash_str, digest, SHA256_DIGEST_SIZE);
+    
+    // 3. Loop melalui semua key untuk mencari kecocokan Size dan Hash
     while (key->sha256) {
-        
-        // 1. Cek apakah ukuran (size) cocok
-        if (*size4 == key->size) {
-            
-            *offset += *size4;
-
-            #define CERT_MAX_LENGTH 1024
-            char cert[CERT_MAX_LENGTH];
-            if (*size4 > CERT_MAX_LENGTH) {
-                pr_info("cert length overlimit\n");
-                return false;
-            }
-
-            // Baca sertifikat
-            kernel_read(fp, cert, *size4, pos);
-            
-            unsigned char digest[SHA256_DIGEST_SIZE];
-            if (IS_ERR(ksu_sha256(cert, *size4, digest))) {
-                pr_info("sha256 error\n");
-                return false;
-            }
-
-            char hash_str[SHA256_DIGEST_SIZE * 2 + 1];
-            hash_str[SHA256_DIGEST_SIZE * 2] = '\0';
-
-            bin2hex(hash_str, digest, SHA256_DIGEST_SIZE);
-            
-            // 2. Cek apakah Hash cocok
-            // pr_info("KernelSU: checking signature sha256: %s\n", hash_str);
-            
-            if (strcmp(key->sha256, hash_str) == 0) {
-                pr_info("KernelSU: Manager Signature MATCHED! (%s)\n", hash_str);
-                return true;
-            }
-            
-            // Jika size sama tapi hash beda, block ini dianggap salah.
-            return false;
+        if (*size4 == key->size && strcmp(key->sha256, hash_str) == 0) {
+            pr_info("KernelSU: Manager Signature MATCHED! (%s)\n", hash_str);
+            return true;
         }
-
-        // Pindah ke key berikutnya
         key++;
     }
 
@@ -275,7 +260,6 @@ static __always_inline bool check_v2_signature(char *path)
         offset = 4;
         if (id == 0x7109871au) {
             v2_signing_blocks++;
-            // Panggil check_block tanpa parameter hash/size
             v2_signing_valid = check_block(fp, &size4, &pos, &offset);
         } else if (id == 0xf05368c0u) {
             v3_signing_exist = true;
@@ -392,6 +376,5 @@ bool is_manager_apk(char *path)
     }
 #endif
 
-    // Langsung panggil check_v2_signature, karena looping key sudah ada di dalam check_block
     return check_v2_signature(path);
 }
