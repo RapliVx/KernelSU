@@ -9,14 +9,6 @@
 #include <linux/path.h>
 #include <linux/printk.h>
 #include <linux/types.h>
-#include <linux/version.h>
-
-// Adapt TWA RESUME From Rissu (RKSU)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
-#ifndef TWA_RESUME
-#define TWA_RESUME true
-#endif
-#endif
 
 #include "kernel_umount.h"
 #include "klog.h" // IWYU pragma: keep
@@ -80,6 +72,10 @@ struct umount_tw {
 	struct callback_head cb;
 };
 
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+extern void susfs_run_sus_path_loop(void);
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
+
 static void umount_tw_func(struct callback_head *cb)
 {
 	struct umount_tw *tw = container_of(cb, struct umount_tw, cb);
@@ -93,6 +89,11 @@ static void umount_tw_func(struct callback_head *cb)
         try_umount(entry->umountable, entry->flags);
     }
     up_read(&mount_list_lock);
+
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+    // susfs_run_sus_path_loop() runs here with ksu_cred so that it can reach all the paths
+    susfs_run_sus_path_loop();
+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 
 	revert_creds(saved);
 
