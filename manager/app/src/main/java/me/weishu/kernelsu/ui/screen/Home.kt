@@ -268,7 +268,7 @@ private fun TopBar(
                     style = MaterialTheme.typography.titleLarge
                 )
                 Text(
-                    text = "v${managerVersion.first} (${managerVersion.second})",
+                    text = "${managerVersion.first} (${managerVersion.second})",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
