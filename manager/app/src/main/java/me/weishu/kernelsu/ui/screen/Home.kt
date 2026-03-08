@@ -72,6 +72,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
@@ -82,15 +83,16 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.AutoAwesomeMotion
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardCommandKey
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.ui.draw.rotate
@@ -255,13 +257,22 @@ private fun TopBar(
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val isOfficialEnabled = prefs.getBoolean("enable_official_launcher", false)
     val appNameId = if (isOfficialEnabled) R.string.app_name else R.string.app_name_mambo
+    val managerVersion = getManagerVersion(context)
 
     TopAppBar(
         title = {
-            Text(
-                text = stringResource(appNameId),
-                fontWeight = FontWeight.Bold
-            )
+            Column(verticalArrangement = Arrangement.Center) {
+                Text(
+                    text = stringResource(appNameId),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Text(
+                    text = "v${managerVersion.first} (${managerVersion.second})",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         },
         actions = { RebootListPopup() },
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
@@ -285,15 +296,9 @@ private fun StatusCard(
 
     // --- LOGIC TEXT & DATA ---
     val workingMode = when (lkmMode) {
-        null -> "LEGACY"
+        null -> "Legacy"
         true -> "LKM"
         else -> "GKI"
-    }
-
-    val versionText = when {
-        ksuVersion != null -> "Version: $ksuVersion - $workingMode"
-        kernelVersion.isGKI() -> stringResource(R.string.home_click_to_install)
-        else -> stringResource(R.string.home_unsupported)
     }
 
     val statusText = if (ksuVersion != null)
@@ -318,15 +323,14 @@ private fun StatusCard(
     // --- HEADER CARD CONTENT ---
     val headerCardContent = @Composable { modifier: Modifier ->
         TonalCard(
-            containerColor = Color.Transparent,
-            modifier = modifier.clip(RoundedCornerShape(28.dp))
+            containerColor = cs.secondaryContainer, // Default solid Monet
+            modifier = modifier.clip(RoundedCornerShape(24.dp))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clickable { onClickInstall() }
             ) {
-                // Background Image
                 if (headerImageUri != null) {
                     AsyncImage(
                         model = ImageRequest.Builder(context)
@@ -338,86 +342,66 @@ private fun StatusCard(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.matchParentSize()
                     )
-                } else {
-                    Image(
-                        painter = painterResource(R.drawable.header_bg),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.matchParentSize()
+
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, cs.surface.copy(alpha = 0.8f))
+                                )
+                            )
                     )
                 }
 
-                // Gradient Overlay
-                Box(
+                Icon(
+                    imageVector = Icons.Filled.KeyboardCommandKey,
+                    contentDescription = null,
+                    tint = cs.onSecondaryContainer.copy(alpha = 0.15f),
                     modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, cs.surface.copy(alpha = 0.8f))
-                            )
-                        )
+                        .align(Alignment.BottomEnd)
+                        .size(140.dp)
+                        .offset(x = 16.dp, y = 16.dp)
                 )
 
                 // Content Overlay
-                if (useClassicLayout) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.Bottom,
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp),
+                    verticalArrangement = if (useClassicLayout) Arrangement.Top else Arrangement.Bottom,
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = cs.onSecondaryContainer
+                        )
+                        Spacer(Modifier.width(8.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = cs.onSecondaryContainer.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
                             Text(
-                                text = statusText,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = cs.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                            Text(
-                                text = versionText,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = cs.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                        }
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.Bottom,
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                            Text(
-                                text = statusText,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = cs.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Box(modifier = Modifier.clip(RoundedCornerShape(50))) {
-                            Box(modifier = Modifier.matchParentSize().blur(16.dp).background(cs.secondaryContainer.copy(alpha = 0.6f)))
-                            Text(
-                                text = versionText,
+                                text = workingMode,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = cs.onSecondaryContainer,
-                                maxLines = 1,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                color = cs.onSecondaryContainer
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (ksuVersion != null) "Version: $ksuVersion" else stringResource(R.string.home_click_to_install),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = cs.onSecondaryContainer.copy(alpha = 0.7f)
+                    )
                 }
             }
         }
@@ -426,24 +410,40 @@ private fun StatusCard(
     val statsCardsContent = @Composable { modifier: Modifier, isVertical: Boolean ->
         if (fullFeatured == true) {
             @Composable
-            fun StatInfoCard(title: String, count: String, onClick: () -> Unit, itemModifier: Modifier) {
-                TonalCard(modifier = itemModifier) {
-                    Column(
+            fun StatInfoCard(title: String, count: String, icon: ImageVector, onClick: () -> Unit, itemModifier: Modifier) {
+                TonalCard(
+                    modifier = itemModifier,
+                    containerColor = cs.surfaceColorAtElevation(2.dp)
+                ) {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onClick() }
-                            .padding(horizontal = 24.dp, vertical = 16.dp)
+                            .padding(16.dp)
                     ) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.bodyLarge
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = cs.onSurface.copy(alpha = 0.05f),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(64.dp)
+                                .offset(x = 8.dp, y = 8.dp)
                         )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = count,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = cs.onSurfaceVariant
-                        )
+                        Column {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = cs.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = count,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = cs.onSurface
+                            )
+                        }
                     }
                 }
             }
@@ -454,15 +454,17 @@ private fun StatusCard(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     StatInfoCard(
-                        title = stringResource(R.string.superuser),
-                        count = getSuperuserCount().toString(),
-                        onClick = onClickSuperuser,
-                        itemModifier = Modifier.weight(1f) // Fill width handled by Column
-                    )
-                    StatInfoCard(
                         title = stringResource(R.string.module),
                         count = getModuleCount().toString(),
+                        icon = Icons.Filled.Extension,
                         onClick = onclickModule,
+                        itemModifier = Modifier.weight(1f)
+                    )
+                    StatInfoCard(
+                        title = stringResource(R.string.superuser),
+                        count = getSuperuserCount().toString(),
+                        icon = Icons.Filled.Security,
+                        onClick = onClickSuperuser,
                         itemModifier = Modifier.weight(1f)
                     )
                 }
@@ -472,15 +474,17 @@ private fun StatusCard(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     StatInfoCard(
-                        title = stringResource(R.string.superuser),
-                        count = getSuperuserCount().toString(),
-                        onClick = onClickSuperuser,
+                        title = stringResource(R.string.module),
+                        count = getModuleCount().toString(),
+                        icon = Icons.Filled.Extension,
+                        onClick = onclickModule,
                         itemModifier = Modifier.weight(1f)
                     )
                     StatInfoCard(
-                        title = stringResource(R.string.module),
-                        count = getModuleCount().toString(),
-                        onClick = onclickModule,
+                        title = stringResource(R.string.superuser),
+                        count = getSuperuserCount().toString(),
+                        icon = Icons.Filled.Security,
+                        onClick = onClickSuperuser,
                         itemModifier = Modifier.weight(1f)
                     )
                 }
