@@ -150,12 +150,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Using Original Package Name
-        run: |
-          if [ -f "custom.sh" ]; then
-            bash custom.sh
-          fi
-
       - name: Write key
         if: ${{ github.event_name != 'pull_request' || github.ref_type == 'tag' }}
         run: |
@@ -215,7 +209,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: ${{ ( github.event_name != 'pull_request') || github.ref_type == 'tag' }}
         with:
-          name: mappings
+          name: "mappings"
           path: "manager/app/build/outputs/mapping/release/"
 
   repack-manager:

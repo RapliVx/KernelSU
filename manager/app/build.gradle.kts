@@ -30,6 +30,10 @@ android {
     ndkVersion = androidCompileNdkVersion
     buildToolsVersion = androidBuildToolsVersion
 
+    defaultConfig {
+        applicationId = "com.rapli.mambosu"
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -71,7 +75,7 @@ android {
     applicationVariants.all {
         outputs.forEach {
             val output = it as BaseVariantOutputImpl
-            output.outputFileName = "KernelSU_${managerVersionName}_${managerVersionCode}-$name.apk"
+            output.outputFileName = "MamboSU_${managerVersionName}_${managerVersionCode}-$name.apk"
         }
         kotlin.sourceSets {
             getByName(name) {
