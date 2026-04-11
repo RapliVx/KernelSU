@@ -12,8 +12,8 @@ find . -depth -type d -name 'me' -execdir mv {} "$word1" \;
 find . -depth -type d -name 'weishu' -execdir mv {} "$word2" \;
 find . -depth -type d -name 'kernelsu' -execdir mv {} "$word3" \;
 
-# Replace inside files
-find . -type f \
+# Replace inside files 
+find . ../userspace -type f \
     -not -path '*/\.git/*' \
     -not -name '*.png' \
     -not -name '*.webp' \
