@@ -108,12 +108,19 @@ version=<string>
 versionCode=<int>
 author=<string>
 description=<string>
+updateJson=<url> (optional)
+actionIcon=<path> (optional)
+webuiIcon=<path> (optional)
 ```
 
-- id 必須與這個正則表達式相符：`^[a-zA-Z][a-zA-Z0-9._-]+$` 例如：✓ `a_module`，✓ `a.module`，✓ `module-101`，✗ `a  module`，✗ `1_module`，✗ `-a-module`。這是您的模組的唯一識別碼，發表後將無法變更。
+- id 必須與這個正則表達式相符：`^[a-zA-Z][a-zA-Z0-9._-]+$` 例如：✓ `a_module`，✓ `a.module`，✓ `module-101`，✗ `a module`，✗ `1_module`，✗ `-a-module`。這是您的模組的唯一識別碼，發表後將無法變更。
 - versionCode 必須是一個整數，用於比較版本。
 - 其他未在上方提到的內容可以是任何單行字串。
 - 請確保使用 `UNIX (LF)` 分行符號類型，而非 `Windows (CR + LF)` 或 `Macintosh (CR)`。
+- actionIcon 與 webuiIcon 是可選的圖示路徑，會作為管理器中模組
+  Action 捷徑與 WebUI 捷徑的預設圖示。這些路徑必須是以模組根目錄為
+  基準的相對路徑。例如：`actionIcon=icon/icon.png`
+  會解析為 `<MODDIR>/icon/icon.png`。
 
 ::: tip 動態描述
 `description` 欄位可以在執行階段使用模組配置系統動態覆蓋。詳情請參閱[覆蓋模組描述](module-config.md#overriding-module-description)。
@@ -341,3 +348,71 @@ start user apps (autostart)
 ```
 
 如果您對 Android 的 Init 語言感興趣，建議閱讀它的 [文檔](https://android.googlesource.com/platform/system/core/+/master/init/README.md).
+
+## Late-load 模式 {#late-load-mode}
+
+除了上述標準啟動流程外，KernelSU 還支援 **late-load 模式**，用於 LKM（可載入核心模組）場景。在該模式下，KernelSU 核心模組在**系統完全啟動後**載入，而非在 init 過程中載入。
+
+### 什麼時候觸發 late-load？
+
+透過執行 `ksud late-load` 命令觸發。該命令會：
+
+1. 偵測當前 KMI 版本，從內嵌資源中載入對應的 `kernelsu.ko`。
+2. 執行模組初始化（SELinux 規則、白名單、feature 等），這些工作在標準啟動中發生在 boot 階段。
+
+由於系統已經完全運行，某些啟動時的機制不可用或不需要。
+
+### 與標準啟動的差異
+
+| 行為 | 標準啟動 | Late-load 模式 |
+|------|:---:|:---:|
+| 核心模組由 init (PID 1) 載入 | 是 | 否（啟動後載入） |
+| ksud 的 kprobe 鉤子 (execve/read/fstat/input) | 是 | 跳過 |
+| 安全模式偵測（音量鍵） | 是 | 始終停用 |
+| 啟動日誌擷取 (logcat/dmesg) | 是 | 跳過 |
+| Magisk 共存偵測 | 是 | 跳過 |
+| `post-fs-data` 事件通知核心 | 是 | 跳過 |
+| `boot-completed` 事件通知核心 | 是 | 初始化時直接設定 |
+| `post-fs-data.sh` / `post-fs-data.d/` 指令碼 | 是 | 由 `late-load` 階段替代 |
+| `system.prop` 載入 | 是 | 是 |
+| OverlayFS 掛載（metamodule） | 是 | 是 |
+| `post-mount.sh` / `post-mount.d/` 指令碼 | 是 | 是 |
+| `service.sh` / `service.d/` 指令碼 | 是 | 是 |
+| `boot-completed.sh` / `boot-completed.d/` 指令碼 | 是 | 是 |
+| `KSU_LATE_LOAD` 環境變數 | 未設定 | 設定為 `1` |
+| 核心 info 標誌位 `0x4` | 未設定 | 已設定 |
+
+### 指令碼執行順序
+
+在 late-load 模式下，指令碼執行順序如下：
+
+```txt
+ksud late-load:
+  1. 載入 kernelsu.ko（如果尚未載入）
+  2. 釋放二進位檔案、處理模組更新、載入 SELinux 規則、初始化 feature
+  3. 執行 late-load.d/ 通用指令碼和模組的 late-load 指令碼（阻塞）
+  4. 載入 system.prop (resetprop -n)
+  5. 執行 metamodule mount 指令碼（OverlayFS 掛載）
+  6. 執行 post-mount.d/ 通用指令碼和模組的 post-mount.sh（阻塞）
+  7. 執行 service.d/ 通用指令碼和模組的 service.sh（非阻塞）
+  8. 執行 boot-completed.d/ 通用指令碼和模組的 boot-completed.sh（非阻塞）
+```
+
+### Late-load 專用指令碼
+
+模組可以提供 `late-load.sh` 指令碼，該指令碼**僅在 late-load 模式下執行**，作為 `post-fs-data.sh` 的替代。該指令碼在 OverlayFS 掛載之前執行，與標準流程中的 `post-fs-data.sh` 時機類似。
+
+此外，通用指令碼可以放置在 `/data/adb/late-load.d/` 目錄下，在該階段執行。
+
+### 在指令碼中偵測 late-load 模式
+
+模組可以透過 `KSU_LATE_LOAD` 環境變數偵測當前是否處於 late-load 模式：
+
+```sh
+if [ "$KSU_LATE_LOAD" = "1" ]; then
+    # 當前處於 late-load 模式
+    echo "Late-load mode detected"
+fi
+```
+
+這使得模組可以據此調整自身行為，例如跳過僅在早期啟動時才需要的操作。
