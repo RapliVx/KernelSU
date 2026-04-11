@@ -2,10 +2,10 @@
 #include <linux/atomic.h>
 #include <linux/version.h>
 
-#include "feature.h"
-#include "klog.h"
-#include "ksud.h"
-#include "seccomp_cache.h"
+#include "policy/feature.h"
+#include "include/klog.h"
+#include "runtime/ksud_boot.h"
+#include "infra/seccomp_cache.h"
 
 // sorry for the ifdef hell
 // but im too lazy to fragment this out.
@@ -196,14 +196,14 @@ void ksu_avc_spoof_late_init()
 	}
 }
 
-void ksu_avc_spoof_init()
+void __init ksu_avc_spoof_init()
 {
 	if (ksu_register_feature_handler(&avc_spoof_handler)) {
 		pr_err("Failed to register avc spoof feature handler\n");
 	}
 }
 
-void ksu_avc_spoof_exit()
+void __exit ksu_avc_spoof_exit()
 {
 	if (ksu_avc_spoof_enabled) {
 		ksu_avc_spoof_disable();
