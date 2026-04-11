@@ -305,6 +305,9 @@ private fun StatusCard(
     else
         stringResource(R.string.home_not_installed)
 
+    val titleStyle = if (useClassicLayout) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
+    val bodyStyle = if (useClassicLayout) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
+
     val headerImageUri = context.getHeaderImage()
     val imageLoader = remember(context) {
         ImageLoader.Builder(context)
@@ -383,7 +386,7 @@ private fun StatusCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = statusText,
-                            style = MaterialTheme.typography.titleMedium,
+                            style = titleStyle,
                             fontWeight = FontWeight.Bold,
                             color = cs.onSecondaryContainer
                         )
@@ -407,7 +410,7 @@ private fun StatusCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = if (ksuVersion != null) "Version: $ksuVersion" else stringResource(R.string.home_click_to_install),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = bodyStyle,
                         color = cs.onSecondaryContainer.copy(alpha = 0.8f)
                     )
                 }
