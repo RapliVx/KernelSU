@@ -25,7 +25,8 @@ find . -type f \
     -exec sed -i \
     -e "s/me\.weishu\.kernelsu/$word1.$word2.$word3/g" \
     -e "s/me\/weishu\/kernelsu/$word1\/$word2\/$word3/g" \
-    -e "s/me_weishu_kernelsu/${word1}_${word2}_${word3}/g" {} +
+    -e "s/me_weishu_kernelsu/${word1}_${word2}_${word3}/g" \
+    -e "s/Java_me_weishu_kernelsu/Java_${word1}_${word2}_${word3}/g" {} +
 
 if [ -f "./app/build.gradle.kts" ]; then
     sed -i 's/outputFileName = "KernelSU_${managerVersionName}_${managerVersionCode}-\$name.apk"/outputFileName = "MamboSU_${managerVersionName}_${managerVersionCode}-\$name.apk"/' ./app/build.gradle.kts
