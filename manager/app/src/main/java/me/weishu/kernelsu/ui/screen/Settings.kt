@@ -359,60 +359,6 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     content = listOf(
                         {
-                            val currentEnhancedEnabled = Natives.isEnhancedSecurityEnabled()
-                            var enhancedSecurityMode by rememberSaveable { mutableIntStateOf(if (currentEnhancedEnabled) 1 else 0) }
-                            val enhancedPersistValue by produceState(initialValue = null as Long?) {
-                                value = getFeaturePersistValue("enhanced_security")
-                            }
-                            LaunchedEffect(enhancedPersistValue) {
-                                enhancedPersistValue?.let { v ->
-                                    enhancedSecurityMode = if (v != 0L) 2 else if (currentEnhancedEnabled) 1 else 0
-                                }
-                            }
-                            val enhancedStatus by produceState(initialValue = "") {
-                                value = getFeatureStatus("enhanced_security")
-                            }
-                            val enhancedSummary = when (enhancedStatus) {
-                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
-                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
-                                else -> stringResource(id = R.string.settings_enable_enhanced_security_summary)
-                            }
-                            ExpressiveDropdownItem(
-                                icon = Icons.Filled.EnhancedEncryption,
-                                title = stringResource(id = R.string.settings_enable_enhanced_security),
-                                summary = enhancedSummary,
-                                items = modeItems,
-                                enabled = enhancedStatus == "supported",
-                                selectedIndex = enhancedSecurityMode,
-                                onItemSelected = { index ->
-                                    when (index) {
-                                        // Default: disable and save to persist
-                                        0 -> if (Natives.setEnhancedSecurityEnabled(false)) {
-                                            execKsud("feature save", true)
-                                            prefs.edit { putInt("enhanced_security_mode", 0) }
-                                            enhancedSecurityMode = 0
-                                        }
-
-                                        // Temporarily enable: save disabled state first, then enable
-                                        1 -> if (Natives.setEnhancedSecurityEnabled(false)) {
-                                            execKsud("feature save", true)
-                                            if (Natives.setEnhancedSecurityEnabled(true)) {
-                                                prefs.edit { putInt("enhanced_security_mode", 0) }
-                                                enhancedSecurityMode = 1
-                                            }
-                                        }
-
-                                        // Permanently enable: enable and save
-                                        2 -> if (Natives.setEnhancedSecurityEnabled(true)) {
-                                            execKsud("feature save", true)
-                                            prefs.edit { putInt("enhanced_security_mode", 2) }
-                                            enhancedSecurityMode = 2
-                                        }
-                                    }
-                                }
-                            )
-                        },
-                        {
                             val currentSuEnabled = Natives.isSuEnabled()
                             var suCompatMode by rememberSaveable { mutableIntStateOf(if (!currentSuEnabled) 1 else 0) }
                             val suPersistValue by produceState(initialValue = null as Long?) {

@@ -13,6 +13,7 @@ import android.util.Log
 import com.topjohnwu.superuser.CallbackList
 import com.topjohnwu.superuser.Shell
 import com.topjohnwu.superuser.ShellUtils
+import com.topjohnwu.superuser.io.SuFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
@@ -24,7 +25,6 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
 
 /**
  * @author weishu
@@ -124,7 +124,8 @@ suspend fun getFeaturePersistValue(feature: String): Long? = withContext(Dispatc
 fun install() {
     val start = SystemClock.elapsedRealtime()
     val magiskboot = File(ksuApp.applicationInfo.nativeLibraryDir, "libmagiskboot.so").absolutePath
-    val result = execKsud("install --magiskboot $magiskboot", true)
+    val libadbroot = File(ksuApp.applicationInfo.nativeLibraryDir, "libadbroot.so").absolutePath
+    val result = execKsud("install --magiskboot $magiskboot --libadbroot $libadbroot", true)
     Log.w(TAG, "install result: $result, cost: ${SystemClock.elapsedRealtime() - start}ms")
 }
 
@@ -145,7 +146,7 @@ fun getModuleCount(): Int {
 }
 
 fun getSuperuserCount(): Int {
-    return Natives.allowList.size
+    return Natives.getSuperuserCount()
 }
 
 fun toggleModule(id: String, enable: Boolean): Boolean {
@@ -299,14 +300,19 @@ fun uninstallPermanently(
     onStdout: (String) -> Unit, onStderr: (String) -> Unit
 ): FlashResult {
     val magiskboot = File(ksuApp.applicationInfo.nativeLibraryDir, "libmagiskboot.so")
-    val result = flashWithIO("${getKsuDaemonPath()} uninstall --magiskboot $magiskboot", onStdout, onStderr)
+    val result = flashWithIO("${getKsuDaemonPath()} uninstall --magiskboot $magiskboot --package-name ${BuildConfig.APPLICATION_ID}", onStdout, onStderr)
     return FlashResult(result)
 }
 
 @Parcelize
 sealed class LkmSelection : Parcelable {
+    @Parcelize
     data class LkmUri(val uri: Uri) : LkmSelection()
+
+    @Parcelize
     data class KmiString(val value: String) : LkmSelection()
+
+    @Parcelize
     data object KmiNone : LkmSelection()
 }
 
@@ -337,7 +343,7 @@ fun installBoot(
     var cmd = "boot-patch --magiskboot ${magiskboot.absolutePath}"
 
     cmd += if (bootFile == null) {
-        // no boot.img, use -f to force install
+        // no boot.img, use -f to flash
         " -f"
     } else {
         " -b ${bootFile.absolutePath}"
@@ -379,9 +385,11 @@ fun installBoot(
     }
 
     // output dir
-    val downloadsDir =
-        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-    cmd += " -o $downloadsDir"
+    if (bootFile != null) {
+        val downloadsDir =
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        cmd += " -o $downloadsDir"
+    }
 
     partition?.let { part ->
         cmd += " --partition $part"
@@ -402,6 +410,10 @@ fun installBoot(
 }
 
 fun reboot(reason: String = "") {
+    if (reason == "soft_reboot") {
+        execKsud("soft-reboot", true)
+        return
+    }
     val shell = getRootShell()
     if (reason == "recovery") {
         // KEYCODE_POWER = 26, hide incorrect "Factory data reset" message
@@ -570,28 +582,28 @@ fun deleteAppProfileTemplate(id: String): Boolean {
         .to(ArrayList(), null).exec().isSuccess
 }
 
-fun forceStopApp(packageName: String) {
+fun forceStopApp(packageName: String, userId: Int? = null) {
     val shell = getRootShell()
-    val result = shell.newJob().add("am force-stop $packageName").exec()
+    val userArg = userId?.let { " --user $it" } ?: ""
+    val result = shell.newJob().add("am force-stop$userArg $packageName").exec()
     Log.i(TAG, "force stop $packageName result: $result")
 }
 
-fun launchApp(packageName: String) {
+fun launchApp(packageName: String, userId: Int? = null) {
     val shell = getRootShell()
+    val userArg = userId?.let { " --user $it" } ?: ""
     val result =
         shell.newJob()
-            .add("cmd package resolve-activity --brief $packageName | tail -n 1 | xargs cmd activity start-activity -n")
+            .add("cmd package resolve-activity --brief$userArg $packageName | tail -n 1 | xargs cmd activity start-activity$userArg -n")
             .exec()
     Log.i(TAG, "launch $packageName result: $result")
 }
 
-fun restartApp(packageName: String) {
-    forceStopApp(packageName)
-    launchApp(packageName)
+fun restartApp(packageName: String, userId: Int? = null) {
+    forceStopApp(packageName, userId)
+    launchApp(packageName, userId)
 }
 
-fun isWebuiModuleInstalled(modId: String) : Boolean {
-    val shell = getRootShell()
-    val result = shell.newJob().add("test -d /data/adb/modules/$modId/webroot").exec()
-    return result.isSuccess
+fun isWebuiModuleInstalled(modId: String): Boolean {
+    return SuFile("/data/adb/modules/$modId/webroot/index.html").exists()
 }
