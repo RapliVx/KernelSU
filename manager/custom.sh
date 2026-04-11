@@ -13,7 +13,16 @@ find . -depth -type d -name 'weishu' -execdir mv {} "$word2" \;
 find . -depth -type d -name 'kernelsu' -execdir mv {} "$word3" \;
 
 # Replace inside files
-find . -type f -exec sed -i \
+find . -type f \
+    -not -path '*/\.git/*' \
+    -not -name '*.png' \
+    -not -name '*.webp' \
+    -not -name '*.jpg' \
+    -not -name '*.jpeg' \
+    -not -name '*.jks' \
+    -not -name '*.so' \
+    -not -name '*.jar' \
+    -exec sed -i \
     -e "s/me\.weishu\.kernelsu/$word1.$word2.$word3/g" \
     -e "s/me\/weishu\/kernelsu/$word1\/$word2\/$word3/g" \
     -e "s/me_weishu_kernelsu/${word1}_${word2}_${word3}/g" {} +
