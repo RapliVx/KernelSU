@@ -1,21 +1,21 @@
 [package]
 name = "ksud"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1"
+anyhow.workspace = true
 clap = { version = "4", features = ["derive"] }
 const_format = "0.2"
-log = "0.4"
+log.workspace = true
 env_logger = { version = "0.11", default-features = false }
 rust-embed = { version = "8", features = [
     "debug-embed",
     "compression", # must clean build after updating binaries
 ] }
-which = "7"
+which = "8"
 sha1 = "0.10"
 sha256 = "1"
 tempfile = "3"
@@ -23,19 +23,19 @@ chrono = "0.4"
 regex-lite = "0.1"
 
 [target.'cfg(target_os = "android")'.dependencies]
-rustix = { version = "=1.0.8", features = [
+rustix = { version = "1", features = [
     "all-apis",
 ] }
 android-properties = { version = "0.2", features = ["bionic-deprecated"] }
 android_logger = { version = "0.15", default-features = false }
-zip = { version = "3",  features = [
+zip = { version = "8",  features = [
     "deflate",
     "deflate64",
     "time",
     "lzma",
     "xz",
 ], default-features = false }
-zip-extensions = { version = "0.8", features = [
+zip-extensions = { version = "0.14", features = [
     "deflate",
     "lzma",
     "xz",
@@ -51,9 +51,9 @@ is_executable = "1"
 nom = "8"
 derive-new = "0.7"
 getopts = "0.2"
+ksuinit = { path = "../ksuinit" }
+adb_client = { git = "https://github.com/Kernel-SU/adb_client" }
+prop-rs-android = { git = "https://github.com/Kernel-SU/ksu_props" }
 
-[profile.release]
-strip = true
-opt-level = "z"
-lto = true
-codegen-units = 1
+[build-dependencies]
+bindgen = "0.71.0"

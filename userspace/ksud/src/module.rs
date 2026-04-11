@@ -23,7 +23,7 @@ use std::{
     process::Command,
     str::FromStr,
 };
-use zip_extensions::zip_extract_file_to_memory;
+use zip_extensions::inflate::zip_extract::zip_extract_file_to_memory;
 
 use crate::defs::{MODULE_DIR, MODULE_UPDATE_DIR, UPDATE_FILE_NAME};
 use crate::module::ModuleType::{Active, All};
@@ -51,15 +51,14 @@ pub fn validate_module_id(module_id: &str) -> Result<()> {
         Ok(())
     } else {
         Err(anyhow!(
-            "Invalid module ID: '{}'. Must match /^[a-zA-Z][a-zA-Z0-9._-]+$/",
-            module_id
+            "Invalid module ID: '{module_id}'. Must match /^[a-zA-Z][a-zA-Z0-9._-]+$/"
         ))
     }
 }
 
 /// Get common environment variables for script execution
 pub fn get_common_script_envs() -> Vec<(&'static str, String)> {
-    vec![
+    let mut envs = vec![
         ("ASH_STANDALONE", "1".to_string()),
         ("KSU", "true".to_string()),
         ("KSU_KERNEL_VER_CODE", ksucalls::get_version().to_string()),
@@ -73,7 +72,13 @@ pub fn get_common_script_envs() -> Vec<(&'static str, String)> {
                 defs::BINARY_DIR.trim_end_matches('/')
             ),
         ),
-    ]
+    ];
+
+    if ksucalls::is_late_load() {
+        envs.push(("KSU_LATE_LOAD", "1".to_string()));
+    }
+
+    envs
 }
 
 fn exec_install_script(module_file: &str, is_metamodule: bool) -> Result<()> {
@@ -206,16 +211,9 @@ pub fn exec_script<T: AsRef<Path>>(path: T, wait: bool) -> Result<()> {
     let mut command = &mut Command::new(assets::BUSYBOX_PATH);
     #[cfg(unix)]
     {
-        let use_init_pgrp = Path::new(defs::USE_INIT_PGRP_PATH).exists();
-        if !use_init_pgrp {
-            command = command.process_group(0);
-        }
         command = unsafe {
-            command.pre_exec(move || {
-                if use_init_pgrp && let Err(e) = ksucalls::set_init_pgrp() {
-                    log::error!("failed to set init group: {e:?}");
-                    libc::setpgid(0, 0);
-                }
+            command.pre_exec(|| {
+                detach_process_group(true);
                 // ignore the error?
                 switch_cgroups();
                 Ok(())
@@ -294,13 +292,7 @@ pub fn load_system_prop() -> Result<()> {
         }
         info!("load {} system.prop", module.display());
 
-        // resetprop -n --file system.prop
-        Command::new(assets::RESETPROP_PATH)
-            .arg("-n")
-            .arg("--file")
-            .arg(&system_prop)
-            .status()
-            .with_context(|| format!("Failed to exec {}", system_prop.display()))?;
+        crate::resetprop::load_system_prop_file(&system_prop)?;
 
         Ok(())
     })?;
@@ -669,6 +661,55 @@ pub fn read_module_prop(module_path: &Path) -> Result<HashMap<String, String>> {
     Ok(prop_map)
 }
 
+/// Resolve a module icon path to an absolute on-disk path
+fn resolve_module_icon_path(
+    module_prop_map: &mut HashMap<String, String>,
+    key: &str,
+    module_path: &Path,
+) {
+    if let Some(icon_value) = module_prop_map.get(key) {
+        let icon_value = icon_value.trim();
+        if icon_value.is_empty() {
+            return;
+        }
+        let path = std::path::Path::new(icon_value);
+        if path.is_absolute() {
+            log::warn!(
+                "Rejected {} with absolute path for module {}: {}",
+                key,
+                module_prop_map.get("id").map_or("", String::as_str),
+                icon_value
+            );
+            return;
+        }
+        let has_parent = path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir));
+        if has_parent {
+            log::warn!(
+                "Rejected {} with parent traversal for module {}: {}",
+                key,
+                module_prop_map.get("id").map_or("", String::as_str),
+                icon_value
+            );
+            return;
+        }
+        let candidate = module_path.join(path);
+        if candidate.exists() && candidate.is_file() {
+            if let Some(s) = candidate.to_str() {
+                module_prop_map.insert(key.to_owned(), s.to_string());
+            }
+        } else {
+            log::debug!(
+                "{} not found for module {}: {}",
+                key,
+                module_prop_map.get("id").map_or("", String::as_str),
+                candidate.display()
+            );
+        }
+    }
+}
+
 fn list_module(path: &str) -> Vec<HashMap<String, String>> {
     // Load all module configs once to minimize I/O overhead
     let all_configs = match crate::module_config::get_all_module_configs() {
@@ -728,6 +769,9 @@ fn list_module(path: &str) -> Vec<HashMap<String, String>> {
         module_prop_map.insert("web".to_owned(), web.to_string());
         module_prop_map.insert("action".to_owned(), action.to_string());
         module_prop_map.insert("mount".to_owned(), need_mount.to_string());
+
+        resolve_module_icon_path(&mut module_prop_map, "actionIcon", &path);
+        resolve_module_icon_path(&mut module_prop_map, "webuiIcon", &path);
 
         // Apply module config overrides and extract managed features
         if let Some(module_id) = module_prop_map.get("id")

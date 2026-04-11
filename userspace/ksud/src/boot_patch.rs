@@ -162,7 +162,7 @@ mod android {
         Ok(())
     }
 
-    pub(super) fn flash_boot(bootdevice: &Option<String>, new_boot: PathBuf) -> Result<()> {
+    pub(super) fn flash_boot(bootdevice: &Option<String>, new_boot: &PathBuf) -> Result<()> {
         let Some(bootdevice) = bootdevice else {
             bail!("boot device not found")
         };
@@ -273,9 +273,9 @@ rm -f /data/adb/post-fs-data.d/post_ota.sh
             .status()?;
         ensure!(
             status.success(),
-            "dd if={:?} of={:?} failed",
-            ifile.as_ref(),
-            ofile.as_ref()
+            "dd if={} of={} failed",
+            ifile.as_ref().display(),
+            ofile.as_ref().display()
         );
         Ok(())
     }
@@ -332,7 +332,7 @@ fn parse_kmi_from_boot(magiskboot: &Path, image: &PathBuf, workdir: &Path) -> Re
         .context("Failed to execute magiskboot command")?;
 
     if !status.success() {
-        bail!("magiskboot unpack failed with status: {:?}", status);
+        bail!("magiskboot unpack failed with status: {status:?}");
     }
 
     parse_kmi_from_kernel(&image_path, workdir)
@@ -347,7 +347,7 @@ fn do_cpio_cmd(magiskboot: &Path, workdir: &Path, cpio_path: &Path, cmd: &str) -
         .arg(cpio_path)
         .arg(cmd)
         .status()?;
-    ensure!(status.success(), "magiskboot cpio {} failed", cmd);
+    ensure!(status.success(), "magiskboot cpio {cmd} failed");
     Ok(())
 }
 
@@ -393,7 +393,7 @@ fn find_magiskboot(magiskboot_path: Option<PathBuf>, workdir: &Path) -> Result<P
                     .context("copy magiskboot failed")?;
                 magiskboot_path
             };
-            ensure!(magiskboot.exists(), "{magiskboot:?} is not exist");
+            ensure!(magiskboot.exists(), "{} is not exist", magiskboot.display());
             #[cfg(unix)]
             let _ = std::fs::set_permissions(&magiskboot, std::fs::Permissions::from_mode(0o755));
             magiskboot
@@ -471,7 +471,15 @@ pub struct BootPatchArgs {
     #[arg(short, long, default_value = "false")]
     pub flash: bool,
 
-    /// output path, if not specified, will use current directory
+    /// Output path. If not specified, will use current directory.
+    /// If specified, the boot image will be written to the directory
+    /// even if --flash is specified.
+    #[cfg(target_os = "android")]
+    #[arg(short, long, default_value = None)]
+    pub out: Option<PathBuf>,
+
+    /// Output path. If not specified, will use current directory.
+    #[cfg(not(target_os = "android"))]
     #[arg(short, long, default_value = None)]
     pub out: Option<PathBuf>,
 
@@ -488,9 +496,20 @@ pub struct BootPatchArgs {
     #[arg(long, default_value = None)]
     pub partition: Option<String>,
 
-    /// File name of the output.
+    /// File name of the output. If specified, the boot image will be
+    /// written to the output directory even if --flash is specified.
+    #[cfg(target_os = "android")]
     #[arg(long, default_value = None)]
     pub out_name: Option<String>,
+
+    /// File name of the output.
+    #[cfg(not(target_os = "android"))]
+    #[arg(long, default_value = None)]
+    pub out_name: Option<String>,
+
+    /// Extra cmdline to append to boot image header
+    #[arg(long, default_value = None)]
+    pub cmdline: Option<String>,
 
     /// Always allow shell to get root permission
     #[arg(long, default_value = "false")]
@@ -520,18 +539,17 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
             magiskboot: magiskboot_path,
             kmi,
             out_name,
+            cmdline,
             allow_shell,
             enable_adbd,
             adb_debug_prop,
             no_install,
-            ..
-        } = args;
-        #[cfg(target_os = "android")]
-        let BootPatchArgs {
+            #[cfg(target_os = "android")]
             ota,
+            #[cfg(target_os = "android")]
             flash,
+            #[cfg(target_os = "android")]
             partition,
-            ..
         } = args;
 
         println!(include_str!("banner"));
@@ -563,6 +581,9 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
 
         let kmi = kmi.map_or_else(
             || -> Result<_> {
+                if kmod.is_some() {
+                    return Ok(String::new());
+                }
                 #[cfg(target_os = "android")]
                 match get_current_kmi() {
                     Ok(value) => {
@@ -639,6 +660,13 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
             .status()?;
         ensure!(status.success(), "magiskboot unpack failed");
 
+        if let Some(ref cmdline_value) = cmdline {
+            let header_path = workdir.join("header");
+            std::fs::write(&header_path, format!("cmdline={cmdline_value}\n"))
+                .context("write header file failed")?;
+            println!("- Set cmdline to: {cmdline_value}");
+        }
+
         let mut ramdisk = workdir.join("ramdisk.cpio");
         if !ramdisk.exists() {
             ramdisk = workdir.join("vendor_ramdisk").join("init_boot.cpio");
@@ -693,8 +721,11 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
                 &magiskboot,
                 workdir,
                 ramdisk,
-                "add 0755 ksu_allow_shell ksu_allow_shell",
+                "add 0644 ksu_allow_shell ksu_allow_shell",
             )?;
+        } else if do_cpio_cmd(&magiskboot, workdir, ramdisk, "exists ksu_allow_shell").is_ok() {
+            println!("- Removing allow shell config");
+            do_cpio_cmd(&magiskboot, workdir, ramdisk, "rm ksu_allow_shell").ok();
         }
 
         if enable_adbd || adb_debug_prop.is_some() {
@@ -707,7 +738,7 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
                 &magiskboot,
                 workdir,
                 ramdisk,
-                "add 0755 force_debuggable force_debuggable",
+                "add 0644 force_debuggable force_debuggable",
             )?;
 
             {
@@ -729,8 +760,17 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
                 &magiskboot,
                 workdir,
                 ramdisk,
-                "add 0755 adb_debug.prop adb_debug.prop",
+                "add 0644 adb_debug.prop adb_debug.prop",
             )?;
+        } else {
+            if do_cpio_cmd(&magiskboot, workdir, ramdisk, "exists force_debuggable").is_ok() {
+                println!("- Removing /force_debuggable");
+                do_cpio_cmd(&magiskboot, workdir, ramdisk, "rm force_debuggable").ok();
+            }
+            if do_cpio_cmd(&magiskboot, workdir, ramdisk, "exists adb_debug.prop").is_ok() {
+                println!("- Removing /adb_debug.prop");
+                do_cpio_cmd(&magiskboot, workdir, ramdisk, "rm adb_debug.prop").ok();
+            }
         }
 
         println!("- Repacking boot image");
@@ -745,8 +785,24 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
         ensure!(status.success(), "magiskboot repack failed");
         let new_boot = workdir.join("new-boot.img");
 
-        if patch_file {
-            // if image is specified, write to output file
+        // flash first, since the new_boot may be moved
+        #[cfg(target_os = "android")]
+        if flash {
+            println!("- Flashing new boot image");
+            flash_boot(&bootdevice, &new_boot)?;
+
+            if ota {
+                post_ota()?;
+            }
+        }
+
+        #[cfg(target_os = "android")]
+        let should_write_output = patch_file || !flash || out_name.is_some() || out.is_some();
+        #[cfg(not(target_os = "android"))]
+        let should_write_output = patch_file;
+
+        if should_write_output {
+            // write patched image to output file when output is requested
             let output_dir = out.unwrap_or(std::env::current_dir()?);
             let name = out_name.unwrap_or_else(|| {
                 let now = chrono::Utc::now();
@@ -758,16 +814,6 @@ pub fn patch(args: BootPatchArgs) -> Result<()> {
             }
             println!("- Output file is written to");
             println!("- {}", output_image.display().to_string().trim_matches('"'));
-        }
-
-        #[cfg(target_os = "android")]
-        if flash {
-            println!("- Flashing new boot image");
-            flash_boot(&bootdevice, new_boot)?;
-
-            if ota {
-                post_ota()?;
-            }
         }
 
         println!("- Done!");
@@ -796,7 +842,26 @@ pub struct BootRestoreArgs {
     #[arg(long, default_value = None)]
     pub magiskboot: Option<PathBuf>,
 
+    /// Output path. If not specified, will use current directory.
+    /// If specified, the boot image will be written to the directory
+    /// even if --flash is specified.
+    #[cfg(target_os = "android")]
+    #[arg(short, long, default_value = None)]
+    pub out: Option<PathBuf>,
+
+    /// Output path. If not specified, will use current directory.
+    #[cfg(not(target_os = "android"))]
+    #[arg(short, long, default_value = None)]
+    pub out: Option<PathBuf>,
+
+    /// File name of the output. If specified, the boot image will be
+    /// written to the output directory even if --flash is specified.
+    #[cfg(target_os = "android")]
+    #[arg(long, default_value = None)]
+    pub out_name: Option<String>,
+
     /// File name of the output.
+    #[cfg(not(target_os = "android"))]
     #[arg(long, default_value = None)]
     pub out_name: Option<String>,
 }
@@ -806,10 +871,10 @@ pub fn restore(args: BootRestoreArgs) -> Result<()> {
         boot: image,
         magiskboot: magiskboot_path,
         out_name,
-        ..
+        out,
+        #[cfg(target_os = "android")]
+        flash,
     } = args;
-    #[cfg(target_os = "android")]
-    let BootRestoreArgs { flash, .. } = args;
 
     let tmpdir = tempfile::Builder::new()
         .prefix("KernelSU")
@@ -917,9 +982,25 @@ pub fn restore(args: BootRestoreArgs) -> Result<()> {
     #[cfg(not(target_os = "android"))]
     let new_boot = remove_ksu()?;
 
-    if image.is_some() {
-        // if image is specified, write to output file
-        let output_dir = std::env::current_dir()?;
+    // flash first, since the new_boot may be moved
+    #[cfg(target_os = "android")]
+    if flash {
+        if from_backup {
+            println!("- Flashing new boot image from {}", new_boot.display());
+        } else {
+            println!("- Flashing new boot image");
+        }
+        flash_boot(&bootdevice, &new_boot)?;
+    }
+
+    #[cfg(target_os = "android")]
+    let should_write_output = image.is_some() || !flash || out_name.is_some() || out.is_some();
+    #[cfg(not(target_os = "android"))]
+    let should_write_output = image.is_some();
+
+    if should_write_output {
+        // write restored image to output file when output is requested
+        let output_dir = out.unwrap_or(std::env::current_dir()?);
         let name = out_name.unwrap_or_else(|| {
             let now = chrono::Utc::now();
             format!("kernelsu_restore_{}.img", now.format("%Y%m%d_%H%M%S"))
@@ -931,15 +1012,6 @@ pub fn restore(args: BootRestoreArgs) -> Result<()> {
         }
         println!("- Output file is written to");
         println!("- {}", output_image.display().to_string().trim_matches('"'));
-    }
-    #[cfg(target_os = "android")]
-    if flash {
-        if from_backup {
-            println!("- Flashing new boot image from {}", new_boot.display());
-        } else {
-            println!("- Flashing new boot image");
-        }
-        flash_boot(&bootdevice, new_boot)?;
     }
     println!("- Done!");
     Ok(())
