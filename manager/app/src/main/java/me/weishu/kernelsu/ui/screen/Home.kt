@@ -293,8 +293,7 @@ private fun StatusCard(
 ) {
     val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
-
-    // --- LOGIC TEXT & DATA ---
+    
     val workingMode = when (lkmMode) {
         null -> "Legacy"
         true -> "LKM"
@@ -306,7 +305,6 @@ private fun StatusCard(
     else
         stringResource(R.string.home_not_installed)
 
-    // --- IMAGE LOADER ---
     val headerImageUri = context.getHeaderImage()
     val imageLoader = remember(context) {
         ImageLoader.Builder(context)
@@ -320,10 +318,9 @@ private fun StatusCard(
             .build()
     }
 
-    // --- HEADER CARD CONTENT ---
     val headerCardContent = @Composable { modifier: Modifier ->
         TonalCard(
-            containerColor = cs.secondaryContainer, // Default solid Monet
+            containerColor = cs.secondaryContainer,
             modifier = modifier.clip(RoundedCornerShape(24.dp))
         ) {
             Box(
@@ -364,18 +361,29 @@ private fun StatusCard(
                         .offset(x = 16.dp, y = 16.dp)
                 )
 
-                // Content Overlay
+                if (headerImageUri != null) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, cs.surface.copy(alpha = 0.8f))
+                                )
+                            )
+                    )
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(20.dp),
-                    verticalArrangement = if (useClassicLayout) Arrangement.Top else Arrangement.Bottom,
+                        .padding(16.dp),
+                    verticalArrangement = if (useClassicLayout) Arrangement.Bottom else Arrangement.Top,
                     horizontalAlignment = Alignment.Start
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = statusText,
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = cs.onSecondaryContainer
                         )
@@ -399,8 +407,8 @@ private fun StatusCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = if (ksuVersion != null) "Version: $ksuVersion" else stringResource(R.string.home_click_to_install),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = cs.onSecondaryContainer.copy(alpha = 0.7f)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSecondaryContainer.copy(alpha = 0.8f)
                     )
                 }
             }
