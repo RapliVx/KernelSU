@@ -10,6 +10,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -17,7 +18,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +55,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -156,6 +163,29 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = currentBackStackEntry?.destination?.route
                 val showBottomBar = currentRoute in bottomBarRoutes
 
+                var isScrollingDown by remember { mutableStateOf(false) }
+
+                LaunchedEffect(currentRoute) {
+                    isScrollingDown = false
+                }
+
+                val nestedScrollConnection = remember {
+                    object : NestedScrollConnection {
+                        var scrollAccumulator = 0f
+                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                            scrollAccumulator += available.y
+                            scrollAccumulator = scrollAccumulator.coerceIn(-150f, 150f)
+
+                            if (scrollAccumulator < -60f) {      
+                                isScrollingDown = true
+                            } else if (scrollAccumulator > 60f) {
+                                isScrollingDown = false
+                            }
+                            return Offset.Zero
+                        }
+                    }
+                }
+
                 val homeDestination = BottomBarDestination.entries.firstOrNull()
                 val startRoute = homeDestination?.direction?.route
 
@@ -189,7 +219,7 @@ class MainActivity : ComponentActivity() {
                     override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
                         {
                             if (targetState.destination.route !in bottomBarRoutes) {
-                                slideInHorizontally(initialOffsetX = { it })
+                                slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth })
                             } else {
                                 fadeIn(animationSpec = tween(340))
                             }
@@ -198,7 +228,7 @@ class MainActivity : ComponentActivity() {
                     override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
                         {
                             if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
-                                slideOutHorizontally(targetOffsetX = { -it / 4 }) + fadeOut()
+                                slideOutHorizontally(targetOffsetX = { fullWidth -> -(fullWidth / 4) }) + fadeOut()
                             } else {
                                 fadeOut(animationSpec = tween(340))
                             }
@@ -207,7 +237,7 @@ class MainActivity : ComponentActivity() {
                     override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
                         {
                             if (targetState.destination.route in bottomBarRoutes) {
-                                slideInHorizontally(initialOffsetX = { -it / 4 }) + fadeIn()
+                                slideInHorizontally(initialOffsetX = { fullWidth -> -(fullWidth / 4) }) + fadeIn()
                             } else {
                                 fadeIn(animationSpec = tween(340))
                             }
@@ -225,7 +255,11 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     bottomBar = {
-                        if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState) {
+                        AnimatedVisibility(
+                            visible = showBottomBar && configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState,
+                            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+                        ) {
                             BottomBar(navController)
                         }
                     },
@@ -234,7 +268,7 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(
                         LocalSnackbarHost provides snackBarHostState,
                     ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        Box(modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection)) {
 
                             if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFloatingState) {
                                 Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
@@ -255,14 +289,15 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            if (showBottomBar && isFloatingState) {
-                                Box(
-                                    modifier = Modifier.align(Alignment.BottomCenter)
+                            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                                AnimatedVisibility(
+                                    visible = showBottomBar && isFloatingState && !isScrollingDown,
+                                    enter = slideInVertically(initialOffsetY = { it * 2 }) + fadeIn(animationSpec = tween(300)),
+                                    exit = slideOutVertically(targetOffsetY = { it * 2 }) + fadeOut(animationSpec = tween(300))
                                 ) {
                                     BottomBar(navController)
                                 }
                             }
-
                         }
                     }
                 }

@@ -23,10 +23,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -143,15 +145,19 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.zIndex
 import androidx.compose.material3.Surface
 
@@ -172,7 +178,31 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
+    val isFloating = prefs.getBoolean("enable_floating_navbar", false)
+    val sysNavBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val floatingPadding = if (isFloating) sysNavBarPadding + 96.dp else 0.dp
     val modules = viewModel.moduleList
+    var isFabVisible by remember { mutableStateOf(true) }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            var scrollAccumulator = 0f
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                scrollAccumulator += available.y
+                scrollAccumulator = scrollAccumulator.coerceIn(-150f, 150f)
+
+                if (scrollAccumulator < -60f) {
+                    // Geser ke bawah -> Sembunyikan FAB
+                    isFabVisible = false
+                } else if (scrollAccumulator > 60f) {
+                    // Geser ke atas -> Munculkan FAB
+                    isFabVisible = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
+    // ----------------------------------------------
 
     LaunchedEffect(Unit) {
         viewModel.checkModuleUpdate = prefs.getBoolean("module_check_update", true)
@@ -218,11 +248,13 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     }
 
     Scaffold(
-        modifier = Modifier.pullToRefresh(
-            state = pullToRefreshState,
-            isRefreshing = viewModel.isRefreshing,
-            onRefresh = onRefresh,
-        ),
+        modifier = Modifier
+            .pullToRefresh(
+                state = pullToRefreshState,
+                isRefreshing = viewModel.isRefreshing,
+                onRefresh = onRefresh,
+            )
+            .nestedScroll(nestedScrollConnection),
         topBar = {
             SearchAppBar(
                 title = {
@@ -290,6 +322,15 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
         floatingActionButton = {
             if (!hideInstallButton) {
                 val moduleInstall = stringResource(id = R.string.module_install)
+
+                val dynamicFabPadding by animateDpAsState(
+                    targetValue = if (isFabVisible && isFloating) floatingPadding else 0.dp,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                )
+
                 val selectZipLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.StartActivityForResult()
                 ) {
@@ -313,6 +354,7 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                 }
 
                 ExtendedFloatingActionButton(
+                    modifier = Modifier.padding(bottom = dynamicFabPadding),
                     onClick = {
                         // Select the zip files to install
                         val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
@@ -410,6 +452,10 @@ private fun ModuleList(
     val scope = rememberCoroutineScope()
     val loadingDialog = rememberLoadingDialog()
     val confirmDialog = rememberConfirmDialog()
+
+    val isFloating = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("enable_floating_navbar", false)
+    val sysNavBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val floatingPadding = if (isFloating) sysNavBarPadding + 96.dp else 0.dp
 
     suspend fun onModuleUpdate(
         module: ModuleViewModel.ModuleInfo,
@@ -524,12 +570,12 @@ private fun ModuleList(
         LazyColumn(
             modifier = modifier,
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = remember {
+            contentPadding = remember(floatingPadding) {
                 PaddingValues(
                     start = 16.dp,
                     top = 16.dp,
                     end = 16.dp,
-                    bottom = 16.dp + 56.dp + 16.dp + 48.dp + 6.dp /* Scaffold Fab Spacing + Fab container height + SnackBar height */
+                    bottom = 16.dp + 56.dp + 16.dp + 48.dp + 6.dp + floatingPadding
                 )
             },
         ) {
@@ -690,7 +736,6 @@ fun ModuleItem(
             }
         }
 
-        // UBAH TIPE DATA KE Any? AGAR BISA STRING (URL) ATAU BYTEARRAY (FILE)
         val bannerData by produceState<Any?>(
             initialValue = null,
             module.id,
@@ -701,12 +746,10 @@ fun ModuleItem(
                     val b = module.banner?.trim().orEmpty()
                     if (b.isEmpty()) return@withContext null
 
-                    // LOGIKA BARU: Cek jika ini URL
                     if (b.startsWith("http://") || b.startsWith("https://")) {
-                        return@withContext b // Return String URL
+                        return@withContext b
                     }
 
-                    // Logika lama (File Lokal)
                     val rel = b.removePrefix("/")
                     val p1 = "/data/adb/modules/${module.id}/$rel"
                     val p2 = b
@@ -730,7 +773,6 @@ fun ModuleItem(
                 .clip(shape)
         ) {
 
-            // Banner
             if (!module.banner.isNullOrEmpty() && bannerData != null) {
                 val req = remember(bannerData, module.id, module.banner) {
                     ImageRequest.Builder(context)
@@ -755,14 +797,12 @@ fun ModuleItem(
                 )
             }
 
-            // Fade overlay
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(scrim)
             )
 
-            // Badges (Size / WebUI / Action)
             Row(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -772,7 +812,6 @@ fun ModuleItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
-                // SIZE badge
                 val size = moduleSizeMb
                 if (size != null && size > 0f) {
                     BadgeChip(
@@ -780,12 +819,10 @@ fun ModuleItem(
                     )
                 }
 
-                // WEBUI badge
                 if (module.hasWebUi) {
                     BadgeChip(text = "WEBUI")
                 }
 
-                // ACTION badge
                 if (module.hasActionScript) {
                     BadgeChip(
                         text = stringResource(R.string.action)
@@ -793,7 +830,6 @@ fun ModuleItem(
                 }
             }
 
-            // Clickable Content
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -910,12 +946,11 @@ fun ModuleItem(
                 onCheckedChange = onCheckChanged,
                 interactionSource = if (!module.hasWebUi) interactionSource else null
             )
-// Action Buttons
             AnimatedVisibility(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(12.dp)
-                    .zIndex(2f), // biar tidak ketutup scrim
+                    .zIndex(2f),
                 visible = expanded,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
