@@ -152,9 +152,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val navigator = navController.rememberDestinationsNavigator()
-
                 val currentBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = currentBackStackEntry?.destination?.route
+                val showBottomBar = currentRoute in bottomBarRoutes
 
                 val homeDestination = BottomBarDestination.entries.firstOrNull()
                 val startRoute = homeDestination?.direction?.route
@@ -225,7 +225,7 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     bottomBar = {
-                        if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState) {
+                        if (showBottomBar && (configuration.orientation == Configuration.ORIENTATION_PORTRAIT || isFloatingState)) {
                             BottomBar(navController)
                         }
                     },
@@ -234,35 +234,23 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(
                         LocalSnackbarHost provides snackBarHostState,
                     ) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            
-                            if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFloatingState) {
-                                Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
-                                    SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
-                                    DestinationsNavHost(
-                                        modifier = Modifier.weight(1f).padding(innerPadding),
-                                        navGraph = NavGraphs.root,
-                                        navController = navController,
-                                        defaultTransitions = defaultTransitions
-                                    )
-                                }
-                            } else {
+                        if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFloatingState) {
+                            Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
+                                SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
                                 DestinationsNavHost(
-                                    modifier = Modifier.padding(innerPadding),
+                                    modifier = Modifier.weight(1f).padding(innerPadding),
                                     navGraph = NavGraphs.root,
                                     navController = navController,
                                     defaultTransitions = defaultTransitions
                                 )
                             }
-
-                            if (isFloatingState) {
-                                Box(
-                                    modifier = Modifier.align(Alignment.BottomCenter)
-                                ) {
-                                    BottomBar(navController)
-                                }
-                            }
-
+                        } else {
+                            DestinationsNavHost(
+                                modifier = Modifier.padding(innerPadding),
+                                navGraph = NavGraphs.root,
+                                navController = navController,
+                                defaultTransitions = defaultTransitions
+                            )
                         }
                     }
                 }
