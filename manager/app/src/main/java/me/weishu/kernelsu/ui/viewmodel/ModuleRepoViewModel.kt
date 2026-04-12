@@ -12,6 +12,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.R
@@ -26,7 +28,9 @@ class ModuleRepoViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "ModuleRepoViewModel"
-        private const val MODULES_URL = "https://modules.kernelsu.org/modules.json"
+        private const val OSS_URL = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/main/modules.json"
+        private const val META_URL = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/main/meta_modules.json"
+        private const val NON_FREE_URL = "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next-Modules-Repo/main/non_free_modules.json"
     }
 
     @Immutable
@@ -49,14 +53,18 @@ class ModuleRepoViewModel : ViewModel() {
         val authors: String,
         val authorList: List<Author>,
         val summary: String,
-        val metamodule: Boolean,
-        val stargazerCount: Int,
-        val updatedAt: String,
-        val createdAt: String,
-        val latestRelease: String,
-        val latestReleaseTime: String,
-        val latestVersionCode: Int,
-        val latestAsset: ReleaseAsset?,
+        val repoUrl: String?,
+        val license: String?,
+        val bannerUrl: String?,
+        val repoType: String,
+        val metamodule: Boolean = false,
+        val stargazerCount: Int = 0,
+        val updatedAt: String = "",
+        val createdAt: String = "",
+        val latestRelease: String = "",
+        val latestReleaseTime: String = "",
+        val latestVersionCode: Int = 0,
+        val latestAsset: ReleaseAsset? = null,
     )
 
     private var _modules = mutableStateOf<List<RepoModule>>(emptyList())
@@ -68,8 +76,8 @@ class ModuleRepoViewModel : ViewModel() {
         val searchText = search.text
         modules.value.filter { module ->
             module.moduleId.contains(searchText, true) || module.moduleName.contains(searchText, true) ||
-            HanziToPinyin.getInstance().toPinyinString(module.moduleName).contains(searchText, true) ||
-            module.summary.contains(searchText, true) || module.authors.contains(searchText, true)
+                    HanziToPinyin.getInstance().toPinyinString(module.moduleName).contains(searchText, true) ||
+                    module.summary.contains(searchText, true) || module.authors.contains(searchText, true)
         }
     }
 
@@ -80,7 +88,11 @@ class ModuleRepoViewModel : ViewModel() {
         viewModelScope.launch {
             val netAvailable = isNetworkAvailable(ksuApp)
             withContext(Dispatchers.Main) { isRefreshing = true }
-            val parsed = withContext(Dispatchers.IO) { if (!netAvailable) null else fetchModulesInternal() }
+
+            val parsed = withContext(Dispatchers.IO) {
+                if (!netAvailable) null else fetchAllModules()
+            }
+
             withContext(Dispatchers.Main) {
                 if (parsed != null) {
                     _modules.value = parsed
@@ -95,46 +107,54 @@ class ModuleRepoViewModel : ViewModel() {
         }
     }
 
-    private fun fetchModulesInternal(): List<RepoModule> {
+    private suspend fun fetchAllModules(): List<RepoModule> = withContext(Dispatchers.IO) {
+        val ossTask = async { fetchAndParseList(OSS_URL, "OSS") }
+        val metaTask = async { fetchAndParseList(META_URL, "META") }
+        val nonFreeTask = async { fetchAndParseList(NON_FREE_URL, "NON-FREE") }
+        val allResults = awaitAll(ossTask, metaTask, nonFreeTask)
+        return@withContext allResults.flatten()
+    }
+
+    private fun fetchAndParseList(url: String, repoType: String): List<RepoModule> {
         return runCatching {
-            val request = Request.Builder().url(MODULES_URL).build()
+            val request = Request.Builder().url(url).build()
             ksuApp.okhttpClient.newCall(request).execute().use { resp ->
                 if (!resp.isSuccessful) return emptyList()
                 val body = resp.body?.string() ?: return emptyList()
                 val json = JSONArray(body)
                 (0 until json.length()).mapNotNull { idx ->
                     val item = json.optJSONObject(idx) ?: return@mapNotNull null
-                    parseRepoModule(item)
+                    parseRepoModule(item, repoType)
                 }
             }
         }.getOrElse {
-            Log.e(TAG, "fetch modules failed", it)
+            Log.e(TAG, "Fetch modules failed for $url", it)
             emptyList()
         }
     }
 
-    private fun parseRepoModule(item: JSONObject): RepoModule? {
-        val moduleId = item.optString("moduleId", "")
-        if (moduleId.isEmpty()) return null
-        val moduleName = item.optString("moduleName", "")
-        val authorsArray = item.optJSONArray("authors")
-        val authorList = if (authorsArray != null) {
-            (0 until authorsArray.length())
-                .mapNotNull { idx ->
-                    val authorObj = authorsArray.optJSONObject(idx) ?: return@mapNotNull null
-                    val name = authorObj.optString("name", "").trim()
-                    var link = authorObj.optString("link", "").trim()
-                    if (link.startsWith("`") && link.endsWith("`") && link.length >= 2) {
-                        link = link.substring(1, link.length - 1)
-                    }
-                    if (name.isEmpty()) null else Author(name = name, link = link)
-                }
-        } else {
-            emptyList()
+    private fun parseRepoModule(item: JSONObject, repoType: String): RepoModule? {
+        val moduleName = item.optString("name", item.optString("moduleName", ""))
+        val repoUrl = item.optString("repoUrl", "")
+        val moduleId = item.optString("id", item.optString("moduleId", "")).ifEmpty {
+            repoUrl.trimEnd('/').substringAfterLast('/')
+        }.ifEmpty {
+            moduleName.replace("\\s+".toRegex(), "_")
         }
-        val authors = if (authorList.isNotEmpty()) authorList.joinToString(", ") { it.name } else item.optString("authors", "")
-        val summary = item.optString("summary", "")
-        val metamodule = item.optBoolean("metamodule", false)
+
+        if (moduleId.isEmpty() || moduleName.isEmpty()) return null
+
+        val summary = item.optString("description", item.optString("summary", ""))
+        val authors = item.optString("author", item.optString("authors", ""))
+        val license = item.optString("license", "")
+        val bannerUrl = item.optString("bannerUrl", "")
+
+        val authorList = mutableListOf<Author>()
+        if (authors.isNotEmpty()) {
+            authorList.add(Author(name = authors, link = ""))
+        }
+
+        val metamodule = repoType == "META" || item.optBoolean("metamodule", false)
         val stargazerCount = item.optInt("stargazerCount", 0)
         val updatedAt = item.optString("updatedAt", "")
         val createdAt = item.optString("createdAt", "")
@@ -143,6 +163,7 @@ class ModuleRepoViewModel : ViewModel() {
         var latestReleaseTime = ""
         var latestVersionCode = 0
         var latestAsset: ReleaseAsset? = null
+
         val lr = item.optJSONObject("latestRelease")
         if (lr != null) {
             val lrName = lr.optString("name", lr.optString("version", ""))
@@ -175,6 +196,10 @@ class ModuleRepoViewModel : ViewModel() {
             authors = authors,
             authorList = authorList,
             summary = summary,
+            repoUrl = repoUrl,
+            license = license,
+            bannerUrl = bannerUrl,
+            repoType = repoType,
             metamodule = metamodule,
             stargazerCount = stargazerCount,
             updatedAt = updatedAt,

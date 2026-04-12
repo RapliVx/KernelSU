@@ -5,10 +5,15 @@ import android.content.Context
 import android.net.Uri
 import android.os.Parcelable
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +31,8 @@ import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -37,11 +43,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ChromeReaderMode
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
@@ -60,6 +68,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -76,7 +85,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
@@ -87,8 +100,12 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
@@ -105,6 +122,7 @@ import me.weishu.kernelsu.ui.component.ExpressiveList
 import me.weishu.kernelsu.ui.component.ExpressiveListItem
 import me.weishu.kernelsu.ui.component.GithubMarkdown
 import me.weishu.kernelsu.ui.component.SearchAppBar
+import me.weishu.kernelsu.ui.component.TonalCard
 import me.weishu.kernelsu.ui.component.rememberConfirmDialog
 import me.weishu.kernelsu.ui.util.DownloadListener
 import me.weishu.kernelsu.ui.util.download
@@ -143,10 +161,15 @@ data class RepoModuleArg(
     val moduleId: String,
     val moduleName: String,
     val authors: String,
-    val authorsList: List<AuthorArg>,
-    val latestRelease: String,
-    val latestReleaseTime: String,
-    val releases: List<ReleaseArg>
+    val description: String,
+    val repoUrl: String,
+    val license: String,
+    val bannerUrl: String?,
+    val repoType: String,
+    val authorsList: List<AuthorArg> = emptyList(),
+    val latestRelease: String = "",
+    val latestReleaseTime: String = "",
+    val releases: List<ReleaseArg> = emptyList()
 ) : Parcelable
 
 @SuppressLint("LocalContextGetResourceValueCall")
@@ -164,6 +187,7 @@ fun ModuleRepoScreen(
     val listState = rememberLazyListState()
 
     val offline = !isNetworkAvailable(context)
+    val sysNavBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     LaunchedEffect(Unit) {
         if (viewModel.modules.value.isEmpty()) {
@@ -175,6 +199,15 @@ fun ModuleRepoScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    val cs = MaterialTheme.colorScheme
+    val isDark = isSystemInDarkTheme()
+
+    val scrim = remember(cs, isDark) {
+        Brush.verticalGradient(
+            0f to cs.surface.copy(alpha = if (isDark) 0.08f else 0.10f),
+            1f to cs.surface.copy(alpha = if (isDark) 0.45f else 0.40f)
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -193,25 +226,15 @@ fun ModuleRepoScreen(
                 dropdownContent = {
                     var showDropdown by remember { mutableStateOf(false) }
 
-                    IconButton(
-                        onClick = { showDropdown = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = stringResource(id = R.string.settings)
-                        )
-
-                        DropdownMenu(expanded = showDropdown, onDismissRequest = {
-                            showDropdown = false
-                        }) {
+                    IconButton(onClick = { showDropdown = true }) {
+                        Icon(Icons.Filled.MoreVert, stringResource(id = R.string.settings))
+                        DropdownMenu(expanded = showDropdown, onDismissRequest = { showDropdown = false }) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.module_repos_sort_name)) },
                                 trailingIcon = { Checkbox(repoSortByNameState.value, null) },
                                 onClick = {
                                     repoSortByNameState.value = !repoSortByNameState.value
-                                    prefs.edit {
-                                        putBoolean("module_repo_sort_name", repoSortByNameState.value)
-                                    }
+                                    prefs.edit { putBoolean("module_repo_sort_name", repoSortByNameState.value) }
                                 }
                             )
                         }
@@ -225,18 +248,14 @@ fun ModuleRepoScreen(
 
         if (isLoading) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
                 if (offline) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = stringResource(R.string.network_offline), color = MaterialTheme.colorScheme.outline)
                         Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = { viewModel.refresh() },
-                        ) {
+                        Button(onClick = { viewModel.refresh() }) {
                             Text(stringResource(R.string.network_retry))
                         }
                     }
@@ -251,6 +270,7 @@ fun ModuleRepoScreen(
                 val collator = Collator.getInstance(Locale.getDefault())
                 if (!sortByName) base else base.sortedWith(compareBy(collator) { it.moduleName })
             }
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -258,107 +278,147 @@ fun ModuleRepoScreen(
                     .padding(innerPadding),
                 state = listState,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(all = 16.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + sysNavBarPadding
+                ),
             ) {
                 items(displayModules, key = { it.moduleId }) { module ->
-                    val latestReleaseTime = remember(module.latestReleaseTime) { module.latestReleaseTime }
                     val moduleAuthor = stringResource(id = R.string.module_author)
 
-                    TonalCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(
+                    TonalCard(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                    ) {
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = 170.dp)
                                 .clickable {
                                     val args = RepoModuleArg(
                                         moduleId = module.moduleId,
                                         moduleName = module.moduleName,
                                         authors = module.authors,
-                                        authorsList = module.authorList.map { AuthorArg(it.name, it.link) },
-                                        latestRelease = module.latestRelease,
-                                        latestReleaseTime = module.latestReleaseTime,
-                                        releases = emptyList()
+                                        description = module.summary,
+                                        repoUrl = module.repoUrl ?: "",
+                                        license = module.license ?: "Unknown",
+                                        bannerUrl = module.bannerUrl,
+                                        repoType = module.repoType
                                     )
                                     navigator.navigate(ModuleRepoDetailScreenDestination(args)) {
                                         launchSingleTop = true
                                     }
                                 }
-                                .padding(22.dp, 18.dp, 22.dp, 12.dp)
                         ) {
-                            if (module.moduleName.isNotEmpty()) {
-                                Text(
-                                    text = module.moduleName,
-                                    fontSize = MaterialTheme.typography.titleMedium.fontSize,
-                                    fontWeight = FontWeight.SemiBold,
-                                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                    fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
+                            if (!module.bannerUrl.isNullOrEmpty()) {
+                                val req = remember(module.bannerUrl) {
+                                    ImageRequest.Builder(context)
+                                        .data(module.bannerUrl)
+                                        .crossfade(true)
+                                        .build()
+                                }
+                                AsyncImage(
+                                    model = req,
+                                    contentDescription = null,
+                                    modifier = Modifier.matchParentSize(),
+                                    contentScale = ContentScale.Crop,
+                                    alpha = if (isDark) 0.20f else 0.35f
                                 )
-                            }
-                            if (module.moduleId.isNotEmpty()) {
-                                Text(
-                                    text = "ID: ${module.moduleId}",
-                                    fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            } else {
+                                val defaultGradient = Brush.linearGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    )
                                 )
-                            }
-                            Text(
-                                text = "$moduleAuthor: ${module.authors}",
-                                fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                                lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            if (module.summary.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = module.summary,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                    fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
-                                    overflow = TextOverflow.Ellipsis,
-                                    maxLines = 4,
-                                )
+                                Box(
+                                    modifier = Modifier.matchParentSize().background(defaultGradient),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Extension,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
+                                    )
+                                }
                             }
 
-                            Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                                if (module.metamodule) LabelText("META")
-                            }
-                            HorizontalDivider(thickness = Dp.Hairline)
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Box(modifier = Modifier.matchParentSize().background(scrim))
 
                             Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(start = 16.dp, top = 12.dp)
+                                    .zIndex(3f),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (module.stargazerCount > 0) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Star,
-                                            contentDescription = "stars",
-                                            tint = MaterialTheme.colorScheme.outline,
-                                            modifier = Modifier.size(16.dp)
-                                        )
+                                val typeColor = when (module.repoType.uppercase()) {
+                                    "META" -> MaterialTheme.colorScheme.tertiaryContainer
+                                    "NON-FREE" -> MaterialTheme.colorScheme.errorContainer
+                                    else -> MaterialTheme.colorScheme.primaryContainer
+                                }
+                                val typeTextColor = when (module.repoType.uppercase()) {
+                                    "META" -> MaterialTheme.colorScheme.onTertiaryContainer
+                                    "NON-FREE" -> MaterialTheme.colorScheme.onErrorContainer
+                                    else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                }
+
+                                BadgeChipCustom(
+                                    text = module.repoType,
+                                    containerColor = typeColor,
+                                    contentColor = typeTextColor
+                                )
+
+                                if (!module.license.isNullOrEmpty()) {
+                                    BadgeChipCustom(
+                                        text = module.license,
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f),
+                                        contentColor = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .padding(
+                                        start = 22.dp,
+                                        top = 45.dp,
+                                        end = 22.dp,
+                                        bottom = 12.dp
+                                    )
+                            ) {
+                                Column(modifier = Modifier.align(Alignment.TopStart)) {
+                                    Text(
+                                        text = module.moduleName.ifBlank { "Unknown Module" },
+                                        color = cs.onSurface,
+                                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                                        lineHeight = MaterialTheme.typography.titleMedium.lineHeight,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    Text(
+                                        text = "$moduleAuthor: ${module.authors}",
+                                        color = cs.onSurface.copy(alpha = 0.78f),
+                                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                                        fontWeight = FontWeight.Medium
+                                    )
+
+                                    if (module.summary.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(6.dp))
                                         Text(
-                                            text = module.stargazerCount.toString(),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.outline,
-                                            modifier = Modifier.padding(start = 4.dp)
+                                            text = module.summary,
+                                            color = cs.onSurface.copy(alpha = 0.80f),
+                                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                                            lineHeight = 16.sp,
+                                            maxLines = 3,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
-                                }
-                                Spacer(Modifier.weight(1f))
-                                if (latestReleaseTime.isNotEmpty()) {
-                                    Text(
-                                        text = latestReleaseTime,
-                                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                        fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
-                                        color = MaterialTheme.colorScheme.outline,
-                                    )
                                 }
                             }
                         }
@@ -393,8 +453,8 @@ fun ModuleRepoDetailScreen(
     var readmeHtml by remember(module.moduleId) { mutableStateOf<String?>(null) }
     var readmeLoaded by remember(module.moduleId) { mutableStateOf(false) }
     var detailReleases by remember(module.moduleId) { mutableStateOf<List<ReleaseArg>>(emptyList()) }
-    var webUrl by remember(module.moduleId) { mutableStateOf("https://modules.kernelsu.org/module/${module.moduleId}") }
-    var sourceUrl by remember(module.moduleId) { mutableStateOf("https://github.com/KernelSU-Modules-Repo/${module.moduleId}") }
+    var webUrl by remember(module.moduleId) { mutableStateOf(module.repoUrl) }
+    var sourceUrl by remember(module.moduleId) { mutableStateOf(module.repoUrl) }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -474,7 +534,7 @@ fun ModuleRepoDetailScreen(
                     top = innerPadding.calculateTopPadding() + 56.dp + 8.dp,
                     start = innerPadding.calculateStartPadding(layoutDirection),
                     end = innerPadding.calculateEndPadding(layoutDirection),
-                    bottom = innerPadding.calculateBottomPadding() + WindowInsets.systemBars.asPaddingValues().calculateBottomPadding() + 16.dp
+                    bottom = innerPadding.calculateBottomPadding() + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
                 )
                 when (page) {
                     0 -> ReadmePage(
@@ -632,8 +692,8 @@ fun ReleasesPage(
 
                         AnimatedVisibility(
                             visible = rel.descriptionHTML.isNotEmpty(),
-                            enter = fadeIn() + expandVertically(),
-                            exit = fadeOut() + shrinkVertically()
+                            enter = fadeIn() + expandVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)),
+                            exit = fadeOut() + shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessLow))
                         ) {
                             Column {
                                 HorizontalDivider(
@@ -647,8 +707,8 @@ fun ReleasesPage(
 
                         AnimatedVisibility(
                             visible = rel.assets.isNotEmpty(),
-                            enter = fadeIn() + expandVertically(),
-                            exit = fadeOut() + shrinkVertically()
+                            enter = fadeIn() + expandVertically(animationSpec = spring(stiffness = Spring.StiffnessLow)),
+                            exit = fadeOut() + shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessLow))
                         ) {
                             Column {
                                 HorizontalDivider(
@@ -668,7 +728,7 @@ fun ReleasesPage(
                                         }
                                     }
                                     val sizeAndDownloads =
-                                        remember(sizeText, asset.downloadCount) { "$sizeText · ${asset.downloadCount} downloads" }
+                                        remember(sizeText, asset.downloadCount) { "$sizeText • ${asset.downloadCount} Downloads" }
                                     var isDownloading by remember(fileName, asset.downloadUrl) { mutableStateOf(false) }
                                     var progress by remember(fileName, asset.downloadUrl) { mutableIntStateOf(0) }
                                     val onClickDownload = remember(fileName, asset.downloadUrl) {
@@ -837,5 +897,25 @@ fun InfoPage(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun BadgeChipCustom(
+    text: String,
+    containerColor: Color,
+    contentColor: Color
+) {
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(6.dp),
+    ) {
+        Text(
+            text = text.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            color = contentColor
+        )
     }
 }
