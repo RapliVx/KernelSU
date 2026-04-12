@@ -207,13 +207,6 @@ fun ModuleRepoScreen(
     val cs = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
 
-    val scrim = remember(cs, isDark) {
-        Brush.verticalGradient(
-            0f to cs.surface.copy(alpha = if (isDark) 0.08f else 0.10f),
-            1f to cs.surface.copy(alpha = if (isDark) 0.45f else 0.40f)
-        )
-    }
-
     Scaffold(
         topBar = {
             SearchAppBar(
@@ -309,7 +302,6 @@ fun ModuleRepoScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 170.dp)
                                 .clickable {
                                     val args = RepoModuleArg(
                                         moduleId = module.moduleId,
@@ -345,32 +337,14 @@ fun ModuleRepoScreen(
                                     contentScale = ContentScale.Crop,
                                     alpha = if (isDark) 0.25f else 0.40f
                                 )
-                            } else {
-                                val defaultGradient = Brush.linearGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    )
-                                )
-                                Box(
-                                    modifier = Modifier.matchParentSize().background(defaultGradient),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Extension,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(48.dp),
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.3f)
+
+                                val scrimGradient = remember(cs, isDark) {
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Transparent, cs.surfaceVariant)
                                     )
                                 }
+                                Box(modifier = Modifier.matchParentSize().background(scrimGradient))
                             }
-
-                            val scrimGradient = remember(cs, isDark) {
-                                Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, cs.surfaceVariant)
-                                )
-                            }
-                            Box(modifier = Modifier.matchParentSize().background(scrimGradient))
 
                             Row(
                                 modifier = Modifier
@@ -588,8 +562,8 @@ fun ModuleRepoDetailScreen(
                                 )
                             }
                         } else {
-                            val (fetchedReadme, fetchedReleases) = fetchGitHubDetails(module.repoUrl)
-                            readmeHtml = fetchedReadme
+                            val (fetchedReadmeHtml, fetchedReleases) = fetchGitHubDetails(module.repoUrl)
+                            readmeHtml = fetchedReadmeHtml
                             detailReleases = fetchedReleases
                         }
                     }.onSuccess {
@@ -692,7 +666,7 @@ private fun ReadmePage(
                 item {
                     Column(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
                         GithubMarkdown(
-                            content = readmeHtml ?: "> Readme is not available for this module.",
+                            content = readmeHtml ?: "<p>Readme is not available for this module.</p>",
                             containerColor = MaterialTheme.colorScheme.surface
                         )
                     }
@@ -992,25 +966,25 @@ private fun fetchGitHubDetails(repoUrl: String): Pair<String?, List<ReleaseArg>>
     val repoPath = repoUrl.trimEnd('/').substringAfter("github.com/")
     if (repoPath.isBlank() || !repoPath.contains("/")) return Pair(null, emptyList())
 
-    var readmeText: String? = null
-    val readmeUrl = "https://raw.githubusercontent.com/$repoPath/main/README.md"
-    val masterReadmeUrl = "https://raw.githubusercontent.com/$repoPath/master/README.md"
-
+    var readmeHtml: String? = null
     try {
-        val conn = URL(readmeUrl).openConnection()
-        readmeText = BufferedReader(InputStreamReader(conn.getInputStream())).use { it.readText() }
+        val readmeApiUrl = "https://api.github.com/repos/$repoPath/readme"
+        val conn = URL(readmeApiUrl).openConnection() as java.net.HttpURLConnection
+        conn.setRequestProperty("Accept", "application/vnd.github.v3.html") // Minta Render HTML
+        conn.setRequestProperty("User-Agent", "KernelSU-Manager")
+        if (conn.responseCode == 200) {
+            readmeHtml = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+        }
     } catch(e: Exception) {
-        try {
-            val conn2 = URL(masterReadmeUrl).openConnection()
-            readmeText = BufferedReader(InputStreamReader(conn2.getInputStream())).use { it.readText() }
-        } catch(e2: Exception) {}
+        e.printStackTrace()
     }
 
     val releasesList = mutableListOf<ReleaseArg>()
     val releasesApiUrl = "https://api.github.com/repos/$repoPath/releases"
     try {
         val conn = URL(releasesApiUrl).openConnection() as java.net.HttpURLConnection
-        conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
+        conn.setRequestProperty("Accept", "application/vnd.github.v3.html+json") // Minta Render HTML utk Body
+        conn.setRequestProperty("User-Agent", "KernelSU-Manager")
         if (conn.responseCode == 200) {
             val response = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
             val jsonArray = JSONArray(response)
@@ -1019,7 +993,8 @@ private fun fetchGitHubDetails(repoUrl: String): Pair<String?, List<ReleaseArg>>
                 val tagName = relObj.optString("tag_name", "")
                 val name = relObj.optString("name", tagName)
                 val publishedAt = relObj.optString("published_at", "").substringBefore("T")
-                val body = relObj.optString("body", "")
+
+                val bodyHtml = relObj.optString("body_html", relObj.optString("body", ""))
 
                 val assetsArray = relObj.optJSONArray("assets")
                 val assetsList = mutableListOf<ReleaseAssetArg>()
@@ -1035,14 +1010,14 @@ private fun fetchGitHubDetails(repoUrl: String): Pair<String?, List<ReleaseArg>>
                         }
                     }
                 }
-                releasesList.add(ReleaseArg(tagName, name, publishedAt, assetsList, body))
+                releasesList.add(ReleaseArg(tagName, name, publishedAt, assetsList, bodyHtml))
             }
         }
     } catch(e: Exception) {
         e.printStackTrace()
     }
 
-    return Pair(readmeText, releasesList)
+    return Pair(readmeHtml, releasesList)
 }
 
 @Composable
