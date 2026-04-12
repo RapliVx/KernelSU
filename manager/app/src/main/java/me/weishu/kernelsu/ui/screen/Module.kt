@@ -187,22 +187,28 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             var scrollAccumulator = 0f
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                scrollAccumulator += available.y
-                scrollAccumulator = scrollAccumulator.coerceIn(-150f, 150f)
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                val delta = consumed.y
+                if (delta != 0f) {
+                    scrollAccumulator += delta
+                    scrollAccumulator = scrollAccumulator.coerceIn(-300f, 300f)
 
-                if (scrollAccumulator < -60f) {
-                    // Geser ke bawah -> Sembunyikan FAB
-                    isFabVisible = false
-                } else if (scrollAccumulator > 60f) {
-                    // Geser ke atas -> Munculkan FAB
-                    isFabVisible = true
+                    if (scrollAccumulator < -150f) {
+                        isFabVisible = false
+                        scrollAccumulator = 0f
+                    } else if (scrollAccumulator > 150f) {
+                        isFabVisible = true
+                        scrollAccumulator = 0f
+                    }
                 }
                 return Offset.Zero
             }
         }
     }
-    // ----------------------------------------------
 
     LaunchedEffect(Unit) {
         viewModel.checkModuleUpdate = prefs.getBoolean("module_check_update", true)

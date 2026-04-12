@@ -87,7 +87,7 @@ fun BottomBar(navController: NavHostController) {
                 Row(
                     modifier = Modifier
                         .padding(horizontal = 8.dp)
-                        .height(80.dp)
+                        .height(64.dp)
                         .selectableGroup(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
@@ -102,11 +102,8 @@ fun BottomBar(navController: NavHostController) {
                                 } else {
                                     val isFromNonBottom = currentRoute !in bottomBarRoutes
                                     navigator.navigate(destination.direction) {
-                                        if (isFromNonBottom) {
-                                            popUpTo(NavGraphs.root) { inclusive = true }
-                                        } else {
-                                            popUpTo(NavGraphs.root) { saveState = true }
-                                        }
+                                        if (isFromNonBottom) popUpTo(NavGraphs.root) { inclusive = true }
+                                        else popUpTo(NavGraphs.root) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
@@ -117,9 +114,7 @@ fun BottomBar(navController: NavHostController) {
                                     if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
                                     stringResource(destination.label)
                                 )
-                            },
-                            label = { Text(stringResource(destination.label)) },
-                            alwaysShowLabel = true
+                            }
                         )
                     }
                 }
@@ -135,16 +130,12 @@ fun BottomBar(navController: NavHostController) {
                     NavigationBarItem(
                         selected = isCurrentDestOnBackStack,
                         onClick = {
-                            if (isCurrentDestOnBackStack) {
-                                navigator.popBackStack(destination.direction, false)
-                            } else {
+                            if (isCurrentDestOnBackStack) navigator.popBackStack(destination.direction, false)
+                            else {
                                 val isFromNonBottom = currentRoute !in bottomBarRoutes
                                 navigator.navigate(destination.direction) {
-                                    if (isFromNonBottom) {
-                                        popUpTo(NavGraphs.root) { inclusive = true }
-                                    } else {
-                                        popUpTo(NavGraphs.root) { saveState = true }
-                                    }
+                                    if (isFromNonBottom) popUpTo(NavGraphs.root) { inclusive = true }
+                                    else popUpTo(NavGraphs.root) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }

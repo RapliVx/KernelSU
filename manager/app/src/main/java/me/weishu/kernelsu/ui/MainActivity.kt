@@ -13,6 +13,8 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -172,14 +174,23 @@ class MainActivity : ComponentActivity() {
                 val nestedScrollConnection = remember {
                     object : NestedScrollConnection {
                         var scrollAccumulator = 0f
-                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                            scrollAccumulator += available.y
-                            scrollAccumulator = scrollAccumulator.coerceIn(-150f, 150f)
+                        override fun onPostScroll(
+                            consumed: Offset,
+                            available: Offset,
+                            source: NestedScrollSource
+                        ): Offset {
+                            val delta = consumed.y
+                            if (delta != 0f) {
+                                scrollAccumulator += delta
+                                scrollAccumulator = scrollAccumulator.coerceIn(-300f, 300f)
 
-                            if (scrollAccumulator < -60f) {      
-                                isScrollingDown = true
-                            } else if (scrollAccumulator > 60f) {
-                                isScrollingDown = false
+                                if (scrollAccumulator < -150f) {
+                                    isScrollingDown = true
+                                    scrollAccumulator = 0f
+                                } else if (scrollAccumulator > 150f) {
+                                    isScrollingDown = false
+                                    scrollAccumulator = 0f
+                                }
                             }
                             return Offset.Zero
                         }
@@ -292,8 +303,20 @@ class MainActivity : ComponentActivity() {
                             Box(modifier = Modifier.align(Alignment.BottomCenter)) {
                                 AnimatedVisibility(
                                     visible = showBottomBar && isFloatingState && !isScrollingDown,
-                                    enter = slideInVertically(initialOffsetY = { it * 2 }) + fadeIn(animationSpec = tween(300)),
-                                    exit = slideOutVertically(targetOffsetY = { it * 2 }) + fadeOut(animationSpec = tween(300))
+                                    enter = slideInVertically(
+                                        initialOffsetY = { it * 2 },
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessLow
+                                        )
+                                    ) + fadeIn(tween(400)),
+                                    exit = slideOutVertically(
+                                        targetOffsetY = { it * 2 },
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessLow
+                                        )
+                                    ) + fadeOut(tween(400))
                                 ) {
                                     BottomBar(navController)
                                 }

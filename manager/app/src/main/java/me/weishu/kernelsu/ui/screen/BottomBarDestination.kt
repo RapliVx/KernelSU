@@ -24,13 +24,6 @@ enum class BottomBarDestination(
     Home(HomeScreenDestination, R.string.home, Icons.Filled.Home, Icons.Outlined.Home, false),
     SuperUser(SuperUserScreenDestination, R.string.superuser, Icons.Filled.Shield, Icons.Outlined.Shield, true),
     // ModuleRepo(ModuleRepoScreenDestination, R.string.module_repos, Icons.Filled.CloudDownload, Icons.Outlined.CloudDownload, true),
-    QuickShell(
-        QuickShellScreenDestination,
-        R.string.quick_shell,
-        Icons.Filled.Code,
-        Icons.Outlined.Code,
-        true
-    ),
     Module(ModuleScreenDestination, R.string.module, Icons.Filled.Extension, Icons.Outlined.Extension, true),
     Settings(SettingScreenDestination, R.string.settings, Icons.Filled.Settings, Icons.Outlined.Settings, false)
 }
