@@ -51,7 +51,6 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -129,6 +128,9 @@ import me.weishu.kernelsu.ui.util.isNetworkAvailable
 import me.weishu.kernelsu.ui.util.module.fetchModuleDetail
 import me.weishu.kernelsu.ui.viewmodel.ModuleRepoViewModel
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.net.URL
 import java.text.Collator
 import java.util.Locale
 
@@ -300,7 +302,8 @@ fun ModuleRepoScreen(
                                         repoUrl = module.repoUrl ?: "",
                                         license = module.license ?: "Unknown",
                                         bannerUrl = module.bannerUrl,
-                                        repoType = module.repoType
+                                        repoType = module.repoType,
+                                        authorsList = module.authorList.map { AuthorArg(it.name, it.link) }
                                     )
                                     navigator.navigate(ModuleRepoDetailScreenDestination(args)) {
                                         launchSingleTop = true
@@ -504,7 +507,9 @@ fun ModuleRepoDetailScreen(
                                 )
                             }
                         } else {
-                            detailReleases = emptyList()
+                            val fallbackData = fetchGitHubDetailsFallback(module.repoUrl)
+                            readmeHtml = fallbackData.readmeText
+                            detailReleases = fallbackData.releases
                         }
                     }.onSuccess {
                         readmeLoaded = true
@@ -590,7 +595,7 @@ private fun ReadmePage(
     scrollBehavior: TopAppBarScrollBehavior
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
-        if (readmeLoaded && readmeHtml != null) {
+        if (readmeLoaded) {
             val layoutDirection = LocalLayoutDirection.current
             LazyColumn(
                 modifier = Modifier
@@ -607,7 +612,7 @@ private fun ReadmePage(
                 item {
                     Column(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
                         GithubMarkdown(
-                            content = readmeHtml,
+                            content = readmeHtml ?: "> Readme is not available for this module.",
                             containerColor = MaterialTheme.colorScheme.surface
                         )
                     }
@@ -828,71 +833,73 @@ fun InfoPage(
     ) {
         if (module.authorsList.isNotEmpty()) {
             item {
+                val authorItems: List<@Composable () -> Unit> = module.authorsList.map { author ->
+                    {
+                        ExpressiveListItem(
+                            headlineContent = {
+                                Text(
+                                    text = author.name,
+                                    fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                                )
+                            },
+                            trailingContent = {
+                                FilledTonalButton(
+                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                    onClick = { uriHandler.openUri(author.link) },
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.Outlined.Link,
+                                        contentDescription = null
+                                    )
+                                }
+                            }
+                        )
+                    }
+                }
                 ExpressiveList(
                     modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
                     title = stringResource(R.string.module_author),
-                    content = module.authorsList.map { author ->
-                        {
-                            ExpressiveListItem(
-                                headlineContent = {
-                                    Text(
-                                        text = author.name,
-                                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily
-                                    )
-                                },
-                                trailingContent = {
-                                    FilledTonalButton(
-                                        modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                        onClick = { uriHandler.openUri(author.link) },
-                                        contentPadding = ButtonDefaults.TextButtonContentPadding
-                                    ) {
-                                        Icon(
-                                            modifier = Modifier.size(20.dp),
-                                            imageVector = Icons.Outlined.Link,
-                                            contentDescription = null
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    }
+                    content = authorItems
                 )
             }
         }
         if (sourceUrl.isNotEmpty()) {
             item {
+                val sourceItems: List<@Composable () -> Unit> = listOf(
+                    {
+                        ExpressiveListItem(
+                            headlineContent = {
+                                Text(
+                                    text = sourceUrl,
+                                    fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily
+                                )
+                            },
+                            trailingContent = {
+                                FilledTonalButton(
+                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                    onClick = { uriHandler.openUri(sourceUrl) },
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.Outlined.Link,
+                                        contentDescription = null
+                                    )
+                                }
+                            }
+                        )
+                    }
+                )
                 ExpressiveList(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     title = stringResource(R.string.module_repos_source_code),
-                    content = listOf(
-                        {
-                            ExpressiveListItem(
-                                headlineContent = {
-                                    Text(
-                                        text = sourceUrl,
-                                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily
-                                    )
-                                },
-                                trailingContent = {
-                                    FilledTonalButton(
-                                        modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                        onClick = { uriHandler.openUri(sourceUrl) },
-                                        contentPadding = ButtonDefaults.TextButtonContentPadding
-                                    ) {
-                                        Icon(
-                                            modifier = Modifier.size(20.dp),
-                                            imageVector = Icons.Outlined.Link,
-                                            contentDescription = null
-                                        )
-                                    }
-                                }
-                            )
-                        }
-                    )
+                    content = sourceItems
                 )
             }
         }
@@ -918,3 +925,59 @@ fun BadgeChipCustom(
         )
     }
 }
+
+private fun fetchGitHubDetailsFallback(repoUrl: String): ScrapedGitHubData {
+    var readmeText: String? = null
+    val releasesList = mutableListOf<ReleaseArg>()
+    if (repoUrl.isBlank() || !repoUrl.contains("github.com")) return ScrapedGitHubData(null, emptyList())
+
+    val repoPath = repoUrl.trimEnd('/').substringAfter("github.com/")
+    val readmeUrl = "https://raw.githubusercontent.com/$repoPath/main/README.md"
+    val masterReadmeUrl = "https://raw.githubusercontent.com/$repoPath/master/README.md"
+
+    try {
+        val conn = URL(readmeUrl).openConnection() as java.net.HttpURLConnection
+        readmeText = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+    } catch (e: Exception) {
+        try {
+            val conn2 = URL(masterReadmeUrl).openConnection() as java.net.HttpURLConnection
+            readmeText = BufferedReader(InputStreamReader(conn2.inputStream)).use { it.readText() }
+        } catch (e2: Exception) {}
+    }
+
+    try {
+        val latestUrl = "${repoUrl.trimEnd('/')}/releases/latest"
+        val connection = URL(latestUrl).openConnection() as java.net.HttpURLConnection
+        connection.instanceFollowRedirects = false
+        connection.setRequestProperty("User-Agent", "KernelSU-Manager")
+
+        val redirectUrl = connection.getHeaderField("Location")
+        connection.disconnect()
+
+        if (redirectUrl != null) {
+            val tagMatch = """/tag/([^/?\s]+)""".toRegex().find(redirectUrl)?.groupValues?.get(1)
+            if (tagMatch != null) {
+                val releasePageUrl = "${repoUrl.trimEnd('/')}/releases/expanded_assets/$tagMatch"
+                val pageConnection = URL(releasePageUrl).openConnection()
+                pageConnection.setRequestProperty("User-Agent", "MamboSU-Manager")
+                val pageHtml = BufferedReader(InputStreamReader(pageConnection.getInputStream())).use { it.readText() }
+
+                val zipUrlRegex = """href="(/[^"]+/releases/download/[^"]+\.zip)"""".toRegex()
+                val assetsList = mutableListOf<ReleaseAssetArg>()
+                zipUrlRegex.findAll(pageHtml).forEach { match ->
+                    val downloadPath = match.groupValues[1]
+                    val fileName = downloadPath.substringAfterLast("/")
+                    assetsList.add(ReleaseAssetArg(fileName, "https://github.com$downloadPath", 0L, 0))
+                }
+                if (assetsList.isNotEmpty()) {
+                    releasesList.add(ReleaseArg(tagMatch, tagMatch, "", assetsList, "> Details scraped from GitHub releases."))
+                }
+            }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    return ScrapedGitHubData(readmeText, releasesList)
+}
+
+data class ScrapedGitHubData(val readmeText: String?, val releases: List<ReleaseArg>)
