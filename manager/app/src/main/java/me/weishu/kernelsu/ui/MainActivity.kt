@@ -13,11 +13,14 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
@@ -230,47 +233,59 @@ class MainActivity : ComponentActivity() {
                     override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
                         {
                             if (targetState.destination.route !in bottomBarRoutes) {
-                                slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth })
+                                slideInHorizontally(
+                                    initialOffsetX = { fullWidth -> fullWidth },
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                ) + fadeIn(animationSpec = tween(300))
                             } else {
-                                fadeIn(animationSpec = tween(340))
+                                fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
+                                        scaleIn(
+                                            initialScale = 0.96f,
+                                            animationSpec = tween(220, easing = FastOutSlowInEasing)
+                                        )
                             }
                         }
 
                     override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
                         {
                             if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
-                                slideOutHorizontally(targetOffsetX = { fullWidth -> -(fullWidth / 4) }) + fadeOut()
+                                slideOutHorizontally(
+                                    targetOffsetX = { fullWidth -> -(fullWidth / 4) },
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                ) + fadeOut(animationSpec = tween(300))
                             } else {
-                                fadeOut(animationSpec = tween(340))
+                                fadeOut(animationSpec = tween(150))
                             }
                         }
 
                     override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
                         {
                             if (targetState.destination.route in bottomBarRoutes) {
-                                slideInHorizontally(initialOffsetX = { fullWidth -> -(fullWidth / 4) }) + fadeIn()
+                                slideInHorizontally(
+                                    initialOffsetX = { fullWidth -> -(fullWidth / 4) },
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                ) + fadeIn(animationSpec = tween(300))
                             } else {
-                                fadeIn(animationSpec = tween(340))
+                                fadeIn(animationSpec = tween(220))
                             }
                         }
 
                     override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
                         {
                             if (initialState.destination.route !in bottomBarRoutes) {
-                                scaleOut(targetScale = 0.9f) + fadeOut()
+                                slideOutHorizontally(
+                                    targetOffsetX = { fullWidth -> fullWidth },
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                ) + fadeOut(animationSpec = tween(300))
                             } else {
-                                fadeOut(animationSpec = tween(340))
+                                fadeOut(animationSpec = tween(150))
                             }
                         }
                 }
 
                 Scaffold(
                     bottomBar = {
-                        AnimatedVisibility(
-                            visible = showBottomBar && configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState,
-                            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-                        ) {
+                        if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState) {
                             BottomBar(navController)
                         }
                     },
