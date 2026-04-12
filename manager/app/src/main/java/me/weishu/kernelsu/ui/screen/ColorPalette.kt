@@ -3,8 +3,11 @@ package me.weishu.kernelsu.ui.screen
 import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -41,11 +44,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Brightness1
 import androidx.compose.material.icons.filled.Brightness3
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.Brightness7
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,8 +59,10 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBar
@@ -67,6 +75,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,8 +90,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.compose.dropUnlessResumed
@@ -90,21 +97,13 @@ import com.materialkolor.rememberDynamicColorScheme
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.result.ResultBackNavigator
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Restore
-import me.weishu.kernelsu.ui.util.saveHeaderImage
-import me.weishu.kernelsu.ui.util.clearHeaderImage
-import me.weishu.kernelsu.ui.util.getHeaderImage
-import android.content.Intent
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.ViewColumn
-import androidx.compose.runtime.saveable.rememberSaveable
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
+import me.weishu.kernelsu.ui.util.clearHeaderImage
+import me.weishu.kernelsu.ui.util.getHeaderImage
 import me.weishu.kernelsu.ui.util.getLayoutStyle
+import me.weishu.kernelsu.ui.util.saveHeaderImage
 import me.weishu.kernelsu.ui.util.setLayoutStyle
 
 private val keyColorOptions = listOf(
@@ -131,15 +130,16 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             ActivityResultContracts.OpenDocument()
         ) { uri ->
             if (uri == null) {
-                // User cancel → revert toggle
-                hasCustomHeader = false
+                // User cancel → revert toggle if it was completely empty before
+                if (context.getHeaderImage() == null) {
+                    hasCustomHeader = false
+                }
             } else {
                 context.contentResolver.takePersistableUriPermission(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
                 context.saveHeaderImage(uri.toString())
-
                 hasCustomHeader = true
             }
         }
@@ -330,72 +330,56 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     }
                 }
 
-                Spacer(Modifier.height(8.dp))
-
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(
-                        ButtonGroupDefaults.ConnectedSpaceBetween
-                    )
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val headerOptions = listOf(false, true) // false = default, true = custom
-
-                    headerOptions.forEachIndexed { index, isCustom ->
-                        ToggleButton(
-                            checked = hasCustomHeader == isCustom,
-                            onCheckedChange = { checked ->
-                                if (!checked) return@ToggleButton
-
-                                if (isCustom) {
-                                    hasCustomHeader = true
-                                    imagePicker.launch(arrayOf("image/*"))
-                                } else {
-                                    context.clearHeaderImage()
-                                    hasCustomHeader = false
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                headerOptions.lastIndex ->
-                                    ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            }
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = if (isCustom)
-                                        Icons.Filled.Image
-                                    else
-                                        Icons.Filled.Restore,
-                                    contentDescription = null
-                                )
-                                Text(
-                                    text = if (isCustom)
-                                        stringResource(R.string.header_custom)
-                                    else
-                                        stringResource(R.string.header_default)
-                                )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.header_custom_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.header_custom_summary),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = hasCustomHeader,
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                imagePicker.launch(arrayOf("image/*"))
+                            } else {
+                                context.clearHeaderImage()
+                                hasCustomHeader = false
                             }
                         }
+                    )
+                }
+
+                AnimatedVisibility(visible = hasCustomHeader) {
+                    OutlinedButton(
+                        onClick = { imagePicker.launch(arrayOf("image/*")) },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Image,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(stringResource(R.string.header_choose_image))
                     }
                 }
             }
 
-            Spacer(Modifier.height(16.dp)) // Jarak antar section
+            Spacer(Modifier.height(8.dp))
 
-            // === LAYOUT SWITCH (DESAIN BARU) ===
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp) // Padding disamakan
+                    .padding(horizontal = 16.dp)
             ) {
-                // Label Pill (Desain Kapsul)
                 Surface(
                     shape = RoundedCornerShape(999.dp),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
@@ -407,7 +391,61 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ) {
-                        // Ganti text dengan stringResource(R.string.card_layout) jika ada
+                        Text(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            text = "Navigation Bar",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                }
+
+                var enableFloatingNav by rememberSaveable {
+                    mutableStateOf(prefs.getBoolean("enable_floating_navbar", false))
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.floating_nav_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.floating_nav_summary),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = enableFloatingNav,
+                        onCheckedChange = { isChecked ->
+                            prefs.edit { putBoolean("enable_floating_navbar", isChecked) }
+                            enableFloatingNav = isChecked
+                        }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ) {
+                    Surface(
+                        modifier = Modifier.padding(4.dp),
+                        shape = RoundedCornerShape(999.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ) {
                         Text(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             text = "Card Layout",
@@ -418,14 +456,12 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
 
                 Spacer(Modifier.height(8.dp))
 
-                // Toggle Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(
                         ButtonGroupDefaults.ConnectedSpaceBetween
                     )
                 ) {
-                    val context = LocalContext.current
                     var useClassicLayout by remember { mutableStateOf(context.getLayoutStyle()) }
                     val layoutOptions = listOf(true, false) // True = Classic, False = Modern
 
@@ -459,13 +495,14 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                     contentDescription = null
                                 )
                                 Text(
-                                    text = if (isClassic) "Classic" else "Modern"
+                                    text = if (isClassic) stringResource(R.string.layout_classic) else stringResource(R.string.layout_modern)
                                 )
                             }
                         }
                     }
                 }
             }
+            Spacer(Modifier.height(32.dp))
         }
     }
 }
@@ -540,7 +577,6 @@ private fun ThemePreviewCard(keyColor: Int, isDark: Boolean, currentLauncherIcon
                     }
                 }
 
-                // bottom bar
                 Surface(
                     color = colorScheme.surfaceContainer,
                     modifier = Modifier.fillMaxWidth()

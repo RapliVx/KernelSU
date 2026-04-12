@@ -166,4 +166,13 @@
     <string name="module_repos_sort_update_first">Pembaruan terbaru</string>
     <string name="module_repos_sort_name">Urutkan berdasarkan nama</string>
     <string name="module_repos_source_code">Kode sumber</string>
+    <string name="header_custom_title">Gambar Header Kustom</string>
+    <string name="header_custom_summary">Ganti gambar header bawaan aplikasi</string>
+    <string name="header_choose_image">Pilih Gambar Lain</string>
+    <string name="nav_bar_title">Bilah Navigasi</string>
+    <string name="floating_nav_title">Navigasi Melayang (Floating)</string>
+    <string name="floating_nav_summary">Gaya kapsul melayang ala Material 3 Expressive</string>
+    <string name="card_layout_title">Tata Letak Kartu</string>
+    <string name="layout_classic">Klasik</string>
+    <string name="layout_modern">Modern</string>
 </resources>

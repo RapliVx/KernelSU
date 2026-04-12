@@ -34,8 +34,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
@@ -76,6 +74,7 @@ import me.weishu.kernelsu.ui.theme.ThemeController
 import me.weishu.kernelsu.ui.util.LocalSnackbarHost
 import me.weishu.kernelsu.ui.util.install
 import me.weishu.kernelsu.ui.util.rootAvailable
+import me.weishu.kernelsu.ui.component.BottomBar
 
 class MainActivity : ComponentActivity() {
 
@@ -118,10 +117,18 @@ class MainActivity : ComponentActivity() {
             }
 
             val prefs = remember { getSharedPreferences("settings", MODE_PRIVATE) }
+
+            var isFloatingState by remember {
+                mutableStateOf(prefs.getBoolean("enable_floating_navbar", false))
+            }
+
             val prefsListener = remember {
                 SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                     if (key == "color_mode" || key == "key_color") {
                         appSettingsState.value = ThemeController.getAppSettings(this@MainActivity)
+                    }
+                    if (key == "enable_floating_navbar") {
+                        isFloatingState = prefs.getBoolean("enable_floating_navbar", false)
                     }
                 }
             }
@@ -145,17 +152,12 @@ class MainActivity : ComponentActivity() {
 
                 val navigator = navController.rememberDestinationsNavigator()
 
-                // --- PORTED BACK HANDLER START ---
-                // Mengambil state backstack saat ini untuk mengetahui posisi user
                 val currentBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = currentBackStackEntry?.destination?.route
 
-                // Mendapatkan route halaman utama (biasanya Home/Dashboard)
                 val homeDestination = BottomBarDestination.entries.firstOrNull()
                 val startRoute = homeDestination?.direction?.route
 
-                // Logika: Jika user ada di tab lain (bukan Home) tapi masih di BottomBar,
-                // tombol Back akan membawa user ke Home dulu, baru keluar.
                 if (homeDestination != null && startRoute != null) {
                     BackHandler(enabled = currentRoute != startRoute && currentRoute in bottomBarRoutes) {
                         navigator.navigate(homeDestination.direction) {
@@ -167,7 +169,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-                // --- PORTED BACK HANDLER END ---
 
                 LaunchedEffect(zipUri) {
                     if (!zipUri.isNullOrEmpty()) {
@@ -220,9 +221,10 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                 }
+
                 Scaffold(
                     bottomBar = {
-                        if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
+                        if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT || isFloatingState) {
                             BottomBar(navController)
                         }
                     },
@@ -231,7 +233,7 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(
                         LocalSnackbarHost provides snackBarHostState,
                     ) {
-                        if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                        if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFloatingState) {
                             Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
                                 SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
                                 DestinationsNavHost(
@@ -252,54 +254,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun BottomBar(navController: NavHostController) {
-    val navigator = navController.rememberDestinationsNavigator()
-    val isManager = Natives.isManager
-    val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
-    val bottomBarRoutes = remember {
-        BottomBarDestination.entries.map { it.direction.route }.toSet()
-    }
-    val currentRoute = navController.currentBackStackEntry?.destination?.route
-    NavigationBar(
-        windowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
-            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
-        )
-    ) {
-        BottomBarDestination.entries.forEach { destination ->
-            if (!fullFeatured && destination.rootRequired) return@forEach
-            val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
-            NavigationBarItem(
-                selected = isCurrentDestOnBackStack,
-                onClick = {
-                    if (isCurrentDestOnBackStack) {
-                        navigator.popBackStack(destination.direction, false)
-                    } else {
-                        val isFromNonBottom = currentRoute !in bottomBarRoutes
-                        navigator.navigate(destination.direction) {
-                            if (isFromNonBottom) {
-                                popUpTo(NavGraphs.root) { inclusive = true }
-                            } else {
-                                popUpTo(NavGraphs.root) { saveState = true }
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                },
-                icon = {
-                    Icon(
-                        if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
-                        stringResource(destination.label)
-                    )
-                },
-                label = { Text(stringResource(destination.label)) },
-                alwaysShowLabel = false
-            )
         }
     }
 }

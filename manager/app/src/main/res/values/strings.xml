@@ -217,4 +217,13 @@
     <string name="enable_adb">Enable ADB</string>
     <string name="enable_adb_summary">Enable USB debugging (ADB) after install</string>
     <string name="safe_mode_module_disabled">Module installation is disabled in safe mode</string>
+    <string name="header_custom_title">Custom Header Image</string>
+    <string name="header_custom_summary">Change the app\'s default header image</string>
+    <string name="header_choose_image">Choose Another Image</string>
+    <string name="nav_bar_title">Navigation Bar</string>
+    <string name="floating_nav_title">Floating Navigation Bar</string>
+    <string name="floating_nav_summary">Material 3 Expressive floating capsule style</string>
+    <string name="card_layout_title">Card Layout</string>
+    <string name="layout_classic">Classic</string>
+    <string name="layout_modern">Modern</string>
 </resources>
