@@ -226,6 +226,5 @@
     <string name="card_layout_title">Card Layout</string>
     <string name="layout_classic">Classic</string>
     <string name="layout_modern">Modern</string>
-    <string name="quick_shell">Quick Shell</string>
     <string name="quick_shell_summary">Run quick terminal commands</string>
 </resources>
