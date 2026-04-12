@@ -225,7 +225,7 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     bottomBar = {
-                        if (showBottomBar && (configuration.orientation == Configuration.ORIENTATION_PORTRAIT || isFloatingState)) {
+                        if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState) {
                             BottomBar(navController)
                         }
                     },
@@ -234,23 +234,35 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(
                         LocalSnackbarHost provides snackBarHostState,
                     ) {
-                        if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFloatingState) {
-                            Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
-                                SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
+                        Box(modifier = Modifier.fillMaxSize()) {
+-
+                            if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFloatingState) {
+                                Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
+                                    SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
+                                    DestinationsNavHost(
+                                        modifier = Modifier.weight(1f).padding(innerPadding),
+                                        navGraph = NavGraphs.root,
+                                        navController = navController,
+                                        defaultTransitions = defaultTransitions
+                                    )
+                                }
+                            } else {
                                 DestinationsNavHost(
-                                    modifier = Modifier.weight(1f).padding(innerPadding),
+                                    modifier = Modifier.padding(innerPadding),
                                     navGraph = NavGraphs.root,
                                     navController = navController,
                                     defaultTransitions = defaultTransitions
                                 )
                             }
-                        } else {
-                            DestinationsNavHost(
-                                modifier = Modifier.padding(innerPadding),
-                                navGraph = NavGraphs.root,
-                                navController = navController,
-                                defaultTransitions = defaultTransitions
-                            )
+                            
+                            if (showBottomBar && isFloatingState) {
+                                Box(
+                                    modifier = Modifier.align(Alignment.BottomCenter)
+                                ) {
+                                    BottomBar(navController)
+                                }
+                            }
+
                         }
                     }
                 }

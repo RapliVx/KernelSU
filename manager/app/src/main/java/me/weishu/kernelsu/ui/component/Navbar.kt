@@ -1,6 +1,7 @@
 package me.weishu.kernelsu.ui.component
 
 import android.content.Context
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -23,11 +24,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -56,12 +60,62 @@ fun BottomBar(navController: NavHostController) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
 
+    val visibleTabs = remember(fullFeatured) {
+        BottomBarDestination.entries.filter { fullFeatured || !it.rootRequired }
+    }
+    val currentIndex = visibleTabs.indexOfFirst { it.direction.route == currentRoute }
+
+    fun navigateToTab(destination: BottomBarDestination) {
+        if (currentRoute == destination.direction.route) return
+        val isFromNonBottom = currentRoute !in bottomBarRoutes
+        navigator.navigate(destination.direction) {
+            if (isFromNonBottom) {
+                popUpTo(NavGraphs.root) { inclusive = true }
+            } else {
+                popUpTo(NavGraphs.root) { saveState = true }
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     val insets = if (isFloating) {
         WindowInsets(0, 0, 0, 0)
     } else {
         WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
         )
+    }
+
+    var offsetX by remember { mutableFloatStateOf(0f) }
+
+    val floatingModifier = if (isFloating) {
+        Modifier
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .widthIn(max = 400.dp)
+            .clip(RoundedCornerShape(32.dp))
+            .pointerInput(currentRoute) {
+                detectHorizontalDragGestures(
+                    onDragEnd = { offsetX = 0f },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        offsetX += dragAmount
+                        if (offsetX > 100f) { 
+                            if (currentIndex > 0) {
+                                navigateToTab(visibleTabs[currentIndex - 1])
+                                offsetX = 0f
+                            }
+                        } else if (offsetX < -100f) { 
+                            if (currentIndex >= 0 && currentIndex < visibleTabs.size - 1) {
+                                navigateToTab(visibleTabs[currentIndex + 1])
+                                offsetX = 0f
+                            }
+                        }
+                    }
+                )
+            }
+    } else {
+        Modifier
     }
 
     Box(
@@ -71,20 +125,12 @@ fun BottomBar(navController: NavHostController) {
         contentAlignment = Alignment.BottomCenter
     ) {
         NavigationBar(
-            modifier = if (isFloating) {
-                Modifier
-                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                    .widthIn(max = 400.dp)
-                    .clip(RoundedCornerShape(32.dp))
-            } else {
-                Modifier
-            },
+            modifier = floatingModifier,
             windowInsets = insets,
             containerColor = if (isFloating) MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp) else NavigationBarDefaults.containerColor,
             tonalElevation = if (isFloating) 0.dp else NavigationBarDefaults.Elevation
         ) {
-            BottomBarDestination.entries.forEach { destination ->
-                if (!fullFeatured && destination.rootRequired) return@forEach
+            visibleTabs.forEach { destination ->
                 val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
                 NavigationBarItem(
                     selected = isCurrentDestOnBackStack,
@@ -92,16 +138,7 @@ fun BottomBar(navController: NavHostController) {
                         if (isCurrentDestOnBackStack) {
                             navigator.popBackStack(destination.direction, false)
                         } else {
-                            val isFromNonBottom = currentRoute !in bottomBarRoutes
-                            navigator.navigate(destination.direction) {
-                                if (isFromNonBottom) {
-                                    popUpTo(NavGraphs.root) { inclusive = true }
-                                } else {
-                                    popUpTo(NavGraphs.root) { saveState = true }
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
+                            navigateToTab(destination)
                         }
                     },
                     icon = {
