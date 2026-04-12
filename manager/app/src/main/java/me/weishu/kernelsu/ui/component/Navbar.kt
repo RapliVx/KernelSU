@@ -1,37 +1,36 @@
 package me.weishu.kernelsu.ui.component
 
 import android.content.Context
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -63,21 +62,6 @@ fun BottomBar(navController: NavHostController) {
     val visibleTabs = remember(fullFeatured) {
         BottomBarDestination.entries.filter { fullFeatured || !it.rootRequired }
     }
-    val currentIndex = visibleTabs.indexOfFirst { it.direction.route == currentRoute }
-
-    fun navigateToTab(destination: BottomBarDestination) {
-        if (currentRoute == destination.direction.route) return
-        val isFromNonBottom = currentRoute !in bottomBarRoutes
-        navigator.navigate(destination.direction) {
-            if (isFromNonBottom) {
-                popUpTo(NavGraphs.root) { inclusive = true }
-            } else {
-                popUpTo(NavGraphs.root) { saveState = true }
-            }
-            launchSingleTop = true
-            restoreState = true
-        }
-    }
 
     val insets = if (isFloating) {
         WindowInsets(0, 0, 0, 0)
@@ -87,69 +71,95 @@ fun BottomBar(navController: NavHostController) {
         )
     }
 
-    var offsetX by remember { mutableFloatStateOf(0f) }
-
-    val floatingModifier = if (isFloating) {
-        Modifier
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            .widthIn(max = 400.dp)
-            .clip(RoundedCornerShape(32.dp))
-            .pointerInput(currentRoute) {
-                detectHorizontalDragGestures(
-                    onDragEnd = { offsetX = 0f },
-                    onHorizontalDrag = { change, dragAmount ->
-                        change.consume()
-                        offsetX += dragAmount
-                        if (offsetX > 100f) { 
-                            if (currentIndex > 0) {
-                                navigateToTab(visibleTabs[currentIndex - 1])
-                                offsetX = 0f
-                            }
-                        } else if (offsetX < -100f) { 
-                            if (currentIndex >= 0 && currentIndex < visibleTabs.size - 1) {
-                                navigateToTab(visibleTabs[currentIndex + 1])
-                                offsetX = 0f
-                            }
-                        }
-                    }
-                )
-            }
-    } else {
-        Modifier
-    }
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (isFloating) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier),
         contentAlignment = Alignment.BottomCenter
     ) {
-        NavigationBar(
-            modifier = floatingModifier,
-            windowInsets = insets,
-            containerColor = if (isFloating) MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp) else NavigationBarDefaults.containerColor,
-            tonalElevation = if (isFloating) 0.dp else NavigationBarDefaults.Elevation
-        ) {
-            visibleTabs.forEach { destination ->
-                val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
-                NavigationBarItem(
-                    selected = isCurrentDestOnBackStack,
-                    onClick = {
-                        if (isCurrentDestOnBackStack) {
-                            navigator.popBackStack(destination.direction, false)
-                        } else {
-                            navigateToTab(destination)
-                        }
-                    },
-                    icon = {
-                        Icon(
-                            if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
-                            stringResource(destination.label)
+        if (isFloating) {
+            Surface(
+                modifier = Modifier.padding(bottom = 16.dp),
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                tonalElevation = 0.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp)
+                        .height(80.dp)
+                        .selectableGroup(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    visibleTabs.forEach { destination ->
+                        val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
+                        NavigationBarItem(
+                            selected = isCurrentDestOnBackStack,
+                            onClick = {
+                                if (isCurrentDestOnBackStack) {
+                                    navigator.popBackStack(destination.direction, false)
+                                } else {
+                                    val isFromNonBottom = currentRoute !in bottomBarRoutes
+                                    navigator.navigate(destination.direction) {
+                                        if (isFromNonBottom) {
+                                            popUpTo(NavGraphs.root) { inclusive = true }
+                                        } else {
+                                            popUpTo(NavGraphs.root) { saveState = true }
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            },
+                            icon = {
+                                Icon(
+                                    if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
+                                    stringResource(destination.label)
+                                )
+                            },
+                            label = { Text(stringResource(destination.label)) },
+                            alwaysShowLabel = true
                         )
-                    },
-                    label = { Text(stringResource(destination.label)) },
-                    alwaysShowLabel = false
-                )
+                    }
+                }
+            }
+        } else {
+            NavigationBar(
+                windowInsets = insets,
+                containerColor = NavigationBarDefaults.containerColor,
+                tonalElevation = NavigationBarDefaults.Elevation
+            ) {
+                visibleTabs.forEach { destination ->
+                    val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
+                    NavigationBarItem(
+                        selected = isCurrentDestOnBackStack,
+                        onClick = {
+                            if (isCurrentDestOnBackStack) {
+                                navigator.popBackStack(destination.direction, false)
+                            } else {
+                                val isFromNonBottom = currentRoute !in bottomBarRoutes
+                                navigator.navigate(destination.direction) {
+                                    if (isFromNonBottom) {
+                                        popUpTo(NavGraphs.root) { inclusive = true }
+                                    } else {
+                                        popUpTo(NavGraphs.root) { saveState = true }
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
+                                stringResource(destination.label)
+                            )
+                        },
+                        label = { Text(stringResource(destination.label)) },
+                        alwaysShowLabel = false
+                    )
+                }
             }
         }
     }
