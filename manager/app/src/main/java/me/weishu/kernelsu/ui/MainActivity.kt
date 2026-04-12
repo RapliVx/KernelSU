@@ -182,12 +182,12 @@ class MainActivity : ComponentActivity() {
                             val delta = consumed.y
                             if (delta != 0f) {
                                 scrollAccumulator += delta
-                                scrollAccumulator = scrollAccumulator.coerceIn(-300f, 300f)
+                                scrollAccumulator = scrollAccumulator.coerceIn(-150f, 150f)
 
-                                if (scrollAccumulator < -150f) {
+                                if (scrollAccumulator < -50f) {
                                     isScrollingDown = true
                                     scrollAccumulator = 0f
-                                } else if (scrollAccumulator > 150f) {
+                                } else if (scrollAccumulator > 50f) {
                                     isScrollingDown = false
                                     scrollAccumulator = 0f
                                 }

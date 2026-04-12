@@ -102,7 +102,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.navigationBars
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -130,6 +132,9 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val context = LocalContext.current
     val kernelVersion = getKernelVersion()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    val isFloating = LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("enable_floating_navbar", false)
+    val sysNavBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val floatingPadding = if (isFloating) sysNavBarPadding + 96.dp else 0.dp
 
     Scaffold(
         topBar = { TopBar(scrollBehavior = scrollBehavior) },
@@ -200,7 +205,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             InfoCard()
             DonateCard()
             LearnMoreCard()
-            Spacer(Modifier)
+            Spacer(modifier = Modifier.height(floatingPadding))
         }
     }
 }
