@@ -19,6 +19,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -224,7 +225,7 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     bottomBar = {
-                        if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT || isFloatingState) {
+                        if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState) {
                             BottomBar(navController)
                         }
                     },
@@ -233,23 +234,35 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(
                         LocalSnackbarHost provides snackBarHostState,
                     ) {
-                        if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFloatingState) {
-                            Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
-                                SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            
+                            if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFloatingState) {
+                                Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
+                                    SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
+                                    DestinationsNavHost(
+                                        modifier = Modifier.weight(1f).padding(innerPadding),
+                                        navGraph = NavGraphs.root,
+                                        navController = navController,
+                                        defaultTransitions = defaultTransitions
+                                    )
+                                }
+                            } else {
                                 DestinationsNavHost(
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.padding(innerPadding),
                                     navGraph = NavGraphs.root,
                                     navController = navController,
                                     defaultTransitions = defaultTransitions
                                 )
                             }
-                        } else {
-                            DestinationsNavHost(
-                                modifier = Modifier.padding(innerPadding),
-                                navGraph = NavGraphs.root,
-                                navController = navController,
-                                defaultTransitions = defaultTransitions
-                            )
+
+                            if (isFloatingState) {
+                                Box(
+                                    modifier = Modifier.align(Alignment.BottomCenter)
+                                ) {
+                                    BottomBar(navController)
+                                }
+                            }
+
                         }
                     }
                 }

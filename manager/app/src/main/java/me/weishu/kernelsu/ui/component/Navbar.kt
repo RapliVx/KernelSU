@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -54,15 +56,6 @@ fun BottomBar(navController: NavHostController) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
 
-    val modifier = if (isFloating) {
-        Modifier
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            .widthIn(max = 400.dp)
-            .clip(RoundedCornerShape(50.dp))
-    } else {
-        Modifier
-    }
-
     val insets = if (isFloating) {
         WindowInsets(0, 0, 0, 0)
     } else {
@@ -72,11 +65,20 @@ fun BottomBar(navController: NavHostController) {
     }
 
     Box(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (isFloating) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier),
         contentAlignment = Alignment.BottomCenter
     ) {
         NavigationBar(
-            modifier = modifier,
+            modifier = if (isFloating) {
+                Modifier
+                    .padding(horizontal = 16.dp, bottom = 16.dp)
+                    .widthIn(max = 400.dp)
+                    .clip(RoundedCornerShape(32.dp))
+            } else {
+                Modifier
+            },
             windowInsets = insets,
             containerColor = if (isFloating) MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp) else NavigationBarDefaults.containerColor,
             tonalElevation = if (isFloating) 0.dp else NavigationBarDefaults.Elevation

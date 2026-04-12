@@ -25,6 +25,7 @@ ui = "1.10.0"
 ui-geometry = "1.10.0"
 material3-version = "1.4.0"
 ui-text = "1.10.1"
+foundation-layout-version = "1.10.6"
 
 [plugins]
 agp-app = { id = "com.android.application", version.ref = "agp" }
@@ -89,3 +90,4 @@ androidx-compose-ui-geometry = { group = "androidx.compose.ui", name = "ui-geome
 coilGif = { group = "io.coil-kt", name = "coil-gif", version.ref = "coil-compose" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3-version" }
 androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "ui-text" }
+androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundation-layout-version" }
