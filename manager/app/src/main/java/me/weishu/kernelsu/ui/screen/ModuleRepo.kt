@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -51,9 +52,11 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -128,6 +131,7 @@ import me.weishu.kernelsu.ui.util.isNetworkAvailable
 import me.weishu.kernelsu.ui.util.module.fetchModuleDetail
 import me.weishu.kernelsu.ui.viewmodel.ModuleRepoViewModel
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
+import org.json.JSONArray
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URL
@@ -227,15 +231,25 @@ fun ModuleRepoScreen(
                 dropdownContent = {
                     var showDropdown by remember { mutableStateOf(false) }
 
-                    IconButton(onClick = { showDropdown = true }) {
-                        Icon(Icons.Filled.MoreVert, stringResource(id = R.string.settings))
-                        DropdownMenu(expanded = showDropdown, onDismissRequest = { showDropdown = false }) {
+                    IconButton(
+                        onClick = { showDropdown = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.MoreVert,
+                            contentDescription = stringResource(id = R.string.settings)
+                        )
+
+                        DropdownMenu(expanded = showDropdown, onDismissRequest = {
+                            showDropdown = false
+                        }) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.module_repos_sort_name)) },
                                 trailingIcon = { Checkbox(repoSortByNameState.value, null) },
                                 onClick = {
                                     repoSortByNameState.value = !repoSortByNameState.value
-                                    prefs.edit { putBoolean("module_repo_sort_name", repoSortByNameState.value) }
+                                    prefs.edit {
+                                        putBoolean("module_repo_sort_name", repoSortByNameState.value)
+                                    }
                                 }
                             )
                         }
@@ -249,14 +263,18 @@ fun ModuleRepoScreen(
 
         if (isLoading) {
             Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
                 if (offline) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = stringResource(R.string.network_offline), color = MaterialTheme.colorScheme.outline)
                         Spacer(Modifier.height(12.dp))
-                        Button(onClick = { viewModel.refresh() }) {
+                        Button(
+                            onClick = { viewModel.refresh() },
+                        ) {
                             Text(stringResource(R.string.network_retry))
                         }
                     }
@@ -266,7 +284,7 @@ fun ModuleRepoScreen(
             }
         } else {
             val displayModules = run {
-                val base = viewModel.modules.value
+                val base = viewModel.filteredModules
                 val sortByName = repoSortByNameState.value
                 val collator = Collator.getInstance(Locale.getDefault())
                 if (!sortByName) base else base.sortedWith(compareBy(collator) { it.moduleName })
@@ -284,11 +302,10 @@ fun ModuleRepoScreen(
                 ),
             ) {
                 items(displayModules, key = { it.moduleId }) { module ->
+                    val latestReleaseTime = remember(module.latestReleaseTime) { module.latestReleaseTime }
                     val moduleAuthor = stringResource(id = R.string.module_author)
 
-                    TonalCard(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                    ) {
+                    TonalCard(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -300,16 +317,20 @@ fun ModuleRepoScreen(
                                         authors = module.authors,
                                         description = module.summary,
                                         repoUrl = module.repoUrl ?: "",
-                                        license = module.license ?: "Unknown",
+                                        license = module.license ?: "",
                                         bannerUrl = module.bannerUrl,
                                         repoType = module.repoType,
-                                        authorsList = module.authorList.map { AuthorArg(it.name, it.link) }
+                                        authorsList = module.authorList.map { AuthorArg(it.name, it.link) },
+                                        latestRelease = module.latestRelease,
+                                        latestReleaseTime = module.latestReleaseTime,
+                                        releases = emptyList()
                                     )
                                     navigator.navigate(ModuleRepoDetailScreenDestination(args)) {
                                         launchSingleTop = true
                                     }
                                 }
                         ) {
+
                             if (!module.bannerUrl.isNullOrEmpty()) {
                                 val req = remember(module.bannerUrl) {
                                     ImageRequest.Builder(context)
@@ -322,7 +343,7 @@ fun ModuleRepoScreen(
                                     contentDescription = null,
                                     modifier = Modifier.matchParentSize(),
                                     contentScale = ContentScale.Crop,
-                                    alpha = if (isDark) 0.20f else 0.35f
+                                    alpha = if (isDark) 0.25f else 0.40f
                                 )
                             } else {
                                 val defaultGradient = Brush.linearGradient(
@@ -344,7 +365,12 @@ fun ModuleRepoScreen(
                                 }
                             }
 
-                            Box(modifier = Modifier.matchParentSize().background(scrim))
+                            val scrimGradient = remember(cs, isDark) {
+                                Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, cs.surfaceVariant)
+                                )
+                            }
+                            Box(modifier = Modifier.matchParentSize().background(scrimGradient))
 
                             Row(
                                 modifier = Modifier
@@ -354,71 +380,126 @@ fun ModuleRepoScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                val typeColor = when (module.repoType.uppercase()) {
+                                val typeStr = module.repoType
+                                val typeColor = when (typeStr.uppercase()) {
                                     "META" -> MaterialTheme.colorScheme.tertiaryContainer
                                     "NON-FREE" -> MaterialTheme.colorScheme.errorContainer
                                     else -> MaterialTheme.colorScheme.primaryContainer
                                 }
-                                val typeTextColor = when (module.repoType.uppercase()) {
+                                val typeTextColor = when (typeStr.uppercase()) {
                                     "META" -> MaterialTheme.colorScheme.onTertiaryContainer
                                     "NON-FREE" -> MaterialTheme.colorScheme.onErrorContainer
                                     else -> MaterialTheme.colorScheme.onPrimaryContainer
                                 }
 
-                                BadgeChipCustom(
-                                    text = module.repoType,
-                                    containerColor = typeColor,
-                                    contentColor = typeTextColor
-                                )
+                                Surface(color = typeColor, shape = RoundedCornerShape(6.dp)) {
+                                    Text(
+                                        text = typeStr.uppercase(),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        color = typeTextColor
+                                    )
+                                }
 
                                 if (!module.license.isNullOrEmpty()) {
-                                    BadgeChipCustom(
-                                        text = module.license,
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f),
-                                        contentColor = MaterialTheme.colorScheme.onSurface
-                                    )
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = module.license,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
                                 }
                             }
 
-                            Box(
+                            Column(
                                 modifier = Modifier
-                                    .matchParentSize()
-                                    .padding(
-                                        start = 22.dp,
-                                        top = 45.dp,
-                                        end = 22.dp,
-                                        bottom = 12.dp
-                                    )
+                                    .fillMaxWidth()
+                                    .padding(start = 22.dp, top = 48.dp, end = 22.dp, bottom = 12.dp)
                             ) {
-                                Column(modifier = Modifier.align(Alignment.TopStart)) {
+                                if (module.moduleName.isNotEmpty()) {
                                     Text(
-                                        text = module.moduleName.ifBlank { "Unknown Module" },
-                                        color = cs.onSurface,
+                                        text = module.moduleName,
                                         fontSize = MaterialTheme.typography.titleMedium.fontSize,
-                                        lineHeight = MaterialTheme.typography.titleMedium.lineHeight,
                                         fontWeight = FontWeight.SemiBold,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
+                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                        fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
                                     )
-
-                                    Spacer(modifier = Modifier.height(2.dp))
-
+                                }
+                                if (module.moduleId.isNotEmpty()) {
                                     Text(
-                                        text = "$moduleAuthor: ${module.authors}",
-                                        color = cs.onSurface.copy(alpha = 0.78f),
+                                        text = "ID: ${module.moduleId}",
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                                        fontWeight = FontWeight.Medium
+                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
+                                }
+                                Text(
+                                    text = "$moduleAuthor: ${module.authors}",
+                                    fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                if (module.summary.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = module.summary,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                        fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
+                                        overflow = TextOverflow.Ellipsis,
+                                        maxLines = 4,
+                                    )
+                                }
 
-                                    if (module.summary.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(6.dp))
+                                Row(modifier = Modifier.padding(vertical = 8.dp)) {
+                                    if (module.metamodule) LabelText("META")
+                                }
+                                HorizontalDivider(thickness = Dp.Hairline)
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (module.stargazerCount > 0) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Star,
+                                                contentDescription = "stars",
+                                                tint = MaterialTheme.colorScheme.outline,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = module.stargazerCount.toString(),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.outline,
+                                                modifier = Modifier.padding(start = 4.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Spacer(modifier = Modifier.width(1.dp))
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    if (latestReleaseTime.isNotEmpty()) {
                                         Text(
-                                            text = module.summary,
-                                            color = cs.onSurface.copy(alpha = 0.80f),
+                                            text = latestReleaseTime,
                                             fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                                            lineHeight = 16.sp,
-                                            maxLines = 3,
-                                            overflow = TextOverflow.Ellipsis
+                                            fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                            fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
+                                            color = MaterialTheme.colorScheme.outline,
                                         )
                                     }
                                 }
@@ -455,8 +536,8 @@ fun ModuleRepoDetailScreen(
     var readmeHtml by remember(module.moduleId) { mutableStateOf<String?>(null) }
     var readmeLoaded by remember(module.moduleId) { mutableStateOf(false) }
     var detailReleases by remember(module.moduleId) { mutableStateOf<List<ReleaseArg>>(emptyList()) }
-    var webUrl by remember(module.moduleId) { mutableStateOf(module.repoUrl) }
-    var sourceUrl by remember(module.moduleId) { mutableStateOf(module.repoUrl) }
+    var webUrl by remember(module.moduleId) { mutableStateOf("https://modules.kernelsu.org/module/${module.moduleId}") }
+    var sourceUrl by remember(module.moduleId) { mutableStateOf("https://github.com/KernelSU-Modules-Repo/${module.moduleId}") }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -494,7 +575,7 @@ fun ModuleRepoDetailScreen(
                 withContext(Dispatchers.IO) {
                     runCatching {
                         val detail = fetchModuleDetail(module.moduleId)
-                        if (detail != null) {
+                        if (detail != null && detail.readmeHtml.isNotEmpty()) {
                             readmeHtml = detail.readmeHtml
                             if (detail.sourceUrl.isNotEmpty()) sourceUrl = detail.sourceUrl
                             detailReleases = detail.releases.map { r ->
@@ -507,9 +588,9 @@ fun ModuleRepoDetailScreen(
                                 )
                             }
                         } else {
-                            val fallbackData = fetchGitHubDetailsFallback(module.repoUrl)
-                            readmeHtml = fallbackData.readmeText
-                            detailReleases = fallbackData.releases
+                            val (fetchedReadme, fetchedReleases) = fetchGitHubDetails(module.repoUrl)
+                            readmeHtml = fetchedReadme
+                            detailReleases = fetchedReleases
                         }
                     }.onSuccess {
                         readmeLoaded = true
@@ -555,7 +636,6 @@ fun ModuleRepoDetailScreen(
                         confirmDialog = confirmDialog,
                         scope = scope,
                         onInstallModule = onInstallModule,
-                        context = context,
                         setPendingDownload = { pendingDownload = it }
                     )
                     2 -> InfoPage(
@@ -582,7 +662,7 @@ fun ModuleRepoDetailScreen(
                 }
             }
         }
-        DownloadListener(context, onInstallModule)
+        DownloadListener(context) { uri -> onInstallModule(uri) }
     }
 }
 
@@ -625,7 +705,7 @@ private fun ReadmePage(
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
-                LoadingIndicator()
+                CircularProgressIndicator()
             }
         }
     }
@@ -642,7 +722,6 @@ fun ReleasesPage(
     confirmDialog: ConfirmDialogHandle,
     scope: CoroutineScope,
     onInstallModule: (Uri) -> Unit,
-    context: Context,
     setPendingDownload: ((() -> Unit)) -> Unit,
 ) {
     val layoutDirection = LocalLayoutDirection.current
@@ -734,23 +813,26 @@ fun ReleasesPage(
                                     val sizeAndDownloads =
                                         remember(sizeText, asset.downloadCount) { "$sizeText • ${asset.downloadCount} Downloads" }
                                     var isDownloading by remember(fileName, asset.downloadUrl) { mutableStateOf(false) }
-                                    var progress by remember(fileName, asset.downloadUrl) { mutableIntStateOf(0) }
+
                                     val onClickDownload = remember(fileName, asset.downloadUrl) {
                                         {
-                                            val startText = context.getString(R.string.module_start_downloading, fileName)
                                             setPendingDownload {
                                                 isDownloading = true
+
                                                 scope.launch(Dispatchers.IO) {
                                                     download(
                                                         asset.downloadUrl,
                                                         fileName,
-                                                        onDownloaded = onInstallModule,
-                                                        onDownloading = { isDownloading = true },
-                                                        onProgress = { p -> scope.launch(Dispatchers.Main) { progress = p } }
+                                                        { uri ->
+                                                            isDownloading = false
+                                                            onInstallModule(uri)
+                                                        },
+                                                        { isDownloading = true },
+                                                        { progress -> }
                                                     )
                                                 }
                                             }
-                                            confirmDialog.showConfirm(title = confirmTitle, content = startText)
+                                            confirmDialog.showConfirm(title = confirmTitle, content = "Install $fileName?")
                                         }
                                     }
                                     Row(
@@ -777,18 +859,17 @@ fun ReleasesPage(
                                         ) {
                                             if (isDownloading) {
                                                 CircularWavyProgressIndicator(
-                                                    progress = { progress / 100f },
                                                     modifier = Modifier.size(20.dp),
                                                 )
                                             } else {
                                                 Icon(
                                                     modifier = Modifier.size(20.dp),
                                                     imageVector = Icons.Outlined.Download,
-                                                    contentDescription = stringResource(R.string.install)
+                                                    contentDescription = "Install"
                                                 )
                                                 Text(
                                                     modifier = Modifier.padding(start = 7.dp),
-                                                    text = stringResource(R.string.install),
+                                                    text = "Install",
                                                     style = MaterialTheme.typography.labelMedium,
                                                 )
                                             }
@@ -833,8 +914,8 @@ fun InfoPage(
     ) {
         if (module.authorsList.isNotEmpty()) {
             item {
-                val authorItems: List<@Composable () -> Unit> = module.authorsList.map { author ->
-                    {
+                val authorsItems: List<@Composable () -> Unit> = module.authorsList.map { author ->
+                    @Composable {
                         ExpressiveListItem(
                             headlineContent = {
                                 Text(
@@ -863,14 +944,14 @@ fun InfoPage(
                 ExpressiveList(
                     modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
                     title = stringResource(R.string.module_author),
-                    content = authorItems
+                    content = authorsItems
                 )
             }
         }
         if (sourceUrl.isNotEmpty()) {
             item {
-                val sourceItems: List<@Composable () -> Unit> = listOf(
-                    {
+                val sourceCodeItems: List<@Composable () -> Unit> = listOf(
+                    @Composable {
                         ExpressiveListItem(
                             headlineContent = {
                                 Text(
@@ -898,12 +979,70 @@ fun InfoPage(
                 )
                 ExpressiveList(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    title = stringResource(R.string.module_repos_source_code),
-                    content = sourceItems
+                    title = "Source Code",
+                    content = sourceCodeItems
                 )
             }
         }
     }
+}
+
+private fun fetchGitHubDetails(repoUrl: String): Pair<String?, List<ReleaseArg>> {
+    if (repoUrl.isBlank() || !repoUrl.contains("github.com")) return Pair(null, emptyList())
+    val repoPath = repoUrl.trimEnd('/').substringAfter("github.com/")
+    if (repoPath.isBlank() || !repoPath.contains("/")) return Pair(null, emptyList())
+
+    var readmeText: String? = null
+    val readmeUrl = "https://raw.githubusercontent.com/$repoPath/main/README.md"
+    val masterReadmeUrl = "https://raw.githubusercontent.com/$repoPath/master/README.md"
+
+    try {
+        val conn = URL(readmeUrl).openConnection()
+        readmeText = BufferedReader(InputStreamReader(conn.getInputStream())).use { it.readText() }
+    } catch(e: Exception) {
+        try {
+            val conn2 = URL(masterReadmeUrl).openConnection()
+            readmeText = BufferedReader(InputStreamReader(conn2.getInputStream())).use { it.readText() }
+        } catch(e2: Exception) {}
+    }
+
+    val releasesList = mutableListOf<ReleaseArg>()
+    val releasesApiUrl = "https://api.github.com/repos/$repoPath/releases"
+    try {
+        val conn = URL(releasesApiUrl).openConnection() as java.net.HttpURLConnection
+        conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
+        if (conn.responseCode == 200) {
+            val response = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+            val jsonArray = JSONArray(response)
+            for (i in 0 until jsonArray.length()) {
+                val relObj = jsonArray.getJSONObject(i)
+                val tagName = relObj.optString("tag_name", "")
+                val name = relObj.optString("name", tagName)
+                val publishedAt = relObj.optString("published_at", "").substringBefore("T")
+                val body = relObj.optString("body", "")
+
+                val assetsArray = relObj.optJSONArray("assets")
+                val assetsList = mutableListOf<ReleaseAssetArg>()
+                if (assetsArray != null) {
+                    for (j in 0 until assetsArray.length()) {
+                        val assetObj = assetsArray.getJSONObject(j)
+                        val assetName = assetObj.optString("name", "")
+                        val downloadUrl = assetObj.optString("browser_download_url", "")
+                        val size = assetObj.optLong("size", 0L)
+                        val downloadCount = assetObj.optInt("download_count", 0)
+                        if (assetName.endsWith(".zip")) {
+                            assetsList.add(ReleaseAssetArg(assetName, downloadUrl, size, downloadCount))
+                        }
+                    }
+                }
+                releasesList.add(ReleaseArg(tagName, name, publishedAt, assetsList, body))
+            }
+        }
+    } catch(e: Exception) {
+        e.printStackTrace()
+    }
+
+    return Pair(readmeText, releasesList)
 }
 
 @Composable
@@ -925,59 +1064,3 @@ fun BadgeChipCustom(
         )
     }
 }
-
-private fun fetchGitHubDetailsFallback(repoUrl: String): ScrapedGitHubData {
-    var readmeText: String? = null
-    val releasesList = mutableListOf<ReleaseArg>()
-    if (repoUrl.isBlank() || !repoUrl.contains("github.com")) return ScrapedGitHubData(null, emptyList())
-
-    val repoPath = repoUrl.trimEnd('/').substringAfter("github.com/")
-    val readmeUrl = "https://raw.githubusercontent.com/$repoPath/main/README.md"
-    val masterReadmeUrl = "https://raw.githubusercontent.com/$repoPath/master/README.md"
-
-    try {
-        val conn = URL(readmeUrl).openConnection() as java.net.HttpURLConnection
-        readmeText = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
-    } catch (e: Exception) {
-        try {
-            val conn2 = URL(masterReadmeUrl).openConnection() as java.net.HttpURLConnection
-            readmeText = BufferedReader(InputStreamReader(conn2.inputStream)).use { it.readText() }
-        } catch (e2: Exception) {}
-    }
-
-    try {
-        val latestUrl = "${repoUrl.trimEnd('/')}/releases/latest"
-        val connection = URL(latestUrl).openConnection() as java.net.HttpURLConnection
-        connection.instanceFollowRedirects = false
-        connection.setRequestProperty("User-Agent", "KernelSU-Manager")
-
-        val redirectUrl = connection.getHeaderField("Location")
-        connection.disconnect()
-
-        if (redirectUrl != null) {
-            val tagMatch = """/tag/([^/?\s]+)""".toRegex().find(redirectUrl)?.groupValues?.get(1)
-            if (tagMatch != null) {
-                val releasePageUrl = "${repoUrl.trimEnd('/')}/releases/expanded_assets/$tagMatch"
-                val pageConnection = URL(releasePageUrl).openConnection()
-                pageConnection.setRequestProperty("User-Agent", "MamboSU-Manager")
-                val pageHtml = BufferedReader(InputStreamReader(pageConnection.getInputStream())).use { it.readText() }
-
-                val zipUrlRegex = """href="(/[^"]+/releases/download/[^"]+\.zip)"""".toRegex()
-                val assetsList = mutableListOf<ReleaseAssetArg>()
-                zipUrlRegex.findAll(pageHtml).forEach { match ->
-                    val downloadPath = match.groupValues[1]
-                    val fileName = downloadPath.substringAfterLast("/")
-                    assetsList.add(ReleaseAssetArg(fileName, "https://github.com$downloadPath", 0L, 0))
-                }
-                if (assetsList.isNotEmpty()) {
-                    releasesList.add(ReleaseArg(tagMatch, tagMatch, "", assetsList, "> Details scraped from GitHub releases."))
-                }
-            }
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-    return ScrapedGitHubData(readmeText, releasesList)
-}
-
-data class ScrapedGitHubData(val readmeText: String?, val releases: List<ReleaseArg>)
