@@ -58,7 +58,7 @@ fun BottomBar(navController: NavHostController) {
         Modifier
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             .widthIn(max = 400.dp)
-            .clip(RoundedCornerShape(32.dp))
+            .clip(RoundedCornerShape(50.dp))
     } else {
         Modifier
     }
@@ -78,7 +78,8 @@ fun BottomBar(navController: NavHostController) {
         NavigationBar(
             modifier = modifier,
             windowInsets = insets,
-            containerColor = if (isFloating) MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp) else NavigationBarDefaults.containerColor
+            containerColor = if (isFloating) MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp) else NavigationBarDefaults.containerColor,
+            tonalElevation = if (isFloating) 0.dp else NavigationBarDefaults.Elevation
         ) {
             BottomBarDestination.entries.forEach { destination ->
                 if (!fullFeatured && destination.rootRequired) return@forEach
