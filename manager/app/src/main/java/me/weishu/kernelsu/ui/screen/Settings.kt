@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.RemoveModerator
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.rounded.UploadFile
+import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -85,6 +86,7 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.AppProfileTemplateScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.ColorPaletteScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import kotlinx.coroutines.Dispatchers
@@ -244,6 +246,24 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                         headlineContent = { Text(theme) },
                         supportingContent = { Text(stringResource(id = R.string.settings_theme_summary)) },
                         leadingContent = { Icon(Icons.Filled.Palette, theme) },
+                        trailingContent = {
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                null
+                            )
+                        }
+                    )
+                }
+            )
+
+            ExpressiveList(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                content = listOf {
+                    ExpressiveListItem(
+                        onClick = { navigator.navigate(QuickShellScreenDestination) },
+                        headlineContent = { Text(stringResource(R.string.quick_shell)) },
+                        supportingContent = { Text(stringResource(R.string.quick_shell_summary)) },
+                        leadingContent = { Icon(Icons.Outlined.Terminal, stringResource(R.string.quick_shell)) },
                         trailingContent = {
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowRight,

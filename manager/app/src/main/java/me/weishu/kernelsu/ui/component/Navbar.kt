@@ -169,7 +169,7 @@ fun BottomBar(navController: NavHostController) {
                             )
                         },
                         label = { Text(stringResource(destination.label)) },
-                        alwaysShowLabel = true
+                        alwaysShowLabel = false
                     )
                 }
             }
