@@ -1,8 +1,6 @@
 package me.weishu.kernelsu.ui.component
 
 import android.content.Context
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,14 +9,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -86,58 +85,52 @@ fun BottomBar(navController: NavHostController) {
         if (isFloating) {
             Surface(
                 modifier = Modifier.padding(bottom = 16.dp),
-                shape = RoundedCornerShape(50), 
+                shape = RoundedCornerShape(50),
                 color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
                 tonalElevation = 0.dp
             ) {
                 Row(
                     modifier = Modifier
-                        .padding(horizontal = 6.dp)
-                        .height(64.dp), 
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                        .height(48.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     visibleTabs.forEach { destination ->
                         val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
 
-                        val pillColor by animateColorAsState(
-                            targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-                            animationSpec = tween(300),
-                            label = "pillColor"
-                        )
-
-                        val iconColor by animateColorAsState(
-                            targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                            animationSpec = tween(300),
-                            label = "iconColor"
-                        )
-
                         Box(
                             modifier = Modifier
-                                .height(36.dp)
+                                .fillMaxHeight()
+                                .width(64.dp)
                                 .clip(RoundedCornerShape(50))
-                                .background(pillColor)
+                                .background(
+                                    if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.primaryContainer
+                                    else Color.Transparent
+                                )
                                 .clickable {
                                     if (isCurrentDestOnBackStack) {
                                         navigator.popBackStack(destination.direction, false)
                                     } else {
                                         val isFromNonBottom = currentRoute !in bottomBarRoutes
                                         navigator.navigate(destination.direction) {
-                                            if (isFromNonBottom) popUpTo(NavGraphs.root) { inclusive = true }
-                                            else popUpTo(NavGraphs.root) { saveState = true }
+                                            if (isFromNonBottom) {
+                                                popUpTo(NavGraphs.root) { inclusive = true }
+                                            } else {
+                                                popUpTo(NavGraphs.root) { saveState = true }
+                                            }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
                                     }
-                                }
-                                .padding(horizontal = 18.dp),
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
                                 contentDescription = stringResource(destination.label),
-                                tint = iconColor,
-                                modifier = Modifier.size(24.dp)
+                                tint = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -154,12 +147,16 @@ fun BottomBar(navController: NavHostController) {
                     NavigationBarItem(
                         selected = isCurrentDestOnBackStack,
                         onClick = {
-                            if (isCurrentDestOnBackStack) navigator.popBackStack(destination.direction, false)
-                            else {
+                            if (isCurrentDestOnBackStack) {
+                                navigator.popBackStack(destination.direction, false)
+                            } else {
                                 val isFromNonBottom = currentRoute !in bottomBarRoutes
                                 navigator.navigate(destination.direction) {
-                                    if (isFromNonBottom) popUpTo(NavGraphs.root) { inclusive = true }
-                                    else popUpTo(NavGraphs.root) { saveState = true }
+                                    if (isFromNonBottom) {
+                                        popUpTo(NavGraphs.root) { inclusive = true }
+                                    } else {
+                                        popUpTo(NavGraphs.root) { saveState = true }
+                                    }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
@@ -172,7 +169,7 @@ fun BottomBar(navController: NavHostController) {
                             )
                         },
                         label = { Text(stringResource(destination.label)) },
-                        alwaysShowLabel = false
+                        alwaysShowLabel = true
                     )
                 }
             }
