@@ -122,7 +122,6 @@ import me.weishu.kernelsu.ui.component.ExpressiveList
 import me.weishu.kernelsu.ui.component.ExpressiveListItem
 import me.weishu.kernelsu.ui.component.GithubMarkdown
 import me.weishu.kernelsu.ui.component.SearchAppBar
-import me.weishu.kernelsu.ui.component.TonalCard
 import me.weishu.kernelsu.ui.component.rememberConfirmDialog
 import me.weishu.kernelsu.ui.util.DownloadListener
 import me.weishu.kernelsu.ui.util.download
