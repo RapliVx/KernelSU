@@ -125,8 +125,9 @@ private fun SettingsGroupCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = RoundedCornerShape(20.dp)
+        color = MaterialTheme.colorScheme.surfaceVariant, 
+        shape = RoundedCornerShape(20.dp),
+        tonalElevation = 2.dp 
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
