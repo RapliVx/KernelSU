@@ -1,14 +1,10 @@
 package me.weishu.kernelsu.ui.component
 
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -109,12 +105,12 @@ fun BottomBar(navController: NavHostController) {
 
                         val bgColor by animateColorAsState(
                             targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                            animationSpec = tween(200, easing = FastOutSlowInEasing),
+                            animationSpec = tween(250, easing = FastOutSlowInEasing),
                             label = "bgColor"
                         )
                         val contentColor by animateColorAsState(
                             targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                            animationSpec = tween(200, easing = FastOutSlowInEasing),
+                            animationSpec = tween(250, easing = FastOutSlowInEasing),
                             label = "contentColor"
                         )
 
@@ -139,6 +135,7 @@ fun BottomBar(navController: NavHostController) {
                                         }
                                     }
                                 }
+                                .animateContentSize(animationSpec = tween(250, easing = FastOutSlowInEasing))
                                 .padding(horizontal = if (isCurrentDestOnBackStack) 18.dp else 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
@@ -149,16 +146,14 @@ fun BottomBar(navController: NavHostController) {
                                 tint = contentColor
                             )
 
-                            AnimatedVisibility(
-                                visible = isCurrentDestOnBackStack,
-                                enter = fadeIn(tween(200)) + expandHorizontally(tween(200, easing = FastOutSlowInEasing), expandFrom = Alignment.Start),
-                                exit = fadeOut(tween(150)) + shrinkHorizontally(tween(150, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Start)
-                            ) {
+                            if (isCurrentDestOnBackStack) {
                                 Text(
                                     text = stringResource(destination.label),
                                     color = contentColor,
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    softWrap = false,
                                     modifier = Modifier.padding(start = 8.dp)
                                 )
                             }
