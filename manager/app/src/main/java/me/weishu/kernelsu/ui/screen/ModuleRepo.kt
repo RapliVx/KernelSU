@@ -298,6 +298,22 @@ fun ModuleRepoScreen(
                     val latestReleaseTime = remember(module.latestReleaseTime) { module.latestReleaseTime }
                     val moduleAuthor = stringResource(id = R.string.module_author)
 
+                    val cs = MaterialTheme.colorScheme
+                    val isDark = isSystemInDarkTheme()
+                    
+                    val scrim = remember(cs, isDark) {
+                        Brush.verticalGradient(
+                            0f to cs.surface.copy(
+                                alpha = if (isDark) 0.08f else 0.10f
+                            ),
+                            1f to cs.surface.copy(
+                                alpha = if (isDark) 0.40f else 0.32f
+                            )
+                        )
+                    }
+
+                    val bannerAlpha = if (isDark) 0.12f else 0.16f
+
                     androidx.compose.material3.Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -309,6 +325,7 @@ fun ModuleRepoScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = 170.dp)
                                 .clickable {
                                     val args = RepoModuleArg(
                                         moduleId = module.moduleId,
@@ -332,42 +349,32 @@ fun ModuleRepoScreen(
                             val useBanner = prefs.getBoolean("use_banner", true)
 
                             if (useBanner && !module.bannerUrl.isNullOrEmpty()) {
-                                val isDark = isSystemInDarkTheme()
-                                val amoledMode = prefs.getBoolean("amoled_mode", false)
-
-                                val fadeColor = when {
-                                    amoledMode && isDark -> Color.Black
-                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                val req = remember(module.bannerUrl) {
+                                    ImageRequest.Builder(context)
+                                        .data(module.bannerUrl)
+                                        .crossfade(true)
+                                        .build()
                                 }
-
-                                Box(modifier = Modifier.matchParentSize()) {
-                                    val req = remember(module.bannerUrl) {
-                                        ImageRequest.Builder(context)
-                                            .data(module.bannerUrl)
-                                            .crossfade(true)
-                                            .build()
-                                    }
-                                    AsyncImage(
-                                        model = req,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop,
-                                        alpha = if (isDark) 0.35f else 0.45f
-                                    )
-
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(
-                                                Brush.verticalGradient(
-                                                    0f to fadeColor.copy(alpha = 0.1f),
-                                                    0.5f to fadeColor.copy(alpha = 0.6f),
-                                                    1f to fadeColor
-                                                )
-                                            )
-                                    )
-                                }
+                                AsyncImage(
+                                    model = req,
+                                    contentDescription = null,
+                                    modifier = Modifier.matchParentSize(),
+                                    contentScale = ContentScale.Crop,
+                                    alpha = bannerAlpha
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .background(cs.surfaceContainerLow)
+                                )
                             }
+
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .background(scrim)
+                            )
 
                             Column(
                                 modifier = Modifier

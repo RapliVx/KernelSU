@@ -62,10 +62,12 @@ fun GithubMarkdown(
     val isDark = isInDarkTheme(themeMode)
     val dir = if (LocalLayoutDirection.current == LayoutDirection.Rtl) "rtl" else "ltr"
 
+    val textColor = cssColorFromArgb(MaterialTheme.colorScheme.onSurface.toArgb())
+    val fgLink = cssColorFromArgb(MaterialTheme.colorScheme.primary.toArgb())
     val bgMuted = cssColorFromArgb(MaterialTheme.colorScheme.surfaceContainerHigh.toArgb())
     val bgNeutralMuted = cssColorFromArgb(MaterialTheme.colorScheme.surfaceDim.toArgb())
-    val bgAttentionMuted = cssColorFromArgb(MaterialTheme.colorScheme.surfaceBright.toArgb())
-    val fgLink = cssColorFromArgb(MaterialTheme.colorScheme.primary.toArgb())
+    val bgAttentionMuted = cssColorFromArgb(MaterialTheme.colorScheme.tertiaryContainer.toArgb())
+    val borderCol = cssColorFromArgb(MaterialTheme.colorScheme.outlineVariant.toArgb())
 
     var progress by remember { mutableFloatStateOf(0f) }
     var isLoaded by remember { mutableStateOf(false) }
@@ -83,17 +85,38 @@ fun GithubMarkdown(
           <link rel="stylesheet" href="$cssHref" />
           <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
           <style>
-            html, body { margin:0; padding:0; background: transparent !important; }
-            img, video { max-width:100%; height:auto; }
+            html, body { 
+                margin:0; 
+                padding:0; 
+                background-color: transparent !important; 
+                color: $textColor !important;
+            }
+            img, video { max-width:100%; height:auto; border-radius: 8px; }
             .markdown-body {
               padding: 0;
               padding-top: 8px;
               background-color: transparent !important;
+              color: $textColor !important;
+              --color-fg-default: $textColor !important;
               --bgColor-default: transparent !important;
               --bgColor-muted: $bgMuted;
               --bgColor-neutral-muted: $bgNeutralMuted;
               --bgColor-attention-muted: $bgAttentionMuted;
               --fgColor-accent: $fgLink;
+              --color-accent-fg: $fgLink;
+              --color-border-default: $borderCol;
+              --color-border-muted: $borderCol;
+            }
+            .markdown-body pre, .markdown-body code {
+                background-color: $bgMuted !important;
+                border-radius: 6px;
+            }
+            .markdown-body a { color: $fgLink !important; }
+            .markdown-body table tr, .markdown-body table th, .markdown-body table td {
+                border-color: $borderCol !important;
+            }
+            .markdown-body table tr:nth-child(2n) {
+                background-color: $bgNeutralMuted !important;
             }
           </style>
         </head>
