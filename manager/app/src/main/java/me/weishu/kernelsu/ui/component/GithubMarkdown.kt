@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -55,7 +54,7 @@ import java.nio.charset.StandardCharsets
 @Composable
 fun GithubMarkdown(
     content: String,
-    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
+    containerColor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Transparent
 ) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -74,6 +73,7 @@ fun GithubMarkdown(
     val base64Content = Base64.encodeToString(content.toByteArray(StandardCharsets.UTF_8), Base64.NO_WRAP)
 
     val cssHref = "https://appassets.androidplatform.net/assets/github-markdown.css"
+
     val html = """
         <!DOCTYPE html>
         <html>
@@ -83,12 +83,13 @@ fun GithubMarkdown(
           <link rel="stylesheet" href="$cssHref" />
           <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
           <style>
-            html, body { margin:0; padding:0; background: transparent; }
+            html, body { margin:0; padding:0; background: transparent !important; }
             img, video { max-width:100%; height:auto; }
             .markdown-body {
               padding: 0;
               padding-top: 8px;
-              --bgColor-default: transparent;
+              background-color: transparent !important;
+              --bgColor-default: transparent !important;
               --bgColor-muted: $bgMuted;
               --bgColor-neutral-muted: $bgNeutralMuted;
               --bgColor-attention-muted: $bgAttentionMuted;
@@ -129,6 +130,8 @@ fun GithubMarkdown(
                 val webView = WebView(ctx).apply {
                     try {
                         setBackgroundColor(Color.TRANSPARENT)
+                        setLayerType(View.LAYER_TYPE_HARDWARE, null)
+                        
                         isVerticalScrollBarEnabled = false
                         isHorizontalScrollBarEnabled = false
                         settings.apply {

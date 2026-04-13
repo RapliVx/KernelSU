@@ -298,7 +298,14 @@ fun ModuleRepoScreen(
                     val latestReleaseTime = remember(module.latestReleaseTime) { module.latestReleaseTime }
                     val moduleAuthor = stringResource(id = R.string.module_author)
 
-                    TonalCard(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))) {
+                    androidx.compose.material3.Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp)),
+                        colors = androidx.compose.material3.CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -322,81 +329,97 @@ fun ModuleRepoScreen(
                                     }
                                 }
                         ) {
+                            val useBanner = prefs.getBoolean("use_banner", true)
 
-                            if (!module.bannerUrl.isNullOrEmpty()) {
-                                val req = remember(module.bannerUrl) {
-                                    ImageRequest.Builder(context)
-                                        .data(module.bannerUrl)
-                                        .crossfade(true)
-                                        .build()
-                                }
-                                AsyncImage(
-                                    model = req,
-                                    contentDescription = null,
-                                    modifier = Modifier.matchParentSize(),
-                                    contentScale = ContentScale.Crop,
-                                    alpha = if (isDark) 0.25f else 0.40f
-                                )
+                            if (useBanner && !module.bannerUrl.isNullOrEmpty()) {
+                                val isDark = isSystemInDarkTheme()
+                                val amoledMode = prefs.getBoolean("amoled_mode", false)
 
-                                val scrimGradient = remember(cs, isDark) {
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color.Transparent, cs.surfaceVariant)
-                                    )
-                                }
-                                Box(modifier = Modifier.matchParentSize().background(scrimGradient))
-                            }
-
-                            Row(
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(start = 16.dp, top = 12.dp)
-                                    .zIndex(3f),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val typeStr = module.repoType
-                                val typeColor = when (typeStr.uppercase()) {
-                                    "META" -> MaterialTheme.colorScheme.tertiaryContainer
-                                    "NON-FREE" -> MaterialTheme.colorScheme.errorContainer
-                                    else -> MaterialTheme.colorScheme.primaryContainer
-                                }
-                                val typeTextColor = when (typeStr.uppercase()) {
-                                    "META" -> MaterialTheme.colorScheme.onTertiaryContainer
-                                    "NON-FREE" -> MaterialTheme.colorScheme.onErrorContainer
-                                    else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                val fadeColor = when {
+                                    amoledMode && isDark -> Color.Black
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
                                 }
 
-                                Surface(color = typeColor, shape = RoundedCornerShape(6.dp)) {
-                                    Text(
-                                        text = typeStr.uppercase(),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        color = typeTextColor
-                                    )
-                                }
-
-                                if (!module.license.isNullOrEmpty()) {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            text = module.license,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
+                                Box(modifier = Modifier.matchParentSize()) {
+                                    val req = remember(module.bannerUrl) {
+                                        ImageRequest.Builder(context)
+                                            .data(module.bannerUrl)
+                                            .crossfade(true)
+                                            .build()
                                     }
+                                    AsyncImage(
+                                        model = req,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop,
+                                        alpha = if (isDark) 0.35f else 0.45f
+                                    )
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    0f to fadeColor.copy(alpha = 0.1f),
+                                                    0.5f to fadeColor.copy(alpha = 0.6f),
+                                                    1f to fadeColor
+                                                )
+                                            )
+                                    )
                                 }
                             }
 
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(start = 22.dp, top = 48.dp, end = 22.dp, bottom = 12.dp)
+                                    .padding(start = 22.dp, top = 22.dp, end = 22.dp, bottom = 12.dp)
                             ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 12.dp)
+                                        .zIndex(3f),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val typeStr = module.repoType
+                                    val typeColor = when (typeStr.uppercase()) {
+                                        "META" -> MaterialTheme.colorScheme.tertiaryContainer
+                                        "NON-FREE" -> MaterialTheme.colorScheme.errorContainer
+                                        else -> MaterialTheme.colorScheme.primaryContainer
+                                    }
+                                    val typeTextColor = when (typeStr.uppercase()) {
+                                        "META" -> MaterialTheme.colorScheme.onTertiaryContainer
+                                        "NON-FREE" -> MaterialTheme.colorScheme.onErrorContainer
+                                        else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                    }
+
+                                    Surface(color = typeColor, shape = RoundedCornerShape(6.dp)) {
+                                        Text(
+                                            text = typeStr.uppercase(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            color = typeTextColor
+                                        )
+                                    }
+
+                                    if (!module.license.isNullOrEmpty()) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = module.license,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+
                                 if (module.moduleName.isNotEmpty()) {
                                     Text(
                                         text = module.moduleName,
