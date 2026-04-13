@@ -80,7 +80,6 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -102,7 +101,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -213,7 +211,7 @@ fun ModuleRepoScreen(
             1f to cs.surface.copy(alpha = if (isDark) 0.40f else 0.32f)
         )
     }
-    val bannerAlpha = if (isDark) 0.16f else 0.16f
+    val bannerAlpha = if (isDark) 0.12f else 0.16f
 
     Scaffold(
         topBar = {
@@ -306,13 +304,10 @@ fun ModuleRepoScreen(
                     val latestReleaseTime = remember(module.latestReleaseTime) { module.latestReleaseTime }
                     val moduleAuthor = stringResource(id = R.string.module_author)
 
-                    androidx.compose.material3.Card(
+                    TonalCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp)),
-                        colors = androidx.compose.material3.CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                            .clip(RoundedCornerShape(14.dp))
                     ) {
                         Box(
                             modifier = Modifier
@@ -393,35 +388,25 @@ fun ModuleRepoScreen(
                                         else -> MaterialTheme.colorScheme.onPrimaryContainer
                                     }
 
-                                    Surface(color = typeColor, shape = RoundedCornerShape(6.dp)) {
-                                        Text(
-                                            text = typeStr.uppercase(),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            color = typeTextColor
-                                        )
-                                    }
+                                    BadgeChipCustom(
+                                        text = typeStr,
+                                        containerColor = typeColor,
+                                        contentColor = typeTextColor
+                                    )
 
                                     if (!module.license.isNullOrEmpty()) {
-                                        Surface(
-                                            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f),
-                                            shape = RoundedCornerShape(6.dp)
-                                        ) {
-                                            Text(
-                                                text = module.license,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                        }
+                                        BadgeChipCustom(
+                                            text = module.license,
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f),
+                                            contentColor = MaterialTheme.colorScheme.onSurface
+                                        )
                                     }
                                 }
 
                                 if (module.moduleName.isNotEmpty()) {
                                     Text(
                                         text = module.moduleName,
+                                        color = cs.onSurface,
                                         fontSize = MaterialTheme.typography.titleMedium.fontSize,
                                         fontWeight = FontWeight.SemiBold,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
@@ -431,38 +416,36 @@ fun ModuleRepoScreen(
                                 if (module.moduleId.isNotEmpty()) {
                                     Text(
                                         text = "ID: ${module.moduleId}",
+                                        color = cs.onSurface.copy(alpha = 0.78f),
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontWeight = FontWeight.Medium,
                                     )
                                 }
                                 Text(
                                     text = "$moduleAuthor: ${module.authors}",
+                                    color = cs.onSurface.copy(alpha = 0.78f),
                                     fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                     fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium,
                                 )
                                 if (module.summary.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(12.dp))
                                     Text(
                                         text = module.summary,
-                                        color = MaterialTheme.colorScheme.outline,
+                                        color = cs.onSurface.copy(alpha = 0.80f),
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                        fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
+                                        fontWeight = FontWeight.Medium,
                                         overflow = TextOverflow.Ellipsis,
                                         maxLines = 4,
                                     )
                                 }
 
-                                Row(modifier = Modifier.padding(vertical = 8.dp)) {
-                                    if (module.metamodule) LabelText("META")
-                                }
-                                HorizontalDivider(thickness = Dp.Hairline)
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
 
                                 Row(
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -474,13 +457,14 @@ fun ModuleRepoScreen(
                                             Icon(
                                                 imageVector = Icons.Rounded.Star,
                                                 contentDescription = "stars",
-                                                tint = MaterialTheme.colorScheme.outline,
+                                                tint = cs.onSurface.copy(alpha = 0.78f),
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Text(
                                                 text = module.stargazerCount.toString(),
+                                                color = cs.onSurface.copy(alpha = 0.78f),
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.outline,
+                                                fontWeight = FontWeight.Medium,
                                                 modifier = Modifier.padding(start = 4.dp)
                                             )
                                         }
@@ -491,11 +475,11 @@ fun ModuleRepoScreen(
                                     if (latestReleaseTime.isNotEmpty()) {
                                         Text(
                                             text = latestReleaseTime,
+                                            color = cs.onSurface.copy(alpha = 0.78f),
                                             fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                             fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
                                             lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                            fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
-                                            color = MaterialTheme.colorScheme.outline,
+                                            fontWeight = FontWeight.Medium,
                                         )
                                     }
                                 }
@@ -739,8 +723,9 @@ fun ReleasesPage(
                 key = { it.tagName },
             ) { rel ->
                 val title = remember(rel.name, rel.tagName) { rel.name.ifBlank { rel.tagName } }
-                androidx.compose.material3.Card(
-                    colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+
+                TonalCard(
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
                 ) {
                     Column(
                         modifier = Modifier.padding(vertical = 18.dp, horizontal = 22.dp)
@@ -817,7 +802,6 @@ fun ReleasesPage(
                                         {
                                             setPendingDownload {
                                                 isDownloading = true
-
                                                 scope.launch(Dispatchers.IO) {
                                                     download(
                                                         asset.downloadUrl,
