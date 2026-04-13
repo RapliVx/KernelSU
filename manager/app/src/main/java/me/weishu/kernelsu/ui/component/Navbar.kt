@@ -1,6 +1,17 @@
 package me.weishu.kernelsu.ui.component
 
 import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +28,6 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -38,6 +48,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -92,22 +103,30 @@ fun BottomBar(navController: NavHostController) {
                 Row(
                     modifier = Modifier
                         .padding(horizontal = 8.dp, vertical = 6.dp)
-                        .height(48.dp),
+                        .height(48.dp)
+                        .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     visibleTabs.forEach { destination ->
                         val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
 
-                        Box(
+                        val bgColor by animateColorAsState(
+                            targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                            label = "bgColor"
+                        )
+                        val contentColor by animateColorAsState(
+                            targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                            label = "contentColor"
+                        )
+
+                        Row(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .width(64.dp)
                                 .clip(RoundedCornerShape(50))
-                                .background(
-                                    if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.primaryContainer
-                                    else Color.Transparent
-                                )
+                                .background(bgColor)
                                 .clickable {
                                     if (isCurrentDestOnBackStack) {
                                         navigator.popBackStack(destination.direction, false)
@@ -123,15 +142,31 @@ fun BottomBar(navController: NavHostController) {
                                             restoreState = true
                                         }
                                     }
-                                },
-                            contentAlignment = Alignment.Center
+                                }
+                                .padding(horizontal = if (isCurrentDestOnBackStack) 18.dp else 16.dp)
+                                .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
                         ) {
                             Icon(
                                 imageVector = if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
                                 contentDescription = stringResource(destination.label),
-                                tint = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = contentColor
                             )
+
+                            AnimatedVisibility(
+                                visible = isCurrentDestOnBackStack,
+                                enter = fadeIn(tween(250)) + expandHorizontally(spring(stiffness = Spring.StiffnessMediumLow), expandFrom = Alignment.Start),
+                                exit = fadeOut(tween(200)) + shrinkHorizontally(spring(stiffness = Spring.StiffnessMediumLow), shrinkTowards = Alignment.Start)
+                            ) {
+                                Text(
+                                    text = stringResource(destination.label),
+                                    color = contentColor,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
                         }
                     }
                 }
