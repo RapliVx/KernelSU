@@ -3,10 +3,7 @@ package me.weishu.kernelsu.ui.component
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -103,8 +100,7 @@ fun BottomBar(navController: NavHostController) {
                 Row(
                     modifier = Modifier
                         .padding(horizontal = 8.dp, vertical = 6.dp)
-                        .height(48.dp)
-                        .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                        .height(48.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -113,12 +109,12 @@ fun BottomBar(navController: NavHostController) {
 
                         val bgColor by animateColorAsState(
                             targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                            animationSpec = tween(200, easing = FastOutSlowInEasing),
                             label = "bgColor"
                         )
                         val contentColor by animateColorAsState(
                             targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                            animationSpec = tween(300, easing = FastOutSlowInEasing),
+                            animationSpec = tween(200, easing = FastOutSlowInEasing),
                             label = "contentColor"
                         )
 
@@ -143,8 +139,7 @@ fun BottomBar(navController: NavHostController) {
                                         }
                                     }
                                 }
-                                .padding(horizontal = if (isCurrentDestOnBackStack) 18.dp else 16.dp)
-                                .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                                .padding(horizontal = if (isCurrentDestOnBackStack) 18.dp else 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
@@ -156,8 +151,8 @@ fun BottomBar(navController: NavHostController) {
 
                             AnimatedVisibility(
                                 visible = isCurrentDestOnBackStack,
-                                enter = fadeIn(tween(250)) + expandHorizontally(spring(stiffness = Spring.StiffnessMediumLow), expandFrom = Alignment.Start),
-                                exit = fadeOut(tween(200)) + shrinkHorizontally(spring(stiffness = Spring.StiffnessMediumLow), shrinkTowards = Alignment.Start)
+                                enter = fadeIn(tween(200)) + expandHorizontally(tween(200, easing = FastOutSlowInEasing), expandFrom = Alignment.Start),
+                                exit = fadeOut(tween(150)) + shrinkHorizontally(tween(150, easing = FastOutSlowInEasing), shrinkTowards = Alignment.Start)
                             ) {
                                 Text(
                                     text = stringResource(destination.label),
