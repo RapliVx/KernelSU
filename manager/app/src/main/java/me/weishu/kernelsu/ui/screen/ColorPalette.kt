@@ -289,7 +289,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
-            SettingsGroupCard(title = "App Icon") {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
