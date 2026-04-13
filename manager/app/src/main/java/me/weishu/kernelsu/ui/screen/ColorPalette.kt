@@ -121,10 +121,11 @@ private fun SettingsGroupCard(
     title: String,
     content: @Composable () -> Unit
 ) {
-    TonalCard(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(
