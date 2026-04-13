@@ -207,6 +207,14 @@ fun ModuleRepoScreen(
     val cs = MaterialTheme.colorScheme
     val isDark = isSystemInDarkTheme()
 
+    val scrim = remember(cs, isDark) {
+        Brush.verticalGradient(
+            0f to cs.surface.copy(alpha = if (isDark) 0.08f else 0.10f),
+            1f to cs.surface.copy(alpha = if (isDark) 0.40f else 0.32f)
+        )
+    }
+    val bannerAlpha = if (isDark) 0.16f else 0.16f
+
     Scaffold(
         topBar = {
             SearchAppBar(
@@ -297,22 +305,6 @@ fun ModuleRepoScreen(
                 items(displayModules, key = { it.moduleId }) { module ->
                     val latestReleaseTime = remember(module.latestReleaseTime) { module.latestReleaseTime }
                     val moduleAuthor = stringResource(id = R.string.module_author)
-
-                    val cs = MaterialTheme.colorScheme
-                    val isDark = isSystemInDarkTheme()
-                    
-                    val scrim = remember(cs, isDark) {
-                        Brush.verticalGradient(
-                            0f to cs.surface.copy(
-                                alpha = if (isDark) 0.08f else 0.10f
-                            ),
-                            1f to cs.surface.copy(
-                                alpha = if (isDark) 0.40f else 0.32f
-                            )
-                        )
-                    }
-
-                    val bannerAlpha = if (isDark) 0.12f else 0.16f
 
                     androidx.compose.material3.Card(
                         modifier = Modifier
@@ -540,8 +532,8 @@ fun ModuleRepoDetailScreen(
     var readmeHtml by remember(module.moduleId) { mutableStateOf<String?>(null) }
     var readmeLoaded by remember(module.moduleId) { mutableStateOf(false) }
     var detailReleases by remember(module.moduleId) { mutableStateOf<List<ReleaseArg>>(emptyList()) }
-    var webUrl by remember(module.moduleId) { mutableStateOf("https://modules.kernelsu.org/module/${module.moduleId}") }
-    var sourceUrl by remember(module.moduleId) { mutableStateOf("https://github.com/KernelSU-Modules-Repo/${module.moduleId}") }
+    var webUrl by remember(module.moduleId) { mutableStateOf(module.repoUrl) }
+    var sourceUrl by remember(module.moduleId) { mutableStateOf(module.repoUrl) }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -697,7 +689,7 @@ private fun ReadmePage(
                     Column(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
                         GithubMarkdown(
                             content = readmeHtml ?: "<p>Readme is not available for this module.</p>",
-                            containerColor = MaterialTheme.colorScheme.surface
+                            containerColor = MaterialTheme.colorScheme.background
                         )
                     }
                 }
@@ -747,7 +739,9 @@ fun ReleasesPage(
                 key = { it.tagName },
             ) { rel ->
                 val title = remember(rel.name, rel.tagName) { rel.name.ifBlank { rel.tagName } }
-                TonalCard {
+                androidx.compose.material3.Card(
+                    colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
                     Column(
                         modifier = Modifier.padding(vertical = 18.dp, horizontal = 22.dp)
                     ) {
@@ -784,11 +778,11 @@ fun ReleasesPage(
                         ) {
                             Column {
                                 HorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 4.dp),
+                                    modifier = Modifier.padding(vertical = 8.dp),
                                     thickness = Dp.Hairline,
-                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                                 )
-                                GithubMarkdown(content = rel.descriptionHTML)
+                                GithubMarkdown(content = rel.descriptionHTML, containerColor = Color.Transparent)
                             }
                         }
 
@@ -800,7 +794,8 @@ fun ReleasesPage(
                             Column {
                                 HorizontalDivider(
                                     modifier = Modifier.padding(vertical = 8.dp),
-                                    thickness = Dp.Hairline
+                                    thickness = Dp.Hairline,
+                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                                 )
 
                                 rel.assets.forEachIndexed { index, asset ->
@@ -840,7 +835,7 @@ fun ReleasesPage(
                                         }
                                     }
                                     Row(
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
@@ -862,9 +857,7 @@ fun ReleasesPage(
                                             contentPadding = ButtonDefaults.TextButtonContentPadding
                                         ) {
                                             if (isDownloading) {
-                                                CircularWavyProgressIndicator(
-                                                    modifier = Modifier.size(20.dp),
-                                                )
+                                                CircularWavyProgressIndicator(modifier = Modifier.size(20.dp))
                                             } else {
                                                 Icon(
                                                     modifier = Modifier.size(20.dp),
@@ -879,10 +872,11 @@ fun ReleasesPage(
                                             }
                                         }
                                     }
-                                    if (index != rel.assets.lastIndex) {
+                                    if (index < rel.assets.lastIndex) {
                                         HorizontalDivider(
-                                            modifier = Modifier.padding(vertical = 8.dp),
-                                            thickness = Dp.Hairline
+                                            modifier = Modifier.padding(vertical = 4.dp),
+                                            thickness = Dp.Hairline,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                                         )
                                     }
                                 }
@@ -1000,7 +994,7 @@ private fun fetchGitHubDetails(repoUrl: String): Pair<String?, List<ReleaseArg>>
     try {
         val readmeApiUrl = "https://api.github.com/repos/$repoPath/readme"
         val conn = URL(readmeApiUrl).openConnection() as java.net.HttpURLConnection
-        conn.setRequestProperty("Accept", "application/vnd.github.v3.html") // Minta Render HTML
+        conn.setRequestProperty("Accept", "application/vnd.github.v3.html")
         conn.setRequestProperty("User-Agent", "KernelSU-Manager")
         if (conn.responseCode == 200) {
             readmeHtml = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
@@ -1013,7 +1007,7 @@ private fun fetchGitHubDetails(repoUrl: String): Pair<String?, List<ReleaseArg>>
     val releasesApiUrl = "https://api.github.com/repos/$repoPath/releases"
     try {
         val conn = URL(releasesApiUrl).openConnection() as java.net.HttpURLConnection
-        conn.setRequestProperty("Accept", "application/vnd.github.v3.html+json") // Minta Render HTML utk Body
+        conn.setRequestProperty("Accept", "application/vnd.github.v3.html+json")
         conn.setRequestProperty("User-Agent", "KernelSU-Manager")
         if (conn.responseCode == 200) {
             val response = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }

@@ -1,10 +1,8 @@
 package me.weishu.kernelsu.ui.component
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.util.Base64
 import android.util.Log
 import android.view.View
 import android.webkit.WebChromeClient
@@ -31,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -39,7 +36,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.webkit.WebViewAssetLoader
 import me.weishu.kernelsu.ksuApp
-import me.weishu.kernelsu.ui.theme.isInDarkTheme
 import me.weishu.kernelsu.ui.util.cssColorFromArgb
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.OkHttpClient
@@ -49,6 +45,16 @@ import okio.IOException
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 
+private fun String.escapeForJavaScript(): String {
+    return this.replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("'", "\\'")
+        .replace("<", "\\u003C")
+        .replace(">", "\\u003E")
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -56,25 +62,84 @@ fun GithubMarkdown(
     content: String,
     containerColor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.Transparent
 ) {
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val themeMode = prefs.getInt("color_mode", 0)
-    val isDark = isInDarkTheme(themeMode)
     val dir = if (LocalLayoutDirection.current == LayoutDirection.Rtl) "rtl" else "ltr"
 
-    val textColor = cssColorFromArgb(MaterialTheme.colorScheme.onSurface.toArgb())
-    val fgLink = cssColorFromArgb(MaterialTheme.colorScheme.primary.toArgb())
-    val bgMuted = cssColorFromArgb(MaterialTheme.colorScheme.surfaceContainerHigh.toArgb())
-    val bgNeutralMuted = cssColorFromArgb(MaterialTheme.colorScheme.surfaceDim.toArgb())
-    val bgAttentionMuted = cssColorFromArgb(MaterialTheme.colorScheme.tertiaryContainer.toArgb())
-    val borderCol = cssColorFromArgb(MaterialTheme.colorScheme.outlineVariant.toArgb())
+    val cs = MaterialTheme.colorScheme
+    val textColor = cssColorFromArgb(cs.onSurface.toArgb())
+    val linkColor = cssColorFromArgb(cs.primary.toArgb())
+    val codeBgColor = cssColorFromArgb(cs.secondaryContainer.toArgb())
+    val codeTextColor = cssColorFromArgb(cs.onSecondaryContainer.toArgb())
+    val quoteBorderColor = cssColorFromArgb(cs.primary.toArgb())
+    val borderColor = cssColorFromArgb(cs.outlineVariant.toArgb())
+    val stripeBgColor = cssColorFromArgb(cs.surfaceContainerHighest.toArgb())
 
     var progress by remember { mutableFloatStateOf(0f) }
     var isLoaded by remember { mutableStateOf(false) }
 
-    val base64Content = Base64.encodeToString(content.toByteArray(StandardCharsets.UTF_8), Base64.NO_WRAP)
+    val escapedMarkdown = remember(content) { content.escapeForJavaScript() }
 
-    val cssHref = "https://appassets.androidplatform.net/assets/github-markdown.css"
+    val customCss = """
+        :root {
+            --text-color: $textColor;
+            --link-color: $linkColor;
+            --code-bg: $codeBgColor;
+            --code-text: $codeTextColor;
+            --quote-border: $quoteBorderColor;
+            --border-color: $borderColor;
+            --stripe-bg: $stripeBgColor;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0;
+            background-color: transparent !important;
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14.5px;
+            line-height: 1.6;
+            -webkit-user-select: none; user-select: none;
+        }
+        .markdown-body { padding: 8px 0px 24px 0px; word-wrap: break-word; }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+            margin-top: 24px; margin-bottom: 16px; font-weight: 600; line-height: 1.25; color: var(--text-color);
+        }
+        .markdown-body h1 { font-size: 2em; border-bottom: 1px solid var(--border-color); padding-bottom: .3em; }
+        .markdown-body h2 { font-size: 1.5em; border-bottom: 1px solid var(--border-color); padding-bottom: .3em; }
+        .markdown-body h3 { font-size: 1.25em; }
+        .markdown-body p { margin-top: 0; margin-bottom: 16px; }
+        .markdown-body a { color: var(--link-color); text-decoration: none; font-weight: 500; }
+        .markdown-body a:hover { text-decoration: underline; }
+        .markdown-body img, .markdown-body video { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; }
+        .markdown-body hr { height: 1px; padding: 0; margin: 24px 0; background-color: var(--border-color); border: 0; }
+        .markdown-body blockquote {
+            margin: 0 0 16px 0; padding: 0 1em;
+            color: var(--text-color); opacity: 0.85;
+            border-left: 4px solid var(--quote-border);
+            background-color: rgba(var(--quote-border), 0.05);
+            border-top-right-radius: 4px; border-bottom-right-radius: 4px;
+        }
+        .markdown-body ul, .markdown-body ol { margin-top: 0; margin-bottom: 16px; padding-left: 2em; }
+        .markdown-body li { margin-bottom: 4px; }
+        .markdown-body pre, .markdown-body code {
+            background-color: var(--code-bg); 
+            color: var(--code-text); 
+            border-radius: 6px;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            -webkit-user-select: text; user-select: text;
+        }
+        .markdown-body code { padding: .2em .4em; font-size: 85%; }
+        .markdown-body pre { padding: 16px; overflow: auto; font-size: 85%; line-height: 1.45; }
+        .markdown-body pre code { padding: 0; background-color: transparent; color: inherit; }
+        .markdown-body table { 
+            border-spacing: 0; border-collapse: collapse; margin-top: 0; margin-bottom: 16px; 
+            width: 100%; overflow: auto; display: block;
+        }
+        .markdown-body table th, .markdown-body table td { padding: 6px 13px; border: 1px solid var(--border-color); }
+        .markdown-body table tr { background-color: transparent; border-top: 1px solid var(--border-color); }
+        .markdown-body table tr:nth-child(2n) { background-color: var(--stripe-bg); }
+        .markdown-body details summary { cursor: pointer; font-weight: 600; outline: none; margin-bottom: 8px; }
+    """.trimIndent()
+
+    val markedJsHref = "https://unpkg.com/marked@12.0.1/marked.min.js"
 
     val html = """
         <!DOCTYPE html>
@@ -82,51 +147,21 @@ fun GithubMarkdown(
         <head>
           <meta charset='utf-8'/>
           <meta name='viewport' content='width=device-width, initial-scale=1'/>
-          <link rel="stylesheet" href="$cssHref" />
-          <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-          <style>
-            html, body { 
-                margin:0; 
-                padding:0; 
-                background-color: transparent !important; 
-                color: $textColor !important;
-            }
-            img, video { max-width:100%; height:auto; border-radius: 8px; }
-            .markdown-body {
-              padding: 0;
-              padding-top: 8px;
-              background-color: transparent !important;
-              color: $textColor !important;
-              --color-fg-default: $textColor !important;
-              --bgColor-default: transparent !important;
-              --bgColor-muted: $bgMuted;
-              --bgColor-neutral-muted: $bgNeutralMuted;
-              --bgColor-attention-muted: $bgAttentionMuted;
-              --fgColor-accent: $fgLink;
-              --color-accent-fg: $fgLink;
-              --color-border-default: $borderCol;
-              --color-border-muted: $borderCol;
-            }
-            .markdown-body pre, .markdown-body code {
-                background-color: $bgMuted !important;
-                border-radius: 6px;
-            }
-            .markdown-body a { color: $fgLink !important; }
-            .markdown-body table tr, .markdown-body table th, .markdown-body table td {
-                border-color: $borderCol !important;
-            }
-            .markdown-body table tr:nth-child(2n) {
-                background-color: $bgNeutralMuted !important;
-            }
-          </style>
+          <script src="$markedJsHref"></script>
+          <style>$customCss</style>
         </head>
         <body dir='${dir}'>
-          <article class='markdown-body' id='content' data-theme='${if (isDark) "dark" else "light"}'></article>
+          <article class='markdown-body' id='content'></article>
           <script>
             window.onload = function() {
-              const base64 = "$base64Content";
-              const rawText = decodeURIComponent(escape(window.atob(base64)));
-              document.getElementById('content').innerHTML = marked.parse(rawText);
+              try {
+                  const rawMarkdown = "$escapedMarkdown";
+                  marked.use({ gfm: true, breaks: true });
+                  document.getElementById('content').innerHTML = marked.parse(rawMarkdown);
+              } catch (e) {
+                  document.getElementById('content').innerHTML = "<p>Error rendering markdown.</p>";
+                  console.error(e);
+              }
             };
           </script>
         </body>
@@ -153,30 +188,34 @@ fun GithubMarkdown(
                 val webView = WebView(ctx).apply {
                     try {
                         setBackgroundColor(Color.TRANSPARENT)
-                        setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                        
+                        setLayerType(View.LAYER_TYPE_NONE, null)
+
                         isVerticalScrollBarEnabled = false
                         isHorizontalScrollBarEnabled = false
+
                         settings.apply {
-                            offscreenPreRaster = true
+                            cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
                             domStorageEnabled = true
+                            layoutAlgorithm = WebSettings.LayoutAlgorithm.NORMAL
+                            offscreenPreRaster = false
                             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                             allowContentAccess = false
                             allowFileAccess = false
-                            cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
                             textZoom = 90
                             setSupportZoom(false)
                             setGeolocationEnabled(false)
                             javaScriptEnabled = true
                         }
+
                         webChromeClient = object : WebChromeClient() {
                             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                                 progress = newProgress / 100f
-                                if (newProgress == 100) {
+                                if (newProgress >= 90) {
                                     isLoaded = true
                                 }
                             }
                         }
+
                         webViewClient = object : WebViewClient() {
                             private val assetLoader = WebViewAssetLoader.Builder()
                                 .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(ctx))
@@ -222,6 +261,7 @@ fun GithubMarkdown(
                                 }
                             }
                         }
+
                         loadDataWithBaseURL(
                             "https://appassets.androidplatform.net", html,
                             "text/html", StandardCharsets.UTF_8.name(), null
@@ -233,7 +273,9 @@ fun GithubMarkdown(
                 frameLayout.addView(webView)
                 frameLayout
             },
-            update = { view -> view.visibility = if (isLoaded) View.VISIBLE else View.GONE },
+            update = { view ->
+                view.visibility = if (isLoaded) View.VISIBLE else View.INVISIBLE
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight()
