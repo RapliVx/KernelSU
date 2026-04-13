@@ -289,7 +289,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            SettingsGroupCard(title = "App Icon") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
@@ -302,14 +302,25 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                 if (enabled) {
                                     currentLauncherIcon = isOfficial
                                     prefs.edit { putBoolean("enable_official_launcher", isOfficial) }
-                                    val pm = context.packageManager
-                                    val pkg = context.packageName
-                                    val mainComponent   = ComponentName(pkg, "$pkg.ui.MainActivity")
-                                    val aliasComponent  = ComponentName(pkg, "$pkg.MainActivityOfficial")
-                                    val (enableComp, disableComp) = if (isOfficial) aliasComponent to mainComponent else mainComponent to aliasComponent
 
-                                    pm.setComponentEnabledSetting(enableComp, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
-                                    pm.setComponentEnabledSetting(disableComp, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+                                    try {
+                                        val pm = context.packageManager
+                                        val pkg = context.packageName
+
+                                        val mainComponent   = ComponentName(pkg, "$pkg.ui.MainActivity")
+                                        val aliasComponent  = ComponentName(pkg, "$pkg.MainActivityOfficial")
+
+                                        val (enableComp, disableComp) = if (isOfficial) {
+                                            aliasComponent to mainComponent
+                                        } else {
+                                            mainComponent to aliasComponent
+                                        }
+
+                                        pm.setComponentEnabledSetting(enableComp, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+                                        pm.setComponentEnabledSetting(disableComp, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+                                    } catch (_: Exception) {
+                                        // Silently ignore errors
+                                    }
                                 }
                             },
                             modifier = Modifier
