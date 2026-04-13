@@ -3,6 +3,7 @@ package me.weishu.kernelsu.ui.component
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Color
+import android.util.Base64
 import android.util.Log
 import android.view.View
 import android.webkit.WebChromeClient
@@ -28,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -36,7 +36,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
 import androidx.webkit.WebViewAssetLoader
 import me.weishu.kernelsu.ksuApp
-import me.weishu.kernelsu.ui.util.cssColorFromArgb
 import okhttp3.Headers.Companion.toHeaders
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -45,14 +44,8 @@ import okio.IOException
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 
-private fun String.escapeForJavaScript(): String {
-    return this.replace("\\", "\\\\")
-        .replace("\"", "\\\"")
-        .replace("\n", "\\n")
-        .replace("\r", "\\r")
-        .replace("'", "\\'")
-        .replace("<", "\\u003C")
-        .replace(">", "\\u003E")
+fun androidx.compose.ui.graphics.Color.toCssRgba(): String {
+    return "rgba(${(this.red * 255).toInt()}, ${(this.green * 255).toInt()}, ${(this.blue * 255).toInt()}, ${this.alpha})"
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -65,18 +58,20 @@ fun GithubMarkdown(
     val dir = if (LocalLayoutDirection.current == LayoutDirection.Rtl) "rtl" else "ltr"
 
     val cs = MaterialTheme.colorScheme
-    val textColor = cssColorFromArgb(cs.onSurface.toArgb())
-    val linkColor = cssColorFromArgb(cs.primary.toArgb())
-    val codeBgColor = cssColorFromArgb(cs.secondaryContainer.toArgb())
-    val codeTextColor = cssColorFromArgb(cs.onSecondaryContainer.toArgb())
-    val quoteBorderColor = cssColorFromArgb(cs.primary.toArgb())
-    val borderColor = cssColorFromArgb(cs.outlineVariant.toArgb())
-    val stripeBgColor = cssColorFromArgb(cs.surfaceContainerHighest.toArgb())
+    val textColor = cs.onSurface.toCssRgba()
+    val linkColor = cs.primary.toCssRgba()
+    val codeBgColor = cs.secondaryContainer.toCssRgba()
+    val codeTextColor = cs.onSecondaryContainer.toCssRgba()
+    val quoteBorderColor = cs.primary.toCssRgba()
+    val borderColor = cs.outlineVariant.toCssRgba()
+    val stripeBgColor = cs.surfaceContainerHighest.toCssRgba()
 
     var progress by remember { mutableFloatStateOf(0f) }
     var isLoaded by remember { mutableStateOf(false) }
 
-    val escapedMarkdown = remember(content) { content.escapeForJavaScript() }
+    val base64Content = remember(content) {
+        Base64.encodeToString(content.toByteArray(StandardCharsets.UTF_8), Base64.NO_WRAP)
+    }
 
     val customCss = """
         :root {
@@ -92,13 +87,13 @@ fun GithubMarkdown(
         html, body {
             margin: 0; padding: 0;
             background-color: transparent !important;
-            color: var(--text-color);
+            color: var(--text-color) !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             font-size: 14.5px;
             line-height: 1.6;
             -webkit-user-select: none; user-select: none;
         }
-        .markdown-body { padding: 8px 0px 24px 0px; word-wrap: break-word; }
+        .markdown-body { padding: 8px 0px 24px 0px; word-wrap: break-word; color: var(--text-color) !important; }
         .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
             margin-top: 24px; margin-bottom: 16px; font-weight: 600; line-height: 1.25; color: var(--text-color);
         }
@@ -106,7 +101,7 @@ fun GithubMarkdown(
         .markdown-body h2 { font-size: 1.5em; border-bottom: 1px solid var(--border-color); padding-bottom: .3em; }
         .markdown-body h3 { font-size: 1.25em; }
         .markdown-body p { margin-top: 0; margin-bottom: 16px; }
-        .markdown-body a { color: var(--link-color); text-decoration: none; font-weight: 500; }
+        .markdown-body a { color: var(--link-color) !important; text-decoration: none; font-weight: 500; }
         .markdown-body a:hover { text-decoration: underline; }
         .markdown-body img, .markdown-body video { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; }
         .markdown-body hr { height: 1px; padding: 0; margin: 24px 0; background-color: var(--border-color); border: 0; }
@@ -114,28 +109,28 @@ fun GithubMarkdown(
             margin: 0 0 16px 0; padding: 0 1em;
             color: var(--text-color); opacity: 0.85;
             border-left: 4px solid var(--quote-border);
-            background-color: rgba(var(--quote-border), 0.05);
+            background-color: rgba(128, 128, 128, 0.05);
             border-top-right-radius: 4px; border-bottom-right-radius: 4px;
         }
         .markdown-body ul, .markdown-body ol { margin-top: 0; margin-bottom: 16px; padding-left: 2em; }
         .markdown-body li { margin-bottom: 4px; }
         .markdown-body pre, .markdown-body code {
-            background-color: var(--code-bg); 
-            color: var(--code-text); 
+            background-color: var(--code-bg) !important; 
+            color: var(--code-text) !important; 
             border-radius: 6px;
             font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
             -webkit-user-select: text; user-select: text;
         }
         .markdown-body code { padding: .2em .4em; font-size: 85%; }
         .markdown-body pre { padding: 16px; overflow: auto; font-size: 85%; line-height: 1.45; }
-        .markdown-body pre code { padding: 0; background-color: transparent; color: inherit; }
+        .markdown-body pre code { padding: 0; background-color: transparent !important; color: inherit !important; }
         .markdown-body table { 
             border-spacing: 0; border-collapse: collapse; margin-top: 0; margin-bottom: 16px; 
             width: 100%; overflow: auto; display: block;
         }
         .markdown-body table th, .markdown-body table td { padding: 6px 13px; border: 1px solid var(--border-color); }
         .markdown-body table tr { background-color: transparent; border-top: 1px solid var(--border-color); }
-        .markdown-body table tr:nth-child(2n) { background-color: var(--stripe-bg); }
+        .markdown-body table tr:nth-child(2n) { background-color: var(--stripe-bg) !important; }
         .markdown-body details summary { cursor: pointer; font-weight: 600; outline: none; margin-bottom: 8px; }
     """.trimIndent()
 
@@ -155,7 +150,15 @@ fun GithubMarkdown(
           <script>
             window.onload = function() {
               try {
-                  const rawMarkdown = "$escapedMarkdown";
+                  const base64 = "$base64Content";
+                  
+                  const binary = window.atob(base64);
+                  const bytes = new Uint8Array(binary.length);
+                  for (let i = 0; i < binary.length; i++) {
+                      bytes[i] = binary.charCodeAt(i);
+                  }
+                  const rawMarkdown = new TextDecoder('utf-8').decode(bytes);
+                  
                   marked.use({ gfm: true, breaks: true });
                   document.getElementById('content').innerHTML = marked.parse(rawMarkdown);
               } catch (e) {
@@ -237,6 +240,7 @@ fun GithubMarkdown(
                                 assetLoader.shouldInterceptRequest(request.url)?.let { return it }
                                 val scheme = request.url.scheme ?: return null
                                 if (!scheme.startsWith("http")) return null
+
                                 val client: OkHttpClient = ksuApp.okhttpClient
                                 val call = client.newCall(
                                     Request.Builder()
