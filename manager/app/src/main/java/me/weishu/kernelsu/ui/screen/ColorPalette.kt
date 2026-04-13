@@ -1,10 +1,8 @@
 package me.weishu.kernelsu.ui.screen
 
 import android.annotation.SuppressLint
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -54,8 +52,6 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -125,13 +121,10 @@ private fun SettingsGroupCard(
     title: String,
     content: @Composable () -> Unit
 ) {
-    Card(
+    TonalCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(
@@ -179,7 +172,6 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     var appSettings by remember { mutableStateOf(ThemeController.getAppSettings(context)) }
     var currentColorMode by remember { mutableStateOf(appSettings.colorMode) }
     var currentKeyColor by remember { mutableIntStateOf(appSettings.keyColor) }
-    var currentLauncherIcon by remember { mutableStateOf(prefs.getBoolean("enable_official_launcher", false)) }
 
     Scaffold(
         topBar = {
@@ -204,10 +196,10 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             val isDark = currentColorMode.getDarkThemeValue(isSystemInDarkTheme())
-
+            
             Spacer(modifier = Modifier.height(4.dp))
-
-            ThemePreviewCard(keyColor = currentKeyColor, isDark = isDark, currentLauncherIcon = currentLauncherIcon)
+            
+            ThemePreviewCard(keyColor = currentKeyColor, isDark = isDark)
 
             val scrollState = rememberScrollState()
             Row(
@@ -283,57 +275,6 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                     },
                                     contentDescription = label
                                 )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
-                ) {
-                    val launcherOptions = listOf(false, true)
-                    launcherOptions.forEachIndexed { index, isOfficial ->
-                        ToggleButton(
-                            checked = currentLauncherIcon == isOfficial,
-                            onCheckedChange = { enabled ->
-                                if (enabled) {
-                                    currentLauncherIcon = isOfficial
-                                    prefs.edit { putBoolean("enable_official_launcher", isOfficial) }
-                                    val pm = context.packageManager
-                                    val pkg = context.packageName
-                                    val mainComponent   = ComponentName(pkg, "$pkg.ui.MainActivity")
-                                    val aliasComponent  = ComponentName(pkg, "$pkg.MainActivityOfficial")
-                                    val (enableComp, disableComp) = if (isOfficial) aliasComponent to mainComponent else mainComponent to aliasComponent
-
-                                    pm.setComponentEnabledSetting(enableComp, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
-                                    pm.setComponentEnabledSetting(disableComp, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .semantics { role = Role.RadioButton },
-                            shapes = when (index) {
-                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                1 -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                            },
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = if (isOfficial) R.drawable.ic_launcher_monochrome else R.drawable.ic_launcher_mambo_monochrome),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .wrapContentSize(unbounded = true)
-                                        .requiredSize(48.dp)
-                                )
-                                Text(if (isOfficial) stringResource(R.string.app_name) else stringResource(R.string.app_name_mambo))
                             }
                         }
                     }
@@ -455,6 +396,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     }
                 }
             }
+
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -463,7 +405,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ThemePreviewCard(keyColor: Int, isDark: Boolean, currentLauncherIcon: Boolean = false) {
+private fun ThemePreviewCard(keyColor: Int, isDark: Boolean) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.toFloat()
@@ -482,23 +424,23 @@ private fun ThemePreviewCard(keyColor: Int, isDark: Boolean, currentLauncherIcon
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.48f)
+                .fillMaxWidth(0.48f) 
                 .aspectRatio(screenRatio),
-            color = colorScheme.surface,
-            shape = RoundedCornerShape(24.dp),
-            border = BorderStroke(2.dp, color = MaterialTheme.colorScheme.outlineVariant),
-            shadowElevation = 8.dp
+            color = colorScheme.surface, 
+            shape = RoundedCornerShape(24.dp), 
+            border = BorderStroke(2.dp, color = MaterialTheme.colorScheme.outlineVariant), 
+            shadowElevation = 8.dp 
         ) {
             Column {
                 Box(
                     modifier = Modifier
                         .height(56.dp)
                         .fillMaxWidth()
-                        .background(colorScheme.surfaceContainer),
+                        .background(colorScheme.surfaceContainer), 
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Text(
-                        text = if (currentLauncherIcon) stringResource(R.string.app_name) else stringResource(R.string.app_name_mambo),
+                        text = stringResource(R.string.app_name_mambo),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = colorScheme.onSurface,
