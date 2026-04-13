@@ -289,7 +289,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
-            SettingsGroupCard(title = "App Icon") {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
@@ -302,35 +302,14 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                 if (enabled) {
                                     currentLauncherIcon = isOfficial
                                     prefs.edit { putBoolean("enable_official_launcher", isOfficial) }
-                                    
-                                    try {
-                                        val pm = context.packageManager
-                                        val pkg = context.packageName
-                                        
-                                        val aliasMambo = ComponentName(pkg, "$pkg.MainActivityMambo")
-                                        val aliasOfficial = ComponentName(pkg, "$pkg.MainActivityOfficial") 
+                                    val pm = context.packageManager
+                                    val pkg = context.packageName
+                                    val mainComponent   = ComponentName(pkg, "$pkg.ui.MainActivity")
+                                    val aliasComponent  = ComponentName(pkg, "$pkg.MainActivityOfficial")
+                                    val (enableComp, disableComp) = if (isOfficial) aliasComponent to mainComponent else mainComponent to aliasComponent
 
-                                        val (enableComp, disableComp) = if (isOfficial) {
-                                            aliasOfficial to aliasMambo
-                                        } else {
-                                            aliasMambo to aliasOfficial
-                                        }
-
-                                        pm.setComponentEnabledSetting(
-                                            enableComp, 
-                                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 
-                                            PackageManager.DONT_KILL_APP
-                                        )
-                                        
-                                        pm.setComponentEnabledSetting(
-                                            disableComp, 
-                                            PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 
-                                            0 
-                                        )
-                                        
-                                    } catch (_: Exception) {
-                                        // Silently ignore errors
-                                    }
+                                    pm.setComponentEnabledSetting(enableComp, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+                                    pm.setComponentEnabledSetting(disableComp, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
                                 }
                             },
                             modifier = Modifier
