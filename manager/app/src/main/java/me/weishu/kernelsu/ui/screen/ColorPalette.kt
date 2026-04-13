@@ -54,6 +54,8 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -90,6 +92,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import androidx.lifecycle.compose.dropUnlessResumed
@@ -117,6 +120,35 @@ private val keyColorOptions = listOf(
     Color(0xFF795548).toArgb(),
 )
 
+@Composable
+private fun SettingsGroupCard(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            content()
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Destination<RootGraph>
 @Composable
@@ -130,7 +162,6 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             ActivityResultContracts.OpenDocument()
         ) { uri ->
             if (uri == null) {
-                // User cancel → revert toggle if it was completely empty before
                 if (context.getHeaderImage() == null) {
                     hasCustomHeader = false
                 }
@@ -170,16 +201,19 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             modifier = Modifier
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             val isDark = currentColorMode.getDarkThemeValue(isSystemInDarkTheme())
-            ThemePreviewCard(keyColor = currentKeyColor, isDark = isDark, currentLauncherIcon = currentLauncherIcon)
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
+
+            ThemePreviewCard(keyColor = currentKeyColor, isDark = isDark, currentLauncherIcon = currentLauncherIcon)
 
             val scrollState = rememberScrollState()
             Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(scrollState),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(scrollState),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Spacer(modifier = Modifier.width(4.dp))
@@ -209,7 +243,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 Spacer(modifier = Modifier.width(4.dp))
             }
 
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            SettingsGroupCard(title = stringResource(R.string.settings_theme)) {
                 val options = listOf(
                     ColorMode.SYSTEM to stringResource(R.string.settings_theme_mode_system),
                     ColorMode.LIGHT to stringResource(R.string.settings_theme_mode_light),
@@ -255,7 +289,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            SettingsGroupCard(title = "App Icon") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
@@ -306,32 +340,9 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Surface(
-                        modifier = Modifier.padding(4.dp),
-                        shape = RoundedCornerShape(999.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ) {
-                        Text(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            text = stringResource(R.string.header_image),
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    }
-                }
-
+            SettingsGroupCard(title = stringResource(R.string.header_image)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -361,7 +372,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 AnimatedVisibility(visible = hasCustomHeader) {
                     OutlinedButton(
                         onClick = { imagePicker.launch(arrayOf("image/*")) },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Image,
@@ -373,38 +384,13 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Surface(
-                        modifier = Modifier.padding(4.dp),
-                        shape = RoundedCornerShape(999.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ) {
-                        Text(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            text = "Navigation Bar",
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    }
-                }
-
+            SettingsGroupCard(title = "Navigation Bar") {
                 var enableFloatingNav by rememberSaveable {
                     mutableStateOf(prefs.getBoolean("enable_floating_navbar", false))
                 }
 
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -428,39 +414,10 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.35f),
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ) {
-                    Surface(
-                        modifier = Modifier.padding(4.dp),
-                        shape = RoundedCornerShape(999.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ) {
-                        Text(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            text = "Card Layout",
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
+            SettingsGroupCard(title = "Card Layout") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(
-                        ButtonGroupDefaults.ConnectedSpaceBetween
-                    )
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
                 ) {
                     var useClassicLayout by remember { mutableStateOf(context.getLayoutStyle()) }
                     val layoutOptions = listOf(true, false) // True = Classic, False = Modern
@@ -478,8 +435,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                 .semantics { role = Role.RadioButton },
                             shapes = when (index) {
                                 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                                layoutOptions.lastIndex ->
-                                    ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                layoutOptions.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                                 else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                             }
                         ) {
@@ -488,10 +444,7 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = if (isClassic)
-                                        Icons.AutoMirrored.Filled.ViewList
-                                    else
-                                        Icons.Filled.ViewColumn,
+                                    imageVector = if (isClassic) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.ViewColumn,
                                     contentDescription = null
                                 )
                                 Text(
@@ -528,68 +481,80 @@ private fun ThemePreviewCard(keyColor: Int, isDark: Boolean, currentLauncherIcon
 
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         Surface(
-            modifier = Modifier.fillMaxWidth(0.5f).aspectRatio(screenRatio),
+            modifier = Modifier
+                .fillMaxWidth(0.48f)
+                .aspectRatio(screenRatio),
             color = colorScheme.surface,
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(2.dp, color = MaterialTheme.colorScheme.outlineVariant),
+            shadowElevation = 8.dp
         ) {
             Column {
-                // top bar
                 Box(
                     modifier = Modifier
                         .height(56.dp)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.TopStart
+                        .fillMaxWidth()
+                        .background(colorScheme.surfaceContainer),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = 12.dp, top = 16.dp, end = 12.dp, bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (currentLauncherIcon) stringResource(R.string.app_name) else stringResource(R.string.app_name_mambo),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = colorScheme.onSurface
-                        )
-                    }
+                    Text(
+                        text = if (currentLauncherIcon) stringResource(R.string.app_name) else stringResource(R.string.app_name_mambo),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
                 }
 
                 Box(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentAlignment = Alignment.TopStart
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .background(colorScheme.surface),
+                    contentAlignment = Alignment.TopCenter
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 8.dp),
+                        modifier = Modifier.padding(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        TonalCard(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.fillMaxWidth().height(64.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            content = { }
-                        )
-                        TonalCard(
-                            modifier = Modifier.fillMaxWidth().height(128.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            content = { }
-                        )
+                        Surface(
+                            color = colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                        ) {}
+                        Surface(
+                            color = colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                        ) {}
                     }
                 }
 
                 Surface(
-                    color = colorScheme.surfaceContainer,
-                    modifier = Modifier.fillMaxWidth()
+                    color = colorScheme.surfaceContainerHigh,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .height(56.dp)
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Filled.Home, null, tint = colorScheme.primary)
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = colorScheme.primaryContainer,
+                            modifier = Modifier
+                                .height(32.dp)
+                                .width(64.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Filled.Home, contentDescription = null, tint = colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+                            }
                         }
                     }
                 }
