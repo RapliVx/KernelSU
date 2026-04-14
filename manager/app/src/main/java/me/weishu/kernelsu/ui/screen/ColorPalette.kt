@@ -3,6 +3,7 @@ package me.weishu.kernelsu.ui.screen
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -96,6 +97,8 @@ import com.materialkolor.rememberDynamicColorScheme
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.result.ResultBackNavigator
+import com.yalantis.ucrop.UCrop
+import java.io.File
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
@@ -148,26 +151,64 @@ private fun SettingsGroupCard(
 @Composable
 fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     val context = LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
+
     var hasCustomHeader by rememberSaveable {
         mutableStateOf(context.getHeaderImage() != null)
     }
-    val imagePicker =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.OpenDocument()
-        ) { uri ->
-            if (uri == null) {
-                if (context.getHeaderImage() == null) {
-                    hasCustomHeader = false
-                }
-            } else {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-                context.saveHeaderImage(uri.toString())
+
+    val uCropLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null) {
+            val resultUri = UCrop.getOutput(result.data!!)
+            if (resultUri != null) {
+                context.saveHeaderImage(resultUri.toString())
                 hasCustomHeader = true
             }
+        } else {
+            if (context.getHeaderImage() == null) {
+                hasCustomHeader = false
+            }
         }
+    }
+
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+
+            val destinationUri = Uri.fromFile(File(context.cacheDir, "header_cropped_${System.currentTimeMillis()}.jpg"))
+
+            val options = UCrop.Options().apply {
+                setToolbarColor(colorScheme.surface.toArgb())
+                setStatusBarColor(colorScheme.surface.toArgb())
+                setToolbarWidgetColor(colorScheme.onSurface.toArgb())
+                setActiveControlsWidgetColor(colorScheme.primary.toArgb())
+                setRootViewBackgroundColor(colorScheme.surface.toArgb())
+
+                setShowCropGrid(false)
+                setHideBottomControls(false)
+                setFreeStyleCropEnabled(true)
+            }
+
+            val uCropIntent = UCrop.of(uri, destinationUri)
+                // .withAspectRatio(16f, 9f) // Remove If you Want Lock Aspect Ratio To 16:9
+                .withOptions(options)
+                .getIntent(context)
+
+            uCropLauncher.launch(uCropIntent)
+
+        } else {
+            if (context.getHeaderImage() == null) {
+                hasCustomHeader = false
+            }
+        }
+    }
 
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     var appSettings by remember { mutableStateOf(ThemeController.getAppSettings(context)) }
