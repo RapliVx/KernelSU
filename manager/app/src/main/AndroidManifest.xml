@@ -85,7 +85,7 @@
 
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+            android:theme="@style/Theme.UCropCustom" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
