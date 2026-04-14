@@ -125,7 +125,7 @@ private fun SettingsGroupCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        color = MaterialTheme.colorScheme.surface, 
+        color = MaterialTheme.colorScheme.surfaceContainerLow, 
         shape = RoundedCornerShape(20.dp)
     ) {
         Column(
@@ -175,7 +175,6 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     var currentKeyColor by remember { mutableIntStateOf(appSettings.keyColor) }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             TopAppBar(
                 navigationIcon = {
