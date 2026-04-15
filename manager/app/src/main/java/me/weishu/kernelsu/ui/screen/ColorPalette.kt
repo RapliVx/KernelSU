@@ -188,8 +188,14 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 setToolbarColor(colorScheme.surface.toArgb())
                 setStatusBarColor(colorScheme.surface.toArgb())
                 setToolbarWidgetColor(colorScheme.onSurface.toArgb())
+                setToolbarTitle(context.getString(R.string.header_choose_image))
+
                 setActiveControlsWidgetColor(colorScheme.primary.toArgb())
+                setDimmedLayerColor(colorScheme.scrim.copy(alpha = 0.8f).toArgb())
                 setRootViewBackgroundColor(colorScheme.surface.toArgb())
+
+                setCropFrameColor(colorScheme.primary.toArgb())
+                setCropGridColor(colorScheme.primary.copy(alpha = 0.5f).toArgb())
 
                 setShowCropGrid(false)
                 setHideBottomControls(false)
