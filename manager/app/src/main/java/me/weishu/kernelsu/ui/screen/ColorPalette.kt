@@ -181,8 +181,24 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
+
+            var isGif = false
             val mimeType = context.contentResolver.getType(uri)
-            val isGif = mimeType?.contains("gif", ignoreCase = true) == true
+
+            if (mimeType?.contains("gif", ignoreCase = true) == true) {
+                isGif = true
+            } else {
+                // Fallback
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1 && cursor.moveToFirst()) {
+                        val fileName = cursor.getString(nameIndex)
+                        if (fileName?.endsWith(".gif", ignoreCase = true) == true) {
+                            isGif = true
+                        }
+                    }
+                }
+            }
 
             if (isGif) {
                 context.saveHeaderImage(uri.toString())
