@@ -181,33 +181,40 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 uri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
             )
+            val mimeType = context.contentResolver.getType(uri)
+            val isGif = mimeType?.contains("gif", ignoreCase = true) == true
 
-            val destinationUri = Uri.fromFile(File(context.cacheDir, "header_cropped_${System.currentTimeMillis()}.jpg"))
+            if (isGif) {
+                context.saveHeaderImage(uri.toString())
+                hasCustomHeader = true
+            } else {
+                val destinationUri = Uri.fromFile(File(context.cacheDir, "header_cropped_${System.currentTimeMillis()}.jpg"))
 
-            val options = UCrop.Options().apply {
-                setToolbarColor(colorScheme.surface.toArgb())
-                setStatusBarColor(colorScheme.surface.toArgb())
-                setToolbarWidgetColor(colorScheme.onSurface.toArgb())
-                setToolbarTitle(context.getString(R.string.header_choose_image))
+                val options = UCrop.Options().apply {
+                    setToolbarColor(colorScheme.surface.toArgb())
+                    setStatusBarColor(colorScheme.surface.toArgb())
+                    setToolbarWidgetColor(colorScheme.onSurface.toArgb())
+                    setToolbarTitle(context.getString(R.string.header_choose_image))
 
-                setActiveControlsWidgetColor(colorScheme.primary.toArgb())
-                setDimmedLayerColor(colorScheme.scrim.copy(alpha = 0.8f).toArgb())
-                setRootViewBackgroundColor(colorScheme.surface.toArgb())
+                    setActiveControlsWidgetColor(colorScheme.primary.toArgb())
+                    setDimmedLayerColor(colorScheme.scrim.copy(alpha = 0.8f).toArgb())
+                    setRootViewBackgroundColor(colorScheme.surface.toArgb())
 
-                setCropFrameColor(colorScheme.primary.toArgb())
-                setCropGridColor(colorScheme.primary.copy(alpha = 0.5f).toArgb())
+                    setCropFrameColor(colorScheme.primary.toArgb())
+                    setCropGridColor(colorScheme.primary.copy(alpha = 0.5f).toArgb())
 
-                setShowCropGrid(false)
-                setHideBottomControls(false)
-                setFreeStyleCropEnabled(true)
+                    setShowCropGrid(false)
+                    setHideBottomControls(false)
+                    setFreeStyleCropEnabled(true)
+                }
+
+                val uCropIntent = UCrop.of(uri, destinationUri)
+                    // .withAspectRatio(16f, 9f) // Remove If you Want Lock Aspect Ratio To 16:9
+                    .withOptions(options)
+                    .getIntent(context)
+
+                uCropLauncher.launch(uCropIntent)
             }
-
-            val uCropIntent = UCrop.of(uri, destinationUri)
-                // .withAspectRatio(16f, 9f) // Remove If you Want Lock Aspect Ratio To 16:9
-                .withOptions(options)
-                .getIntent(context)
-
-            uCropLauncher.launch(uCropIntent)
 
         } else {
             if (context.getHeaderImage() == null) {
