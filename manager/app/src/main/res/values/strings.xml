@@ -227,4 +227,5 @@
     <string name="layout_classic">Classic</string>
     <string name="layout_modern">Modern</string>
     <string name="quick_shell_summary">Run quick terminal commands</string>
+    <string name="profile_flags_desc_no_new_privs">Prevent further privilege escalation via KernelSU from within the context of this root profile.</string>
 </resources>

@@ -87,6 +87,9 @@ import me.weishu.kernelsu.ui.util.restartApp
 import me.weishu.kernelsu.ui.util.setSepolicy
 import me.weishu.kernelsu.ui.viewmodel.SuperUserViewModel
 import me.weishu.kernelsu.ui.viewmodel.getTemplateInfoById
+import me.weishu.kernelsu.Natives.Profile.RootProfileFlag
+import me.weishu.kernelsu.toRawFlags
+import me.weishu.kernelsu.toRootProfileFlags
 
 /**
  * @author weishu
@@ -261,6 +264,26 @@ private fun AppProfileInner(
                 modifier = Modifier.padding(bottom = 6.dp + 48.dp + 6.dp /* SnackBar height */)
             ) {
                 if (current) {
+                    
+                    val profileFlags = profile.flags.toRootProfileFlags()
+                    val isNoNewPrivsEnabled = profileFlags.contains(RootProfileFlag.NO_NEW_PRIVS)
+
+                    SwitchItem(
+                        icon = Icons.Filled.Security,
+                        title = RootProfileFlag.NO_NEW_PRIVS.display,
+                        summary = stringResource(id = RootProfileFlag.NO_NEW_PRIVS.desc),
+                        checked = isNoNewPrivsEnabled,
+                        onCheckedChange = { isChecked ->
+                            val newFlags = if (isChecked) {
+                                profileFlags + RootProfileFlag.NO_NEW_PRIVS
+                            } else {
+                                profileFlags - RootProfileFlag.NO_NEW_PRIVS
+                            }
+                            onProfileChange(profile.copy(flags = newFlags.toRawFlags()))
+                        }
+                    )
+                    HorizontalDivider(thickness = Dp.Hairline, modifier = Modifier.padding(horizontal = 16.dp))
+
                     val initialMode = if (profile.rootUseDefault) {
                         Mode.Default
                     } else if (profile.rootTemplate != null) {
