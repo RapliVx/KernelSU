@@ -25,6 +25,18 @@ Java_me_weishu_kernelsu_Natives_getVersion(JNIEnv *env, jobject) {
 
 extern "C"
 JNIEXPORT jint JNICALL
+Java_me_weishu_kernelsu_Natives_getKernelUAPIVersion(JNIEnv *env, jobject) {
+    return get_kernel_uapi_version();
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_me_weishu_kernelsu_Natives_getManagerUAPIVersion(JNIEnv *env, jobject) {
+    return get_manager_uapi_version();
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
 Java_me_weishu_kernelsu_Natives_getSuperuserCount(JNIEnv *env, jobject) {
     struct ksu_new_get_allow_list_cmd cmd = {
         .count = 0
@@ -136,7 +148,7 @@ Java_me_weishu_kernelsu_Natives_getAppProfile(JNIEnv *env, jobject, jstring pkg,
     profile.version = KSU_APP_PROFILE_VER;
 
     strcpy(profile.key, key);
-    profile.current_uid = uid;
+    profile.curr_uid = uid;
 
     bool useDefaultProfile = get_app_profile(&profile) != 0;
 
@@ -156,12 +168,13 @@ Java_me_weishu_kernelsu_Natives_getAppProfile(JNIEnv *env, jobject, jstring pkg,
     auto capabilitiesField = env->GetFieldID(cls, "capabilities", "Ljava/util/List;");
     auto domainField = env->GetFieldID(cls, "context", "Ljava/lang/String;");
     auto namespacesField = env->GetFieldID(cls, "namespace", "I");
+    jfieldID flagsField = env->GetFieldID(cls, "flags", "J");
 
     auto nonRootUseDefaultField = env->GetFieldID(cls, "nonRootUseDefault", "Z");
     auto umountModulesField = env->GetFieldID(cls, "umountModules", "Z");
 
     env->SetObjectField(obj, keyField, env->NewStringUTF(profile.key));
-    env->SetIntField(obj, currentUidField, profile.current_uid);
+    env->SetIntField(obj, currentUidField, profile.curr_uid);
 
     if (useDefaultProfile) {
         // no profile found, so just use default profile:
@@ -207,6 +220,7 @@ Java_me_weishu_kernelsu_Natives_getAppProfile(JNIEnv *env, jobject, jstring pkg,
                 env->NewStringUTF(profile.rp_config.profile.selinux_domain));
         env->SetIntField(obj, namespacesField, profile.rp_config.profile.namespaces);
         env->SetBooleanField(obj, allowSuField, profile.allow_su);
+        env->SetLongField(obj, flagsField, (jlong) profile.rp_config.profile.flags);
     } else {
         env->SetBooleanField(obj, nonRootUseDefaultField,
                 (jboolean) profile.nrp_config.use_default);
@@ -234,6 +248,7 @@ Java_me_weishu_kernelsu_Natives_setAppProfile(JNIEnv *env, jobject clazz, jobjec
     auto capabilitiesField = env->GetFieldID(cls, "capabilities", "Ljava/util/List;");
     auto domainField = env->GetFieldID(cls, "context", "Ljava/lang/String;");
     auto namespacesField = env->GetFieldID(cls, "namespace", "I");
+    jfieldID flagsField = env->GetFieldID(cls, "flags", "J");
 
     auto nonRootUseDefaultField = env->GetFieldID(cls, "nonRootUseDefault", "Z");
     auto umountModulesField = env->GetFieldID(cls, "umountModules", "Z");
@@ -266,7 +281,7 @@ Java_me_weishu_kernelsu_Natives_setAppProfile(JNIEnv *env, jobject clazz, jobjec
 
     strcpy(p.key, p_key);
     p.allow_su = allowSu;
-    p.current_uid = currentUid;
+    p.curr_uid = currentUid;
 
     if (allowSu) {
         p.rp_config.use_default = env->GetBooleanField(profile, rootUseDefaultField);
@@ -295,6 +310,8 @@ Java_me_weishu_kernelsu_Natives_setAppProfile(JNIEnv *env, jobject clazz, jobjec
         env->ReleaseStringUTFChars((jstring) domain, cdomain);
 
         p.rp_config.profile.namespaces = env->GetIntField(profile, namespacesField);
+
+        p.rp_config.profile.flags = env->GetLongField(profile, flagsField);
     } else {
         p.nrp_config.use_default = env->GetBooleanField(profile, nonRootUseDefaultField);
         p.nrp_config.profile.umount_modules = umountModules;
@@ -328,6 +345,18 @@ extern "C"
 JNIEXPORT jboolean JNICALL
 Java_me_weishu_kernelsu_Natives_setKernelUmountEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     return set_kernel_umount_enabled(enabled);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_me_weishu_kernelsu_Natives_isSelinuxHideEnabled(JNIEnv *env, jobject thiz) {
+    return is_selinux_hide_enabled();
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_me_weishu_kernelsu_Natives_setSelinuxHideEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+    return set_selinux_hide_enabled(enabled);
 }
 
 extern "C"
