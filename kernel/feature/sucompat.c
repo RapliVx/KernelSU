@@ -1,3 +1,5 @@
+#include "linux/file.h"
+#include "linux/namei.h"
 #include <linux/compiler_types.h>
 #include <linux/preempt.h>
 #include <linux/printk.h>
@@ -21,6 +23,8 @@
 #include "policy/app_profile.h"
 #include "hook/syscall_hook.h"
 #include "sulog/event.h"
+#include "ksu.h"
+#include "util.h"
 
 #define SU_PATH "/system/bin/su"
 #define SH_PATH "/system/bin/sh"
@@ -59,13 +63,6 @@ static void __user *userspace_stack_buffer(const void *d, size_t len)
     return copy_to_user(p, d, len) ? NULL : p;
 }
 
-static char __user *sh_user_path(void)
-{
-    static const char sh_path[] = "/system/bin/sh";
-
-    return userspace_stack_buffer(sh_path, sizeof(sh_path));
-}
-
 static char __user *ksud_user_path(void)
 {
     static const char ksud_path[] = KSUD_PATH;
@@ -73,62 +70,160 @@ static char __user *ksud_user_path(void)
     return userspace_stack_buffer(ksud_path, sizeof(ksud_path));
 }
 
-int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode, int *__unused_flags)
+static char __user *empty_user_path(void)
 {
-    const char su[] = SU_PATH;
-
-    if (!ksu_is_allow_uid_for_current(current_uid().val)) {
-        return 0;
-    }
-
-    char path[sizeof(su) + 1];
-    memset(path, 0, sizeof(path));
-    strncpy_from_user_nofault(path, *filename_user, sizeof(path));
-
-    if (unlikely(!memcmp(path, su, sizeof(su)))) {
-        write_sulog('a');
-        pr_info("faccessat su->sh!\n");
-        *filename_user = sh_user_path();
-    }
-
-    return 0;
+    return userspace_stack_buffer("", sizeof(""));
 }
 
-int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
+static const char su_path[] = SU_PATH;
+
+static bool is_ksud_exists()
 {
-    // const char sh[] = SH_PATH;
-    const char su[] = SU_PATH;
+    struct path path;
 
-    if (!ksu_is_allow_uid_for_current(current_uid().val)) {
-        return 0;
+    if (kern_path(KSUD_PATH, 0, &path) < 0) {
+        return false;
     }
-
-    if (unlikely(!filename_user)) {
-        return 0;
-    }
-
-    char path[sizeof(su) + 1];
-    memset(path, 0, sizeof(path));
-    strncpy_from_user_nofault(path, *filename_user, sizeof(path));
-
-    if (unlikely(!memcmp(path, su, sizeof(su)))) {
-        write_sulog('s');
-        pr_info("newfstatat su->sh!\n");
-        *filename_user = sh_user_path();
-    }
-
-    return 0;
+    path_put(&path);
+    return true;
 }
 
-long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, const struct pt_regs *regs)
+static __always_inline bool ksu_is_user_string_su(const char __user **filename_user)
 {
-    const char su[] = SU_PATH;
+	uintptr_t buf;
+	const char su[16] = SU_PATH;
+
+	// sugar prep
+	uintptr_t *su_p = (uintptr_t *)su;
+	uintptr_t __user *fn_p = (uintptr_t __user *)untagged_addr(*(char **)filename_user);
+
+	// assert /system/bin/su\0 = 15 bytes.
+	BUILD_BUG_ON(sizeof(SU_PATH) + 1 != 16);
+
+	/*
+	 * it seems this is actually the slowest part, so we peek last word first to speed it up
+	 * NOTE: get_user rets EFAULT on err, so if we are copying a pointer
+	 * that goes to nothing, we also detect that and ret fast
+	 *
+	 * first read overreads, reading 8 bytes, "bin/su\0?" /  4 bytes, "su\0?" when we only need 7/3
+	 * but this is fine as we are guaranteed alignment, hardware provides trailing garbeg
+	 * if it is specially crafted and hits a page guard, we just get EFAULT anyway
+	 *
+	 * on 64-bit we do this in 2 word compare, 4 on 32-bit, little endian only!
+	 *
+	 */
+
+#ifdef CONFIG_64BIT
+	if (get_user(buf, &fn_p[1]))
+		return false;
+
+	if (likely((buf & 0x00FFFFFFFFFFFFFFUL) != (su_p[1] & 0x00FFFFFFFFFFFFFFUL)))
+		return false;
+
+#else
+	if (get_user(buf, &fn_p[3]))
+		return false;
+
+	if (likely((buf & 0x00FFFFFFUL) != (su_p[3] & 0x00FFFFFFUL)))
+		return false;
+
+	if (unlikely(get_user(buf, &fn_p[2])))
+		return false;
+
+	if (buf != su_p[2])
+		return false;
+
+	if (unlikely(get_user(buf, &fn_p[1])))
+		return false;
+
+	if (unlikely(buf != su_p[1]))
+		return false;
+#endif
+	// last word
+	if (unlikely(get_user(buf, &fn_p[0])))
+		return false;
+
+	if (unlikely(buf != su_p[0]))
+		return false;
+	
+	return true;
+}
+
+long ksu_handle_faccessat_sucompat(int orig_nr, struct pt_regs *regs)
+{
+    const char __user **filename_user, *orig_filename;
+    long ret;
+    const struct cred *old_cred;
+
+    if (!ksu_is_allow_uid_for_current(current_uid().val)) {
+        goto do_orig_facessat;
+    }
+
+    filename_user = (const char __user **)&PT_REGS_PARM2(regs);
+
+    if (ksu_is_user_string_su(filename_user)) {
+        old_cred = override_creds(ksu_cred);
+        if (is_ksud_exists()) {
+            write_sulog('a');
+            pr_info("faccessat su->ksud!\n");
+            orig_filename = *filename_user;
+            *filename_user = ksud_user_path();
+            ret = ksu_syscall_table[orig_nr](regs);
+            revert_creds(old_cred);
+            *filename_user = orig_filename;
+            return ret;
+        } else {
+            revert_creds(old_cred);
+        }
+    }
+
+do_orig_facessat:
+    return ksu_syscall_table[orig_nr](regs);
+}
+
+long ksu_handle_stat_sucompat(int orig_nr, struct pt_regs *regs)
+{
+    const char __user **filename_user, *orig_filename;
+    long ret;
+    const struct cred *old_cred;
+
+    if (!ksu_is_allow_uid_for_current(current_uid().val)) {
+        goto do_orig_stat;
+    }
+
+    filename_user = (const char __user **)&PT_REGS_PARM2(regs);
+
+    if (ksu_is_user_string_su(filename_user)) {
+        old_cred = override_creds(ksu_cred);
+        if (is_ksud_exists()) {
+            pr_info("newfstatat su->ksud!\n");
+            write_sulog('s');
+            orig_filename = *filename_user;
+            *filename_user = ksud_user_path();
+            ret = ksu_syscall_table[orig_nr](regs);
+            revert_creds(old_cred);
+            *filename_user = orig_filename;
+            return ret;
+        } else {
+            revert_creds(old_cred);
+        }
+    }
+
+do_orig_stat:
+    return ksu_syscall_table[orig_nr](regs);
+}
+
+long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, struct pt_regs *regs)
+{
     const char __user *fn;
     const char __user *const __user *argv_user = (const char __user *const __user *)PT_REGS_PARM2(regs);
     struct ksu_sulog_pending_event *pending_sucompat = NULL;
-    char path[sizeof(su) + 1];
-    long ret;
+    char path[sizeof(su_path) + 1];
+    long ret, orig_regs[5];
     unsigned long addr;
+    int tmp_fd;
+    struct file *ksud_file;
+    const struct cred *old_cred;
 
     if (unlikely(!filename_user))
         goto do_orig_execve;
@@ -136,41 +231,59 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
     if (!ksu_is_allow_uid_for_current(current_uid().val))
         goto do_orig_execve;
 
-    addr = untagged_addr((unsigned long)*filename_user);
-    fn = (const char __user *)addr;
-    memset(path, 0, sizeof(path));
-
-    ret = strncpy_from_user(path, fn, sizeof(path));
-
-    if (ret < 0) {
-        pr_warn("Access filename when execve failed: %ld", ret);
-        goto do_orig_execve;
-    }
-
-    if (likely(memcmp(path, su, sizeof(su))))
+    if (!ksu_is_user_string_su(filename_user))
         goto do_orig_execve;
 
     write_sulog('x');
     pr_info("sys_execve su found\n");
+
+    tmp_fd = get_unused_fd_flags(O_CLOEXEC);
+    if (tmp_fd < 0) {
+        pr_err("alloc tmp fd err: %d\n", tmp_fd);
+        goto do_orig_execve;
+    }
+
+    old_cred = override_creds(ksu_cred);
+    ksud_file = filp_open(KSUD_PATH, O_PATH, 0);
+    revert_creds(old_cred);
+    if (IS_ERR(ksud_file)) {
+        pr_err("open ksud err: %ld\n", PTR_ERR(ksud_file));
+        put_unused_fd(tmp_fd);
+        goto do_orig_execve;
+    }
+
+    fd_install(tmp_fd, ksud_file);
+
     pending_sucompat = ksu_sulog_capture_sucompat(*filename_user, argv_user, GFP_KERNEL);
-    *filename_user = ksud_user_path();
+    // execve(file, argv, environ)
+    // execveat(fd, file, argv, environ, flags)
+    orig_regs[0] = regs->__PT_PARM1_REG;
+    orig_regs[1] = regs->__PT_PARM2_REG;
+    orig_regs[2] = regs->__PT_PARM3_REG;
+    orig_regs[3] = regs->__PT_SYSCALL_PARM4_REG;
+    orig_regs[4] = regs->__PT_PARM5_REG;
+    regs->__PT_PARM5_REG = AT_EMPTY_PATH;
+    regs->__PT_SYSCALL_PARM4_REG = regs->__PT_PARM3_REG;
+    regs->__PT_PARM3_REG = regs->__PT_PARM2_REG;
+    regs->__PT_PARM2_REG = empty_user_path();
+    regs->__PT_PARM1_REG = tmp_fd;
 
     ret = escape_with_root_profile();
     if (ret) {
         pr_err("escape_with_root_profile failed: %ld\n", ret);
-        ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-        goto do_orig_execve;
     }
+    ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
 
-    ret = ksu_syscall_table[orig_nr](regs);
+    ret = ksu_syscall_table[__NR_execveat](regs);
     if (ret < 0) {
-        pr_err("failed to execve ksud as su: %ld, fallback to sh\n", ret);
-        ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-        *filename_user = sh_user_path();
-    } else {
-        ksu_sulog_emit_pending(pending_sucompat, ret, GFP_KERNEL);
-        return ret;
+        ksu_close_fd(tmp_fd);
+        regs->__PT_PARM1_REG = orig_regs[0];
+        regs->__PT_PARM2_REG = orig_regs[1];
+        regs->__PT_PARM3_REG = orig_regs[2];
+        regs->__PT_SYSCALL_PARM4_REG = orig_regs[3];
+        regs->__PT_PARM5_REG = orig_regs[4];
     }
+    return ret;
 
 do_orig_execve:
     return ksu_syscall_table[orig_nr](regs);

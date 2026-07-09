@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
 use goblin::elf::{Elf, section_header, sym::Sym};
-use rustix::{cstr, system::init_module};
+use rustix::system::init_module;
 use scroll::{Pwrite, ctx::SizeWith};
 use std::collections::HashMap;
-use std::fs;
+use std::ffi::CStr;
+use std::fs::{self, File};
+use std::io::{BufRead, BufReader};
 
 struct Kptr {
     value: String,
@@ -23,43 +25,72 @@ impl Drop for Kptr {
     }
 }
 
-fn parse_kallsyms() -> Result<HashMap<String, u64>> {
-    let _dontdrop = Kptr::new()?;
+pub struct KptrOwnedIter<I> {
+    _kptr: Kptr,
+    iter: I,
+}
 
-    let allsyms = fs::read_to_string("/proc/kallsyms")?
+impl<I: Iterator> Iterator for KptrOwnedIter<I> {
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+pub fn kernel_symbols_iter() -> Result<impl Iterator<Item = (String, u64)>> {
+    let kptr = Kptr::new()?;
+
+    let iter = BufReader::new(File::open("/proc/kallsyms")?)
         .lines()
-        .map(|line| line.split_whitespace())
-        .filter_map(|mut splits| {
-            splits
-                .next()
-                .and_then(|addr| u64::from_str_radix(addr, 16).ok())
-                .and_then(|addr| splits.nth(1).map(|symbol| (symbol, addr)))
-        })
-        .map(|(symbol, addr)| {
-            (
-                symbol
-                    .find("$")
-                    .or_else(|| symbol.find(".llvm."))
-                    .map_or(symbol, |pos| &symbol[0..pos])
-                    .to_owned(),
-                addr,
-            )
-        })
-        .collect::<HashMap<_, _>>();
+        // https://github.com/torvalds/linux/blob/7f87a5ea75f011d2c9bc8ac0167e5e2d1adb1594/kernel/kallsyms.c#L727
+        // We can stop read as soon as we read all kernel symbols
+        .map_while(|line| {
+            line.ok().and_then(|line| {
+                let mut splits = line.split_whitespace();
+                splits
+                    .next()
+                    .and_then(|addr| u64::from_str_radix(addr, 16).ok())
+                    .and_then(|addr| {
+                        splits
+                            .nth(1)
+                            .take_if(|_| splits.next().is_none()) // stop at module symbols
+                            .map(|symbol| {
+                                (
+                                    symbol
+                                        .find("$")
+                                        .or_else(|| symbol.find(".llvm."))
+                                        .map(|pos| &symbol[0..pos])
+                                        .unwrap_or(symbol)
+                                        .to_owned(),
+                                    addr,
+                                )
+                            })
+                    })
+            })
+        });
 
-    Ok(allsyms)
+    Ok(KptrOwnedIter { _kptr: kptr, iter })
+}
+
+pub fn for_each_kernel_symbols<F: FnMut(&(String, u64)) -> Result<bool>>(mut f: F) -> Result<()> {
+    for item in kernel_symbols_iter()? {
+        if !f(&item)? {
+            break;
+        }
+    }
+    Ok(())
 }
 
 /// Relocate undefined symbols in an ELF kernel module buffer using /proc/kallsyms,
 /// then load it via init_module syscall.
-pub fn load_module(data: &[u8]) -> Result<()> {
+pub fn load_module(data: &[u8], params: &CStr) -> Result<()> {
     let mut buffer = data.to_vec();
     let elf = Elf::parse(&buffer)?;
+    let ctx = *elf.syms.ctx();
 
-    let kernel_symbols = parse_kallsyms().context("Cannot parse kallsyms")?;
-
-    let mut modifications = Vec::new();
-    for (index, mut sym) in elf.syms.iter().enumerate() {
+    let mut unresolved_symbols: HashMap<String, (Sym, usize)> = HashMap::new();
+    for (index, sym) in elf.syms.iter().enumerate() {
         if index == 0 {
             continue;
         }
@@ -73,26 +104,27 @@ pub fn load_module(data: &[u8]) -> Result<()> {
         };
 
         let offset = elf.syms.offset() + index * Sym::size_with(elf.syms.ctx());
-        let Some(real_addr) = kernel_symbols.get(name) else {
-            log::warn!("Cannot find symbol: {}", &name);
-            continue;
-        };
-        sym.st_shndx = section_header::SHN_ABS as usize;
-        sym.st_value = *real_addr;
-        modifications.push((sym, offset));
+        unresolved_symbols.insert(name.to_owned(), (sym, offset));
     }
 
-    let ctx = *elf.syms.ctx();
-    for ele in modifications {
-        buffer.pwrite_with(ele.0, ele.1, ctx)?;
+    if !unresolved_symbols.is_empty() {
+        for_each_kernel_symbols(|(symbol, addr)| {
+            if let Some((mut sym, offset)) = unresolved_symbols.remove(symbol) {
+                sym.st_shndx = section_header::SHN_ABS as usize;
+                sym.st_value = *addr;
+                buffer.pwrite_with(sym, offset, ctx)?;
+            }
+
+            Ok(!unresolved_symbols.is_empty())
+        })
+        .context("Cannot parse kallsyms")?;
     }
-    let param = if fs::exists("/ksu_allow_shell").unwrap_or(false) {
-        log::warn!("ksu allow shell at init!");
-        cstr!("allow_shell=1")
-    } else {
-        cstr!("")
-    };
-    init_module(&buffer, param).context("init_module failed.")?;
+
+    for name in unresolved_symbols.keys() {
+        log::warn!("Cannot find symbol: {}", name);
+    }
+
+    init_module(&buffer, params).context("init_module failed.")?;
     Ok(())
 }
 
@@ -118,11 +150,21 @@ fn has_kernelsu_v2() -> bool {
     use syscalls::{Sysno, syscall};
     const KSU_INSTALL_MAGIC1: u32 = 0xDEADBEEF;
     const KSU_INSTALL_MAGIC2: u32 = 0xCAFEBABE;
-    const KSU_IOCTL_GET_INFO: u32 = 0x80004b02; // _IOC(_IOC_READ, 'K', 2, 0)
+    const KSU_IOCTL_GET_INFO: u32 = 0x80104b02; // _IOR('K', 2, struct ksu_get_info_cmd)
+    const KSU_IOCTL_GET_INFO_LEGACY: u32 = 0x80004b02; // _IOC(_IOC_READ, 'K', 2, 0)
 
     #[repr(C)]
     #[derive(Default)]
     struct GetInfoCmd {
+        version: u32,
+        flags: u32,
+        features: u32,
+        uapi_version: u32,
+    }
+
+    #[repr(C)]
+    #[derive(Default)]
+    struct GetInfoLegacyCmd {
         version: u32,
         flags: u32,
         features: u32,
@@ -148,7 +190,18 @@ fn has_kernelsu_v2() -> bool {
 
             match ret {
                 Ok(_) => cmd.version,
-                Err(_) => 0,
+                Err(_) => {
+                    let mut cmd = GetInfoLegacyCmd::default();
+                    match syscall!(
+                        Sysno::ioctl,
+                        fd,
+                        KSU_IOCTL_GET_INFO_LEGACY,
+                        &mut cmd as *mut _
+                    ) {
+                        Ok(_) => cmd.version,
+                        Err(_) => 0,
+                    }
+                }
             }
         };
 

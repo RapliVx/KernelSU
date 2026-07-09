@@ -1,3 +1,4 @@
+use std::ffi::CString;
 use std::io::{ErrorKind, Write};
 
 use anyhow::{Context, Result};
@@ -134,5 +135,8 @@ pub fn init() -> Result<()> {
 fn load_module_from_path(path: &str) -> Result<()> {
     anyhow::ensure!(rustix::process::getpid().is_init(), "Invalid process");
     let buffer = std::fs::read(path).with_context(|| format!("Cannot read file {}", path))?;
-    ksuinit::load_module(&buffer)
+    let params = std::fs::read("/ksu_config").unwrap_or_default();
+    let params = unsafe { CString::from_vec_unchecked(params) };
+    log::info!("load kernelsu with params {params:?}");
+    ksuinit::load_module(&buffer, &params)
 }
