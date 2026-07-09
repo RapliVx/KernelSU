@@ -14,6 +14,7 @@ const fn resetprop() -> ResetProp {
         persist_only: false,
         verbose: false,
         show_context: false,
+        rebuild: false,
     }
 }
 
@@ -109,7 +110,7 @@ pub fn disable_adb_root() -> Result<()> {
         info!("Restoring: resetprop --delete {prop}");
         let _ = rp.delete(prop);
         if let Ok(ctx) = sys_prop::get_context(prop) {
-            let _ = sys_prop::compact(Some(&ctx));
+            let _ = rp.rebuild(&ctx);
         }
     }
 
@@ -136,7 +137,7 @@ fn connect_to_device(port: u16) -> Result<ADBTcpDevice> {
     bail!("Failed to connect to ADB device after {MAX_RETRIES} attempts")
 }
 
-pub fn run(port: u16, package_name: &String) -> Result<()> {
+pub fn run(port: u16, package_name: &String, allow_shell: bool) -> Result<()> {
     enable_adb_root(port)?;
 
     let mut device = connect_to_device(port)?;
@@ -147,10 +148,12 @@ pub fn run(port: u16, package_name: &String) -> Result<()> {
     // The late-load process has full root + su domain and will:
     // 1. Load kernelsu.ko, enforce SELinux, run stage scripts
     // 2. Restore adb properties (disable adb root/tcp mode)
+    let allow_shell_arg = if allow_shell { " --allow-shell" } else { "" };
     let cmd = format!(
-        "{} late-load --post-magica --package-name {}",
+        "{} late-load --post-magica --package-name {}{}",
         self_path.display(),
-        package_name
+        package_name,
+        allow_shell_arg
     );
     info!("Executing '{cmd}' via adb shell...");
     let mut stdout = Vec::new();

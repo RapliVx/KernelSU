@@ -12,6 +12,7 @@ use std::{
     process::Command,
 };
 
+use crate::defs::KSU_TEMP_BACKUP_DIR_NAME;
 use crate::{assets, boot_patch, defs, ksucalls, module, restorecon};
 #[allow(unused_imports)]
 use std::fs::{Permissions, set_permissions};
@@ -109,11 +110,11 @@ pub fn getprop(prop: &str) -> Option<String> {
 
 pub fn is_safe_mode() -> bool {
     let safemode = getprop("persist.sys.safemode")
-        .filter(|prop| prop == "1")
-        .is_some()
+        .as_ref()
+        .is_some_and(|prop| prop == "1")
         || getprop("ro.sys.safemode")
-            .filter(|prop| prop == "1")
-            .is_some();
+            .as_ref()
+            .is_some_and(|prop| prop == "1");
     log::info!("safemode: {safemode}");
     if safemode {
         return true;
@@ -165,8 +166,8 @@ pub fn switch_cgroups() {
     switch_cgroup("/sys/fs/cgroup", pid);
 
     if getprop("ro.config.per_app_memcg")
-        .filter(|prop| prop == "false")
-        .is_none()
+        .as_ref()
+        .is_none_or(|prop| prop != "false")
     {
         switch_cgroup("/dev/memcg/apps", pid);
     }
@@ -189,24 +190,20 @@ fn link_ksud_to_bin() -> Result<()> {
     Ok(())
 }
 
-pub fn install(magiskboot: Option<PathBuf>, libadbroot: Option<PathBuf>) -> Result<()> {
+pub fn install(libadbroot: Option<PathBuf>, data_path: Option<PathBuf>) -> Result<()> {
     ensure_dir_exists(defs::ADB_DIR)?;
     let _ = std::fs::remove_file(defs::DAEMON_PATH);
     std::fs::copy(
-        std::env::current_exe().with_context(|| "Failed to get self exe path")?,
+        // We should use /proc/self/exe, DO NOT resolve the real path
+        // So that if someone execute /data/adb/ksud install, ksud won't be removed unexpectedly
+        "/proc/self/exe",
         defs::DAEMON_PATH,
     )?;
-    restorecon::lsetfilecon(defs::DAEMON_PATH, restorecon::ADB_CON)?;
+    restorecon::lsetfilecon(defs::DAEMON_PATH, restorecon::KSU_CON)?;
     // install binary assets
     assets::ensure_binaries(false).with_context(|| "Failed to extract assets")?;
 
     link_ksud_to_bin()?;
-
-    if let Some(magiskboot) = magiskboot {
-        ensure_dir_exists(defs::BINARY_DIR)?;
-        let _ = std::fs::remove_file(defs::MAGISKBOOT_PATH);
-        let _ = std::fs::copy(magiskboot, defs::MAGISKBOOT_PATH);
-    }
 
     if let Some(libadbroot) = libadbroot {
         ensure_dir_exists(defs::LIBRARY_DIR)?;
@@ -214,10 +211,32 @@ pub fn install(magiskboot: Option<PathBuf>, libadbroot: Option<PathBuf>) -> Resu
         let _ = std::fs::copy(libadbroot, defs::LIBADBROOT_PATH);
     }
 
+    if let Some(data_path) = data_path {
+        let backup_path = data_path.join(KSU_TEMP_BACKUP_DIR_NAME);
+        if backup_path.is_dir() {
+            for ent in backup_path.read_dir()? {
+                let ent = ent?;
+                if ent.file_type().is_ok_and(|v| v.is_file()) {
+                    let name = ent.file_name().to_string_lossy().to_string();
+                    let target = format!("{}{name}", defs::KSU_BACKUP_DIR);
+                    if name.starts_with(defs::KSU_BACKUP_FILE_PREFIX)
+                        && std::fs::rename(ent.path(), &target).is_err()
+                    {
+                        std::fs::copy(ent.path(), &target).with_context(|| {
+                            format!("failed to move {} -> {target}", ent.path().display())
+                        })?;
+                        log::info!("move boot backup {name}");
+                    }
+                }
+            }
+            std::fs::remove_dir_all(&backup_path)?;
+        }
+    }
+
     Ok(())
 }
 
-pub fn uninstall(magiskboot_path: Option<PathBuf>, package_name: &str) -> Result<()> {
+pub fn uninstall(package_name: &str) -> Result<()> {
     if Path::new(defs::MODULE_DIR).exists() {
         println!("- Uninstall modules..");
         module::uninstall_all_modules()?;
@@ -227,11 +246,12 @@ pub fn uninstall(magiskboot_path: Option<PathBuf>, package_name: &str) -> Result
     std::fs::remove_dir_all(defs::WORKING_DIR).ok();
     std::fs::remove_file(defs::DAEMON_PATH).ok();
     std::fs::remove_dir_all(defs::MODULE_DIR).ok();
+    std::fs::remove_dir_all(defs::PREINIT_DIR_WATCHDOG).ok();
+    std::fs::remove_dir_all(defs::PREINIT_DIR_DEFAULT).ok();
     println!("- Restore boot image..");
     boot_patch::restore(BootRestoreArgs {
         boot: None,
         flash: true,
-        magiskboot: magiskboot_path,
         out: None,
         out_name: None,
     })?;
