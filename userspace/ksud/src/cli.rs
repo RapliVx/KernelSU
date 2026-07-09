@@ -6,15 +6,13 @@ use android_logger::Config;
 use log::{LevelFilter, error, info};
 
 use crate::boot_patch::{BootPatchArgs, BootRestoreArgs};
-use crate::module::regenerate_preinit_rc;
 use crate::{
-    apk_sign, assets, debug, defs, init_event, ksu_uapi, ksucalls, module, module_config, sulog,
-    utils,
+    apk_sign, assets, debug, defs, init_event, ksucalls, module, module_config, sulog, utils,
 };
 
 /// KernelSU userspace cli
 #[derive(Parser, Debug)]
-#[command(author, version = defs::FULL_VERSION, about, long_about = None)]
+#[command(author, version = defs::VERSION_NAME, about, long_about = None)]
 struct Args {
     #[command(subcommand)]
     command: Commands,
@@ -47,10 +45,6 @@ enum Commands {
         #[arg(long, default_missing_value = "5555", num_args = 0..=1)]
         magica: Option<u16>,
 
-        /// Pass allow_shell=1 when loading kernelsu.ko
-        #[arg(long)]
-        allow_shell: bool,
-
         /// Restore adb properties after magica late-load
         #[arg(long)]
         post_magica: bool,
@@ -60,29 +54,20 @@ enum Commands {
         kmi: Option<String>,
 
         /// manager package name
-        #[arg(long, default_value_t = String::from(defs::DEFAULT_PACKAGE_NAME))]
+        #[arg(long, default_value_t = String::from("com.kowx712.supermanager"))]
         package_name: String,
     },
 
     /// Emulate system reboot
     SoftReboot,
 
-    /// Load a kernel module with kallsyms access
-    Insmod {
-        /// kernel module path
-        module: PathBuf,
-        /// module load parameters (e.g. key=val key2=val2)
-        #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
-        params: Vec<String>,
-    },
-
     /// Install KernelSU userspace component to system
     Install {
         #[arg(long, default_value = None)]
-        libadbroot: Option<PathBuf>,
+        magiskboot: Option<PathBuf>,
 
         #[arg(long, default_value = None)]
-        data_path: Option<PathBuf>,
+        libadbroot: Option<PathBuf>,
     },
 
     /// Unload KernelSU kernel module (LKM Only)
@@ -90,7 +75,11 @@ enum Commands {
 
     /// Uninstall KernelSU modules and itself(LKM Only)
     Uninstall {
-        #[arg(long, default_value_t = String::from(defs::DEFAULT_PACKAGE_NAME))]
+        /// magiskboot path, if not specified, will search from $PATH
+        #[arg(long, default_value = None)]
+        magiskboot: Option<PathBuf>,
+
+        #[arg(long, default_value_t = String::from("com.kowx712.supermanager"))]
         package_name: String,
     },
 
@@ -141,12 +130,6 @@ enum Commands {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
         args: Vec<String>,
     },
-
-    /// Manage initrc injection
-    Initrc {
-        #[command(subcommand)]
-        command: Initrc,
-    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -179,7 +162,7 @@ enum Debug {
     /// Set the manager app, kernel CONFIG_KSU_DEBUG should be enabled.
     SetManager {
         /// manager package name
-        #[arg(default_value_t = String::from(defs::DEFAULT_PACKAGE_NAME))]
+        #[arg(default_value_t = String::from("com.kowx712.supermanager"))]
         apk: String,
     },
 
@@ -210,6 +193,12 @@ enum Debug {
         path: PathBuf,
     },
 
+    /// Load a kernel module from disk
+    Insmod {
+        /// kernel module path
+        module: PathBuf,
+    },
+
     /// Process mark management
     Mark {
         #[command(subcommand)]
@@ -218,12 +207,6 @@ enum Debug {
 
     /// Launch sulogd daemon manually
     Sulogd,
-
-    /// Get kernel info
-    Info,
-
-    /// Print default package name
-    Package,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -411,7 +394,7 @@ enum Profile {
 enum Feature {
     /// Get feature value and support status
     Get {
-        /// Feature ID or name (su_compat, kernel_umount, sulog, adb_root, selinux_hide)
+        /// Feature ID or name (su_compat, kernel_umount)
         id: String,
         /// Read from config file
         #[arg(long, default_value_t = false)]
@@ -431,7 +414,7 @@ enum Feature {
 
     /// Check feature status (supported/unsupported/managed)
     Check {
-        /// Feature ID or name (su_compat, kernel_umount, sulog, adb_root, selinux_hide)
+        /// Feature ID or name (su_compat, kernel_umount)
         id: String,
     },
 
@@ -477,12 +460,6 @@ enum UmountOp {
     Wipe,
 }
 
-#[derive(clap::Subcommand, Debug)]
-enum Initrc {
-    /// Regenerate preinit rc file
-    Refresh,
-}
-
 pub fn run() -> Result<()> {
     android_logger::init_once(
         Config::default()
@@ -513,8 +490,6 @@ pub fn run() -> Result<()> {
         }
 
         Commands::SoftReboot => init_event::soft_reboot(),
-
-        Commands::Insmod { module, params } => debug::insmod(&module, &params),
 
         Commands::Module { command } => {
             utils::switch_mnt_ns(1)?;
@@ -619,11 +594,14 @@ pub fn run() -> Result<()> {
             }
         }
         Commands::Install {
+            magiskboot,
             libadbroot,
-            data_path,
-        } => utils::install(libadbroot, data_path),
+        } => utils::install(magiskboot, libadbroot),
         Commands::Unload => crate::unload::unload(),
-        Commands::Uninstall { package_name } => utils::uninstall(&package_name),
+        Commands::Uninstall {
+            magiskboot,
+            package_name,
+        } => utils::uninstall(magiskboot, &package_name),
         Commands::Sepolicy { command } => match command {
             Sepolicy::Patch { sepolicy } => crate::sepolicy::live_patch(&sepolicy),
             Sepolicy::Apply { file } => crate::sepolicy::apply_file(file),
@@ -631,18 +609,17 @@ pub fn run() -> Result<()> {
         },
         Commands::LateLoad {
             magica,
-            allow_shell,
             post_magica,
             kmi,
             package_name,
         } => {
             if let Some(port) = magica {
-                return crate::magica::run(port, &package_name, allow_shell).map_err(|e| {
+                return crate::magica::run(port, &package_name).map_err(|e| {
                     error!("Error running magica: {e}");
                     e
                 });
             }
-            let result = crate::late_load::run(&package_name, kmi, allow_shell);
+            let result = crate::late_load::run(&package_name, kmi);
             if post_magica {
                 info!("Restoring adb properties (post-magica cleanup)...");
                 if let Err(e) = crate::magica::disable_adb_root() {
@@ -706,6 +683,7 @@ pub fn run() -> Result<()> {
                 let data = assets::get_asset_data(&name)?;
                 utils::ensure_binary(&path, &data, false)
             }
+            Debug::Insmod { module } => debug::insmod(&module),
             Debug::Mark { command } => match command {
                 MarkCommand::Get { pid } => debug::mark_get(pid),
                 MarkCommand::Mark { pid } => debug::mark_set(pid),
@@ -713,25 +691,6 @@ pub fn run() -> Result<()> {
                 MarkCommand::Refresh => debug::mark_refresh(),
             },
             Debug::Sulogd => sulog::ensure_sulogd_running(),
-            Debug::Info => {
-                let info = ksucalls::get_info();
-                println!("version: {}", info.version);
-                println!("flags: 0x{:x}", info.flags);
-                println!("uapi_version: {}", info.uapi_version);
-                println!("features: 0x{:x}", info.features);
-                println!("lkm: {}", ksucalls::is_lkm());
-                println!("late_load: {}", ksucalls::is_late_load());
-                println!("runtime_mode: {}", ksucalls::runtime_mode());
-                println!(
-                    "pr_build: {}",
-                    (info.flags & ksu_uapi::KSU_GET_INFO_FLAG_PR_BUILD) != 0
-                );
-                Ok(())
-            }
-            Debug::Package => {
-                println!("{}", defs::DEFAULT_PACKAGE_NAME);
-                Ok(())
-            }
         },
 
         Commands::BootPatch(boot_patch) => crate::boot_patch::patch(boot_patch),
@@ -794,9 +753,6 @@ pub fn run() -> Result<()> {
                 ksucalls::report_module_mounted();
                 Ok(())
             }
-        },
-        Commands::Initrc { command } => match command {
-            Initrc::Refresh => regenerate_preinit_rc(),
         },
     };
 
