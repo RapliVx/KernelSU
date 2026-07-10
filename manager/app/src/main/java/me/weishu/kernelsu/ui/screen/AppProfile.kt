@@ -106,6 +106,7 @@ fun AppProfileScreen(
     val snackBarHost = LocalSnackbarHost.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val scope = rememberCoroutineScope()
+
     val failToUpdateAppProfile = stringResource(R.string.failed_to_update_app_profile).format(appInfo.label)
     val failToUpdateSepolicy = stringResource(R.string.failed_to_update_sepolicy).format(appInfo.label)
     val suNotAllowed = stringResource(R.string.su_not_allowed).format(appInfo.label)
@@ -123,11 +124,16 @@ fun AppProfileScreen(
             ?: sameUidApps.firstOrNull { it.packageInfo.sharedUserId != null }?.packageInfo?.sharedUserId
             ?: ""
     }
-    val initialProfile = Natives.getAppProfile(packageName, appInfo.uid)
-    if (initialProfile.allowSu) {
-        initialProfile.rules = getSepolicy(packageName)
+
+    val initialProfile = remember(appInfo.uid, packageName) {
+        Natives.getAppProfile(packageName, appInfo.uid).also {
+            if (it.allowSu) {
+                it.rules = getSepolicy(packageName)
+            }
+        }
     }
-    var profile by rememberSaveable {
+    
+    var profile by rememberSaveable(appInfo.uid, packageName) {
         mutableStateOf(initialProfile)
     }
 
@@ -137,7 +143,7 @@ fun AppProfileScreen(
                 onBack = dropUnlessResumed { resultNavigator.navigateBack(result = true) },
                 scrollBehavior = scrollBehavior,
                 isUidGroup = isUidGroup,
-                packageName = appInfo.packageName
+                packageName = packageName
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackBarHost) },
@@ -148,7 +154,7 @@ fun AppProfileScreen(
                 .padding(paddingValues)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState()),
-            packageName = if (isUidGroup) "" else appInfo.packageName,
+            packageName = if (isUidGroup) "" else packageName,
             appLabel = if (isUidGroup) ownerNameForUid(appInfo.uid) else appInfo.label,
             appIcon = {
                 val iconApp = if (isUidGroup) primaryForIcon else appInfo
@@ -180,23 +186,23 @@ fun AppProfileScreen(
             onManageTemplate = {
                 navigator.navigate(AppProfileTemplateScreenDestination())
             },
-            onProfileChange = {
+            
+            onProfileChange = { updatedProfile ->
                 scope.launch {
-                    if (it.allowSu) {
-                        // sync with allowlist.c - forbid_system_uid
+                    if (updatedProfile.allowSu) {
                         if (appInfo.uid < 2000 && appInfo.uid != 1000) {
                             snackBarHost.showSnackbar(suNotAllowed)
                             return@launch
                         }
-                        if (!it.rootUseDefault && it.rules.isNotEmpty() && !setSepolicy(profile.name, it.rules)) {
+                        if (!updatedProfile.rootUseDefault && updatedProfile.rules.isNotEmpty() && !setSepolicy(profile.name, updatedProfile.rules)) {
                             snackBarHost.showSnackbar(failToUpdateSepolicy)
                             return@launch
                         }
                     }
-                    if (!Natives.setAppProfile(it)) {
+                    if (!Natives.setAppProfile(updatedProfile)) {
                         snackBarHost.showSnackbar(failToUpdateAppProfile.format(appInfo.uid))
                     } else {
-                        profile = it
+                        profile = updatedProfile 
                     }
                 }
             },
