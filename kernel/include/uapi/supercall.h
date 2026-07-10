@@ -139,6 +139,10 @@ struct ksu_get_sulog_fd_cmd {
 	__u32 flags; /* Input: reserved for future use, must be 0 */
 };
 
+struct ksu_get_hook_mode_cmd {
+	char mode[16]; /* Get Hook mode */
+};
+
 #define KSU_UMOUNT_WIPE 0	// ignore everything and wipe list
 #define KSU_UMOUNT_ADD 1	// add entry (path + flags)
 #define KSU_UMOUNT_DEL 2	// delete entry, strcmp
@@ -170,5 +174,6 @@ struct ksu_get_sulog_fd_cmd {
 #define KSU_IOCTL_SET_INIT_PGRP _IO('K', 19)
 #define KSU_IOCTL_GET_SULOG_FD _IOW('K', 20, struct ksu_get_sulog_fd_cmd)
 #define KSU_IOCTL_DISABLE_ESCAPE_TO_ROOT _IO('K', 21)
+#define KSU_IOCTL_GET_HOOK_MODE _IOC(_IOC_READ, 'K', 98, 0)
 
 #endif
