@@ -130,9 +130,12 @@ import me.weishu.kernelsu.ui.util.rootAvailable
 @Composable
 fun HomeScreen(navigator: DestinationsNavigator) {
     val context = LocalContext.current
-    val kernelVersion = getKernelVersion()
+    
+    val kernelVersion = remember { getKernelVersion() }
+    val isFloating = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("enable_floating_navbar", false) }
+    val useClassicLayout = remember { context.getLayoutStyle() }
+    
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-    val isFloating = LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("enable_floating_navbar", false)
     val sysNavBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val floatingPadding = if (isFloating) sysNavBarPadding + 96.dp else 0.dp
 
@@ -148,34 +151,34 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 .padding(start = 16.dp, end = 16.dp, top = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val isManager = Natives.isManager
-            val ksuVersion = if (isManager) Natives.version else null
-            val lkmMode = ksuVersion?.let {
-                if (kernelVersion.isGKI()) Natives.isLkmMode else null
+            val isManager = remember { Natives.isManager }
+            val ksuVersion = remember(isManager) { if (isManager) Natives.version else null }
+            val lkmMode = remember(ksuVersion) {
+                ksuVersion?.let { if (kernelVersion.isGKI()) Natives.isLkmMode else null }
             }
-            val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
+            val requireNewKernel = remember { Natives.requireNewKernel() }
+            val isRootAvailable = remember { rootAvailable() }
+            val fullFeatured = remember(isManager, requireNewKernel, isRootAvailable) {
+                isManager && !requireNewKernel && isRootAvailable
+            }
 
             StatusCard(
-                kernelVersion,
-                ksuVersion,
-                lkmMode,
-                fullFeatured,
-                useClassicLayout = context.getLayoutStyle(),
+                kernelVersion = kernelVersion,
+                ksuVersion = ksuVersion,
+                lkmMode = lkmMode,
+                fullFeatured = fullFeatured,
+                useClassicLayout = useClassicLayout,
                 onClickInstall = { navigator.navigate(InstallScreenDestination) },
                 onClickSuperuser = {
                     navigator.navigate(SuperUserScreenDestination) {
-                        popUpTo(NavGraphs.root) {
-                            saveState = true
-                        }
+                        popUpTo(NavGraphs.root) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
                     }
                 },
                 onclickModule = {
                     navigator.navigate(ModuleScreenDestination) {
-                        popUpTo(NavGraphs.root) {
-                            saveState = true
-                        }
+                        popUpTo(NavGraphs.root) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
                     }
@@ -184,14 +187,14 @@ fun HomeScreen(navigator: DestinationsNavigator) {
 //            if (ksuVersion != null && !Natives.isLkmMode) {
 //                WarningCard(stringResource(id = R.string.home_gki_warning))
 //            }
-            if (isManager && Natives.requireNewKernel()) {
+            if (isManager && requireNewKernel) {
                 WarningCard(
                     stringResource(id = R.string.require_kernel_version).format(
                         ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL
                     )
                 )
             }
-            if (ksuVersion != null && !rootAvailable()) {
+            if (ksuVersion != null && !isRootAvailable) {
                 WarningCard(
                     stringResource(id = R.string.grant_root_failed)
                 )
@@ -220,7 +223,7 @@ fun UpdateCard() {
         }
     }
 
-    val currentVersionCode = getManagerVersion(context).second
+    val currentVersionCode = remember { getManagerVersion(context).second }
     val newVersionCode = newVersion.versionCode
     val newVersionUrl = newVersion.downloadUrl
     val changelog = newVersion.changelog
@@ -259,10 +262,9 @@ private fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     val context = LocalContext.current
-    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val isOfficialEnabled = prefs.getBoolean("enable_official_launcher", false)
+    val isOfficialEnabled = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("enable_official_launcher", false) }
     val appNameId = if (isOfficialEnabled) R.string.app_name else R.string.app_name_mambo
-    val managerVersion = getManagerVersion(context)
+    val managerVersion = remember { getManagerVersion(context) }
 
     TopAppBar(
         title = {
@@ -313,7 +315,11 @@ private fun StatusCard(
     val titleStyle = if (useClassicLayout) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium
     val bodyStyle = if (useClassicLayout) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall
 
-    val headerImageUri = context.getHeaderImage()
+    val headerImageUri = remember { context.getHeaderImage() }
+    val gradientBrush = remember(cs.surface) { 
+        Brush.verticalGradient(listOf(Color.Transparent, cs.surface.copy(alpha = 0.8f))) 
+    }
+    
     val imageLoader = remember(context) {
         ImageLoader.Builder(context)
             .components {
@@ -325,6 +331,9 @@ private fun StatusCard(
             }
             .build()
     }
+
+    val moduleCountText = remember { getModuleCount().toString() }
+    val superuserCountText = remember { getSuperuserCount().toString() }
 
     val headerCardContent = @Composable { modifier: Modifier ->
         TonalCard(
@@ -347,16 +356,7 @@ private fun StatusCard(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.matchParentSize()
                     )
-
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color.Transparent, cs.surface.copy(alpha = 0.8f))
-                                )
-                            )
-                    )
+                    Box(modifier = Modifier.matchParentSize().background(gradientBrush))
                 }
 
                 Icon(
@@ -370,15 +370,7 @@ private fun StatusCard(
                 )
 
                 if (headerImageUri != null) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color.Transparent, cs.surface.copy(alpha = 0.8f))
-                                )
-                            )
-                    )
+                    Box(modifier = Modifier.matchParentSize().background(gradientBrush))
                 }
 
                 Column(
@@ -471,14 +463,14 @@ private fun StatusCard(
                 ) {
                     StatInfoCard(
                         title = stringResource(R.string.module),
-                        count = getModuleCount().toString(),
+                        count = moduleCountText,
                         icon = Icons.Filled.Extension,
                         onClick = onclickModule,
                         itemModifier = Modifier.weight(1f)
                     )
                     StatInfoCard(
                         title = stringResource(R.string.superuser),
-                        count = getSuperuserCount().toString(),
+                        count = superuserCountText,
                         icon = Icons.Filled.Security,
                         onClick = onClickSuperuser,
                         itemModifier = Modifier.weight(1f)
@@ -491,14 +483,14 @@ private fun StatusCard(
                 ) {
                     StatInfoCard(
                         title = stringResource(R.string.module),
-                        count = getModuleCount().toString(),
+                        count = moduleCountText,
                         icon = Icons.Filled.Extension,
                         onClick = onclickModule,
                         itemModifier = Modifier.weight(1f)
                     )
                     StatInfoCard(
                         title = stringResource(R.string.superuser),
-                        count = getSuperuserCount().toString(),
+                        count = superuserCountText,
                         icon = Icons.Filled.Security,
                         onClick = onClickSuperuser,
                         itemModifier = Modifier.weight(1f)
@@ -618,14 +610,16 @@ fun DonateCard() {
 @Composable
 private fun InfoCard() {
     val context = LocalContext.current
-    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-
-    val isManager = Natives.isManager
-    val ksuVersion = if (isManager) Natives.version else null
+    
+    val developerOptionsEnabled = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("enable_developer_options", false) }
+    val managerVersion = remember { getManagerVersion(context) }
+    val myUid = remember { android.os.Process.myUid() }
+    val unameRelease = remember { Os.uname().release }
+    val unameMachine = remember { Os.uname().machine }
+    val selinuxStatus = remember { getSELinuxStatus() }
 
     // State expand
     var expanded by rememberSaveable { mutableStateOf(false) }
-    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
 
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
@@ -678,9 +672,7 @@ private fun InfoCard() {
             }
 
             Column {
-                val managerVersion = getManagerVersion(context)
-                val uidText = if (developerOptionsEnabled) " | UID: ${android.os.Process.myUid()}" else ""
-
+                val uidText = if (developerOptionsEnabled) " | UID: $myUid" else ""
                 InfoCardItem(
                     label = stringResource(R.string.home_manager_version),
                     content = "${managerVersion.first} (${managerVersion.second})$uidText",
@@ -689,10 +681,9 @@ private fun InfoCard() {
 
                 Spacer(Modifier.height(16.dp))
 
-                val uname = Os.uname()
                 InfoCardItem(
                     label = stringResource(R.string.home_kernel),
-                    content = "${uname.release} (${uname.machine})",
+                    content = "$unameRelease ($unameMachine)",
                     icon = Icons.Filled.Memory,
                 )
             }
@@ -725,7 +716,7 @@ private fun InfoCard() {
 
                     InfoCardItem(
                         label = stringResource(R.string.home_selinux_status),
-                        content = getSELinuxStatus(),
+                        content = selinuxStatus,
                         icon = Icons.Filled.Security,
                     )
 
@@ -752,7 +743,7 @@ private fun InfoCard() {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
                         contentDescription = "Show more",
-                        modifier = Modifier.rotate(arrowRotation) // Rotasi Smooth
+                        modifier = Modifier.rotate(arrowRotation) 
                     )
                 }
             }
