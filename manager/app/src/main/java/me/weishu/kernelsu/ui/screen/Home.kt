@@ -131,7 +131,7 @@ import me.weishu.kernelsu.ui.util.rootAvailable
 fun HomeScreen(navigator: DestinationsNavigator) {
     val context = LocalContext.current
     
-    val kernelVersion = remember { getKernelVersion() }
+    val kernelVersion = getKernelVersion()
     val isFloating = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("enable_floating_navbar", false) }
     val useClassicLayout = remember { context.getLayoutStyle() }
     
@@ -332,9 +332,6 @@ private fun StatusCard(
             .build()
     }
 
-    val moduleCountText = remember { getModuleCount().toString() }
-    val superuserCountText = remember { getSuperuserCount().toString() }
-
     val headerCardContent = @Composable { modifier: Modifier ->
         TonalCard(
             containerColor = cs.secondaryContainer,
@@ -463,14 +460,14 @@ private fun StatusCard(
                 ) {
                     StatInfoCard(
                         title = stringResource(R.string.module),
-                        count = moduleCountText,
+                        count = getModuleCount().toString(),
                         icon = Icons.Filled.Extension,
                         onClick = onclickModule,
                         itemModifier = Modifier.weight(1f)
                     )
                     StatInfoCard(
                         title = stringResource(R.string.superuser),
-                        count = superuserCountText,
+                        count = getSuperuserCount().toString(),
                         icon = Icons.Filled.Security,
                         onClick = onClickSuperuser,
                         itemModifier = Modifier.weight(1f)
@@ -483,14 +480,14 @@ private fun StatusCard(
                 ) {
                     StatInfoCard(
                         title = stringResource(R.string.module),
-                        count = moduleCountText,
+                        count = getModuleCount().toString(),
                         icon = Icons.Filled.Extension,
                         onClick = onclickModule,
                         itemModifier = Modifier.weight(1f)
                     )
                     StatInfoCard(
                         title = stringResource(R.string.superuser),
-                        count = superuserCountText,
+                        count = getSuperuserCount().toString(),
                         icon = Icons.Filled.Security,
                         onClick = onClickSuperuser,
                         itemModifier = Modifier.weight(1f)
@@ -616,7 +613,7 @@ private fun InfoCard() {
     val myUid = remember { android.os.Process.myUid() }
     val unameRelease = remember { Os.uname().release }
     val unameMachine = remember { Os.uname().machine }
-    val selinuxStatus = remember { getSELinuxStatus() }
+    val selinuxStatus = getSELinuxStatus()
 
     // State expand
     var expanded by rememberSaveable { mutableStateOf(false) }
