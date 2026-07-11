@@ -615,7 +615,7 @@ private fun InfoCard() {
     val unameRelease = remember { Os.uname().release }
     val unameMachine = remember { Os.uname().machine }
     val selinuxStatus = getSELinuxStatus()
-p
+
     val hookMode = remember { runCatching { Natives.hookMode }.getOrElse { "" } }
 
     // State expand
