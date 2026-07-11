@@ -75,6 +75,13 @@ Java_me_weishu_kernelsu_Natives_isPrBuild(JNIEnv *env, jclass clazz) {
     return is_pr_build();
 }
 
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_me_weishu_kernelsu_Natives_getHookMode(JNIEnv *env, jclass clazz) {
+    const char* mode = get_hook_mode();
+    return env->NewStringUTF(mode);
+}
+
 static void fillIntArray(JNIEnv *env, jobject list, int *data, int count) {
     auto cls = env->GetObjectClass(list);
     auto add = env->GetMethodID(cls, "add", "(Ljava/lang/Object;)Z");

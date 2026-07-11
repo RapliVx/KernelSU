@@ -135,6 +135,16 @@ bool is_manager() {
     return legacy_get_info().first > 0;
 }
 
+const char* get_hook_mode(void)
+{
+    static struct ksu_get_hook_mode_cmd cmd = {0};
+
+    if (ksuctl(KSU_IOCTL_GET_HOOK_MODE, &cmd) == 0)
+        return cmd.mode;
+
+    return "";
+}
+
 bool is_pr_build() {
     auto info = get_info();
     if (info.version > 0) {

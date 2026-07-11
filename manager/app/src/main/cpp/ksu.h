@@ -30,6 +30,8 @@ bool is_manager();
 
 bool is_pr_build();
 
+const char* get_hook_mode(void);
+
 using p_key_t = char[KSU_MAX_PACKAGE_NAME];
 
 bool set_app_profile(const app_profile *profile);
