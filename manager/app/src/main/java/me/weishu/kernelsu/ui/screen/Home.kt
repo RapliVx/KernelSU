@@ -95,6 +95,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardCommandKey
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.ui.draw.rotate
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
@@ -614,13 +615,15 @@ private fun InfoCard() {
     val unameRelease = remember { Os.uname().release }
     val unameMachine = remember { Os.uname().machine }
     val selinuxStatus = getSELinuxStatus()
+p
+    val hookMode = remember { runCatching { Natives.hookMode }.getOrElse { "" } }
 
     // State expand
     var expanded by rememberSaveable { mutableStateOf(false) }
 
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow), // Putaran smooth pelan
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "arrowRotation"
     )
 
@@ -669,6 +672,15 @@ private fun InfoCard() {
             }
 
             Column {
+                if (hookMode.isNotEmpty()) {
+                    InfoCardItem(
+                        label = stringResource(id = R.string.hook_mode),
+                        content = hookMode,
+                        icon = Icons.Filled.Link,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                }
+
                 val uidText = if (developerOptionsEnabled) " | UID: $myUid" else ""
                 InfoCardItem(
                     label = stringResource(R.string.home_manager_version),

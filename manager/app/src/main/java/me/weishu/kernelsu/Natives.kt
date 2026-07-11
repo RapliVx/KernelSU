@@ -31,7 +31,6 @@ object Natives {
     const val ROOT_GID = 0
 
     init {
-        // Biarkan tetap "kernelsu" jika nama library JNI di C++ tidak diubah
         System.loadLibrary("kernelsu")
     }
 
@@ -48,6 +47,9 @@ object Natives {
         external get
 
     val isManager: Boolean
+        external get
+        
+    val hookMode: String
         external get
 
     val isPrBuild: Boolean
@@ -191,7 +193,6 @@ object Natives {
     const val FLAG_KSU_NO_NEW_PRIVS = 1L
 }
 
-// Extension functions untuk bitwise operations flag profil
 fun List<RootProfileFlag>.toRawFlags(): Long =
     fold(0L) { acc, flag -> acc.or(1L.shl(flag.ordinal)) }
 
