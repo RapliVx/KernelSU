@@ -24,7 +24,10 @@ static int do_get_info(void __user *arg)
 {
 	struct ksu_get_info_cmd cmd = { .version = KERNEL_SU_VERSION, .flags = 0 };
 
-	// NOTE: we do not have LKM support so we don't bother with its flags or late-load
+#ifdef MODULE
+	cmd.flags |= KSU_GET_INFO_FLAG_LKM;
+#endif
+
 	if (is_manager()) {
 		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
 	}
@@ -49,7 +52,6 @@ static int do_get_info_legacy(void __user *arg)
 {
 	struct ksu_get_info_legacy_cmd cmd = { .version = KERNEL_SU_VERSION, .flags = 0 };
 
-	// NOTE: we do not have LKM support so we don't bother with its flags or late-load
 	if (is_manager()) {
 		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
 	}

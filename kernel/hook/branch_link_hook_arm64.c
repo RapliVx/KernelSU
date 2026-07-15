@@ -56,6 +56,7 @@ static long ksu_do_faccessat(int dfd, const char __user *filename, int mode)
 #endif // 5.7+ || faccessat2
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0) // on some kernels vfs_fstatat calls gets inlined, so we have to handle it
 static int (*vfs_statx_fn)(int dfd, struct filename *filename, int flags, struct kstat *stat, u32 request_mask) __read_mostly = NULL;
 static __nocfi int ksu_vfs_statx(int dfd, struct filename *filename, int flags, struct kstat *stat, u32 request_mask)
@@ -84,7 +85,15 @@ static __nocfi int ksu_vfs_statx(int dfd, struct filename *filename, int flags, 
 orig_fn:
 	return vfs_statx_fn(dfd, filename, flags, stat, request_mask);
 }
-#endif
+#else
+static int (*vfs_statx_fn)(int dfd, const char __user *filename, int flags, struct kstat *stat, u32 request_mask) __read_mostly = NULL;
+static __nocfi int ksu_vfs_statx(int dfd, const char __user *filename, int flags, struct kstat *stat, u32 request_mask)
+{
+	ksu_handle_stat(&dfd, &filename, &flags);
+	return vfs_statx_fn(dfd, filename, flags, stat, request_mask);
+}
+#endif // >= 5.18
+
 extern int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat, int flags);
 static int ksu_vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat, int flags)
 {
@@ -157,45 +166,44 @@ static int ksu_branch_link_patch_init()
 	pr_info("sys_faccessat: do_faccessat: ret %d \n", ret);
 
 // newfstatat
-	target_callsite = kp_syscall_lookup("__arm64_sys_newfstatat");
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+	target_callsite = kp_syscall_lookup("__arm64_sys_newfstatat");
 	symbol_addr = kp_cfi_kallsyms_lookup_name("vfs_fstatat");
 	ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_vfs_fstatat);
 	pr_info("sys_newfstatat: vfs_fstatat: ret %d \n", ret);
+	if (!ret)
+		goto newfstatat_hook_done;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
-	if (ret) {
-		symbol_addr = kp_cfi_kallsyms_lookup_name("vfs_statx");
-		vfs_statx_fn = symbol_addr;
-		ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_vfs_statx);
-		pr_info("sys_newfstatat: vfs_statx: ret %d \n", ret);
-	}
-#endif
+	symbol_addr = kp_cfi_kallsyms_lookup_name("vfs_statx");
+	vfs_statx_fn = symbol_addr;
+	ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_vfs_statx);
+	pr_info("sys_newfstatat: vfs_statx: ret %d \n", ret);
+newfstatat_hook_done:
 
 #else // < 5.10
+	target_callsite = kp_syscall_lookup("__arm64_sys_newfstatat");
 	symbol_addr = kp_cfi_kallsyms_lookup_name("vfs_statx");
 	ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_vfs_statx);
 	pr_info("sys_newfstatat: vfs_statx: ret %d \n", ret);
 #endif
 
-
 #ifdef CONFIG_COMPAT // fstatat64
-	target_callsite = kp_syscall_lookup("__arm64_sys_fstatat64");
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+	target_callsite = kp_syscall_lookup("__arm64_sys_fstatat64");
 	symbol_addr = kp_cfi_kallsyms_lookup_name("vfs_fstatat");
 	ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_vfs_fstatat);
 	pr_info("sys_fstatat64: vfs_fstatat: ret %d \n", ret);
+	if (!ret)
+		goto fstatat64_hook_done;
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
-	if (ret) {
-		symbol_addr = kp_cfi_kallsyms_lookup_name("vfs_statx");
-		vfs_statx_fn = symbol_addr;
-		ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_vfs_statx);
-		pr_info("sys_fstatat64: vfs_statx: ret %d \n", ret);
-	}
-#endif
+	symbol_addr = kp_cfi_kallsyms_lookup_name("vfs_statx");
+	vfs_statx_fn = symbol_addr;
+	ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_vfs_statx);
+	pr_info("sys_fstatat64: vfs_statx: ret %d \n", ret);
+fstatat64_hook_done:
 
 #else // < 5.10
+	target_callsite = kp_syscall_lookup("__arm64_sys_fstatat64");
 	symbol_addr = kp_cfi_kallsyms_lookup_name("vfs_statx");
 	ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_vfs_statx);
 	pr_info("sys_fstatat64: vfs_statx: ret %d \n", ret);
@@ -203,15 +211,15 @@ static int ksu_branch_link_patch_init()
 #endif // CONFIG_COMPAT // fstatat64
 
 // execve
-	target_callsite = kp_syscall_lookup("__arm64_sys_execve");
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
+	target_callsite = kp_syscall_lookup("__arm64_sys_execve");
 	symbol_addr = kp_cfi_kallsyms_lookup_name("do_execveat_common");
 	do_execveat_common_fn = symbol_addr;
 	ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_do_execveat_common);
 	pr_info("sys_execve: do_execveat_common: ret %d \n", ret);
 #else
+	target_callsite = kp_syscall_lookup("__arm64_sys_execve");
 	symbol_addr = kp_cfi_kallsyms_lookup_name("__do_execve_file");
-
 	__do_execve_file_fn = symbol_addr;
 	ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_do_execve_file);
 	pr_info("sys_execve: __do_execve_file: ret %d \n", ret);
@@ -223,13 +231,14 @@ static int ksu_branch_link_patch_init()
 #endif
 
 #ifdef CONFIG_COMPAT // compat_sys_execve
-	target_callsite = kp_syscall_lookup("__arm64_compat_sys_execve");
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
+	target_callsite = kp_syscall_lookup("__arm64_compat_sys_execve");
 	symbol_addr = kp_cfi_kallsyms_lookup_name("do_execveat_common");
 	do_execveat_common_fn = symbol_addr;
 	ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_do_execveat_common);
 	pr_info("compat_sys_execve: do_execveat_common: ret %d \n", ret);
 #else
+	target_callsite = kp_syscall_lookup("__arm64_compat_sys_execve");
 	symbol_addr = kp_cfi_kallsyms_lookup_name("__do_execve_file");
 	__do_execve_file_fn = symbol_addr;
 	ret = arm64_bl_patch(target_callsite, 128 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_do_execve_file);

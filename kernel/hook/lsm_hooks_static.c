@@ -56,7 +56,7 @@ main:
 // so we can do this like on x86 where 74 xx to 74 yy
 // bl is call+ret equivalent on x86 though
 
-// this is EXPORT_SYMBOL, this is stabler.
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0) 
 extern int vfs_rename(struct renamedata *rd);
 static int ksu_vfs_rename(struct renamedata *rd)
 {
@@ -66,6 +66,7 @@ static int ksu_vfs_rename(struct renamedata *rd)
 
 	return ret;
 }
+#endif
 
 extern int security_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir, struct dentry *new_dentry, unsigned int flags);
 static int ksu_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir, struct dentry *new_dentry, unsigned int flags)
@@ -127,13 +128,21 @@ static int ksu_security_file_permission(struct file *file, int mask)
 	return security_file_permission(file, mask);
 }
 
-// setprocattr
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0) // setprocattr
 extern int security_setprocattr(int lsmid, const char *name, void *value, size_t size);
 static int ksu_setprocattr(int lsmid, const char *name, void *value, size_t size)
 {
 	ksu_hide_setprocattr_inline(name, value, size);
 	return security_setprocattr(lsmid, name, value, size);
 }
+#else
+extern int security_setprocattr(const char *lsm, const char *name, void *value, size_t size);
+static int ksu_setprocattr(const char *lsm, const char *name, void *value, size_t size)
+{
+	ksu_hide_setprocattr_inline(name, value, size);
+	return security_setprocattr(lsm, name, value, size);
+}
+#endif
 
 static void __init ksu_core_init(void)
 {
@@ -147,14 +156,18 @@ static void __init ksu_core_init(void)
 #define ksu_kallsyms_lookup_name kallsyms_lookup_name
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 	target_callsite = ksu_kallsyms_lookup_name("do_renameat2");
 	symbol_addr = ksu_kallsyms_lookup_name("vfs_rename");
 	ret = arm64_bl_patch(target_callsite, 256 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_vfs_rename);
 	pr_info("lsm_hijack: vfs_rename: ret %d \n", ret);
 	if (!ret)
 		goto rename_hook_done;
+#endif
 
-	target_callsite = ksu_kallsyms_lookup_name("vfs_rename");
+	target_callsite = ksu_kallsyms_lookup_name("vfs_rename2"); // 4.19 sdcardfs workaround
+	if (!target_callsite)
+		target_callsite = ksu_kallsyms_lookup_name("vfs_rename");
 	symbol_addr = ksu_kallsyms_lookup_name("security_inode_rename");
 	ret = arm64_bl_patch(target_callsite, 256 * sizeof(void *), symbol_addr, (uintptr_t)&ksu_inode_rename);
 	pr_info("lsm_hijack: security_inode_rename: ret %d \n", ret);

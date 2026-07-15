@@ -571,7 +571,160 @@ static __init void ksu_lsm_hook_init(void)
 
 }
 
+#ifdef MODULE // imported from https://github.com/tiann/KernelSU/blob/v1.0.5/kernel/core_hook.c#L715
+static int override_security_head(void *head, const void *new_head, size_t len)
+{
+	unsigned long base = (unsigned long)head & PAGE_MASK;
+	unsigned long offset = offset_in_page(head);
+
+	// this is impossible for our case because the page alignment
+	// but be careful for other cases!
+	BUG_ON(offset + len > PAGE_SIZE);
+	struct page *page = phys_to_page(__pa(base));
+	if (!page) {
+		return -EFAULT;
+	}
+
+	void *addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
+	if (!addr) {
+		return -ENOMEM;
+	}
+	local_irq_disable();
+	memcpy(addr + offset, new_head, len);
+	local_irq_enable();
+	vunmap(addr);
+	return 0;
+}
+
+static void free_security_hook_list(struct hlist_head *head)
+{
+	struct hlist_node *temp;
+	struct security_hook_list *entry;
+
+	if (!head)
+		return;
+
+	hlist_for_each_entry_safe (entry, temp, head, list) {
+		hlist_del(&entry->list);
+		kfree(entry);
+	}
+
+	kfree(head);
+}
+
+struct hlist_head *copy_security_hlist(struct hlist_head *orig)
+{
+	struct hlist_head *new_head = kmalloc(sizeof(*new_head), GFP_KERNEL);
+	if (!new_head)
+		return NULL;
+
+	INIT_HLIST_HEAD(new_head);
+
+	struct security_hook_list *entry;
+	struct security_hook_list *new_entry;
+
+	hlist_for_each_entry (entry, orig, list) {
+		new_entry = kmalloc(sizeof(*new_entry), GFP_KERNEL);
+		if (!new_entry) {
+			free_security_hook_list(new_head);
+			return NULL;
+		}
+
+		*new_entry = *entry;
+
+		hlist_add_tail_rcu(&new_entry->list, new_head);
+	}
+
+	return new_head;
+}
+
+#define KSU_LSM_HOOK_HACK_INIT(head_ptr, name, ksu_func)					\
+do {												\
+	static struct security_hook_list hook = {  .hook = { .name = ksu_func } };		\
+	hook.head = head_ptr;									\
+	hook.lsm = "ksu";									\
+	struct hlist_head *new_head = copy_security_hlist(hook.head);				\
+	if (!new_head) {									\
+		pr_info("Failed to copy security list: %s\n", #name);				\
+		break;										\
+	}											\
+	hlist_add_tail_rcu(&hook.list, new_head);						\
+	if (override_security_head(hook.head, new_head, sizeof(*new_head))) {			\
+		free_security_hook_list(new_head);						\
+		pr_info("LSM hack fail for: %s\n", #name);					\
+	} else	{										\
+		pr_info("LSM hack done for: %s\n", #name);					\
+	}											\
+} while (0)
+
+extern struct security_hook_heads security_hook_heads;
+
+static void ksu_proxy_selinux_setprocattr()
+{
+	struct security_hook_list *pos;
+	struct hlist_head *head = &security_hook_heads.setprocattr;
+
+	hlist_for_each_entry(pos, head, list) {
+		if (pos->lsm && !strcmp(pos->lsm, "selinux")) {
+			selinux_setprocattr_fn = pos->hook.setprocattr;
+			pr_info("ksu_setprocattr: selinux_setprocattr found at 0x%lx \n", (uintptr_t)selinux_setprocattr_fn);
+			break;
+		}
+	}
+
+	if (!pos->hook.setprocattr)
+		return;
+
+	// then we write our fn ptr over on that slot
+	uintptr_t addr = (uintptr_t)&pos->hook.setprocattr;
+	uintptr_t base = addr & PAGE_MASK;
+	uintptr_t offset = addr & ~PAGE_MASK;
+
+	struct page *page = phys_to_page(__pa(base));
+	if (!page)
+		return;
+
+	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
+	if (!writable_addr)
+		return;
+
+	void **target_slot = (void **)((unsigned long)writable_addr + offset);
+
+	preempt_disable();
+	local_irq_disable();
+					
+	WRITE_ONCE(*target_slot, ksu_setprocattr_wrapper);
+					
+	local_irq_enable();
+	preempt_enable();
+
+	vunmap(writable_addr);
+	smp_mb();
+
+	pr_info("ksu_setprocattr: setprocattr hijacked!\n");
+
+}
+
+static __init void ksu_lsm_hack_init(void)
+{
+	KSU_LSM_HOOK_HACK_INIT(&security_hook_heads.task_fix_setuid, task_fix_setuid, ksu_task_fix_setuid);
+	KSU_LSM_HOOK_HACK_INIT(&security_hook_heads.inode_rename, inode_rename, ksu_inode_rename);
+#if !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+	KSU_LSM_HOOK_HACK_INIT(&security_hook_heads.file_permission, file_permission, ksu_file_permission);
+#endif
+#ifdef CONFIG_KSU_FEATURE_SULOG
+	KSU_LSM_HOOK_HACK_INIT(&security_hook_heads.bprm_check_security, bprm_check_security, ksu_bprm_check);
+#endif
+	ksu_proxy_selinux_setprocattr();
+
+}
+#endif // MODULE
+
 static void __init ksu_core_init(void)
 {
+#ifdef MODULE
+	ksu_lsm_hack_init();
+	return;
+#endif
 	ksu_lsm_hook_init();
 }

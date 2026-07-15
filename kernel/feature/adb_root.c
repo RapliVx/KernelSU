@@ -45,7 +45,6 @@ static long setup_ld_preload(void ***envp_arg)
 	static const char kLdPreload[] = "LD_PRELOAD=/data/adb/ksu/lib/libadbroot.so";
 	static const char kLdLibraryPath[] = "LD_LIBRARY_PATH=/data/adb/ksu/lib";
 	static const size_t kReadEnvBatch = 16;
-	static const size_t kPtrSize = sizeof(unsigned long);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
 	unsigned long stackp = current_user_stack_pointer();
 #else
@@ -53,9 +52,15 @@ static long setup_ld_preload(void ***envp_arg)
 #endif
 	unsigned long envp, ld_preload_p, ld_library_path_p;
 	unsigned long *envp_p = (uintptr_t)envp_arg;
-	unsigned long *tmp_env_p = NULL, *tmp_env_p2 = NULL;
+	void *tmp_env_p = NULL, *tmp_env_p2 = NULL;
 	size_t env_count = 0, total_size;
 	long ret;
+
+	size_t kPtrSize = sizeof(uintptr_t);
+#ifdef CONFIG_COMPAT
+	if (is_compat_task())
+		kPtrSize = sizeof(uint32_t);
+#endif
 
 	envp = (char __user **)untagged_addr((unsigned long)*envp_p);
 
@@ -74,14 +79,15 @@ static long setup_ld_preload(void ***envp_arg)
 	}
 
 	for (;;) {
-		tmp_env_p2 = krealloc(tmp_env_p, (env_count + kReadEnvBatch + 2) * kPtrSize, GFP_KERNEL);
+		// increase krealloc allowance, 2->3, we add three things on TODO part
+		tmp_env_p2 = krealloc(tmp_env_p, (env_count + kReadEnvBatch + 3) * kPtrSize, GFP_KERNEL);
 		if (tmp_env_p2 == NULL) {
 			pr_err("alloc tmp env failed\n");
 			ret = -ENOMEM;
 			goto out_release_env_p;
 		}
 		tmp_env_p = tmp_env_p2;
-		ret = copy_from_user(&tmp_env_p[env_count], envp + env_count * kPtrSize, kReadEnvBatch * kPtrSize);
+		ret = copy_from_user((char *)tmp_env_p + (env_count * kPtrSize), envp + env_count * kPtrSize, kReadEnvBatch * kPtrSize);
 		if (ret < 0) {
 			pr_warn("Access envp when adb_root_handle_execve failed: %ld\n", ret);
 			ret = -EFAULT;
@@ -91,7 +97,12 @@ static long setup_ld_preload(void ***envp_arg)
 		size_t max_new_env_count = read_count / kPtrSize, new_env_count = 0;
 		bool meet_zero = false;
 		for (; new_env_count < max_new_env_count; new_env_count++) {
-			if (!tmp_env_p[new_env_count + env_count]) {
+			unsigned long val;
+			if (kPtrSize == sizeof(uint32_t))
+				val = ((uint32_t *)tmp_env_p)[new_env_count + env_count];
+			else
+				val = ((uint64_t *)tmp_env_p)[new_env_count + env_count];
+			if (!val) {
 				meet_zero = true;
 				break;
 			}
@@ -114,9 +125,15 @@ static long setup_ld_preload(void ***envp_arg)
 
 	// We should have allocated enough memory
 	// TODO: handle existing LD_PRELOAD
-	tmp_env_p[env_count++] = ld_preload_p;
-	tmp_env_p[env_count++] = ld_library_path_p;
-	tmp_env_p[env_count++] = 0;
+	if (kPtrSize == sizeof(uint32_t)) {
+		((uint32_t *)tmp_env_p)[env_count++] = *(uint32_t *)&ld_preload_p;
+		((uint32_t *)tmp_env_p)[env_count++] = *(uint32_t *)&ld_library_path_p;
+		((uint32_t *)tmp_env_p)[env_count++] = 0;
+	} else {
+		((uint64_t *)tmp_env_p)[env_count++] = ld_preload_p;
+		((uint64_t *)tmp_env_p)[env_count++] = ld_library_path_p;
+		((uint64_t *)tmp_env_p)[env_count++] = 0;
+	}
 	total_size = env_count * kPtrSize;
 
 	stackp -= total_size;
@@ -213,12 +230,12 @@ static noinline void do_ksu_adb_root_handle_execveat(void *restrict filename, vo
 
 DEFINE_STATIC_KEY_FALSE(ksu_adb_root_key);
 
-static inline void ksu_adb_root_handle_execve(void *filename, void *envp_in)
+static inline void ksu_adb_root_handle_execve(void *restrict filename, void *restrict envp_in)
 {
 	if (static_branch_unlikely(&ksu_adb_root_key))
 		do_ksu_adb_root_handle_execve(filename, envp_in);
 }
-static inline void ksu_adb_root_handle_execveat(void *filename, void *envp_in)
+static inline void ksu_adb_root_handle_execveat(void *restrict filename, void *restrict envp_in)
 {
 	if (static_branch_unlikely(&ksu_adb_root_key))
 		do_ksu_adb_root_handle_execveat(filename, envp_in);
@@ -227,12 +244,12 @@ static inline void ksu_adb_root_handle_execveat(void *filename, void *envp_in)
 static inline void ksu_static_branch_enable() { static_branch_enable(&ksu_adb_root_key); smp_mb(); }
 static inline void ksu_static_branch_disable() { static_branch_disable(&ksu_adb_root_key); smp_mb(); }
 #else /* ! KSU_CAN_USE_JUMP_LABEL */
-static inline void ksu_adb_root_handle_execve(void *filename, void *envp_in)
+static inline void ksu_adb_root_handle_execve(void *restrict filename, void *restrict envp_in)
 {
 	if (unlikely(ksu_adb_root))
 		do_ksu_adb_root_handle_execve(filename, envp_in);
 }
-static inline void ksu_adb_root_handle_execveat(void *filename, void *envp_in)
+static inline void ksu_adb_root_handle_execveat(void *restrict filename, void *restrict envp_in)
 {
 	if (unlikely(ksu_adb_root))
 		do_ksu_adb_root_handle_execveat(filename, envp_in);
