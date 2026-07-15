@@ -35,21 +35,11 @@ KernelSU is a kernel-based root solution for Android GKI devices. It works in ke
 2. Module system based on [Metamodule](https://kernelsu.org/guide/metamodule.html)
 3. [App Profile](https://kernelsu.org/guide/app-profile.html): Lock up the root power in a cage.
 
-## How to add MamboSU kernel driver into your kernel source
+## How to add xxksu kernel driver with MamboSU App Support into your kernel source
 
-- **main branch**
-```
-curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/master/kernel/setup.sh" | bash -s master
-```
-
-- **susfs branch**
-
-> [!WARNING]
-> This branch is not always updated.
->
-
-```
-curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/susfs-rksu-master/kernel/setup.sh" | bash -s susfs-rksu-master
+- **xxksu branch**
+```sh
+curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/xxksu/kernel/setup.sh" | bash -s xxksu
 ```
 
 
@@ -64,6 +54,8 @@ curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/refs/heads/susfs-r
     - [See this repository for more information](https://github.com/rksuorg/kernel_patches)
     - Default hook method on Non-GKI kernels, with condition that `CONFIG_KPROBES` off by default.
     - Need `CONFIG_KSU_MANUAL_HOOK=y`
+3. **Hookless / MamboHook:**
+    - Unlike manual hooking, this method does not require patching the kernel source; you simply add the KernelSU driver to the kernel source and enable the `CONFIG_KSU` and `CONFIG_KSU_TAMPER_SYSCALL_TABLE` configurations.
 
 ## Compatibility State
 
