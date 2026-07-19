@@ -178,4 +178,5 @@
     <string name="quick_shell_summary">Jalankan perintah terminal cepat</string>
     <string name="profile_flags_desc_no_new_privs">Cegah eskalasi hak istimewa lebih lanjut via KernelSU dari dalam konteks profil root ini.</string>
     <string name="hook_mode">Mode Hook</string>
+    <string name="app_profile_template_export_success">Templat berhasil diekspor</string>
 </resources>

@@ -229,4 +229,5 @@
     <string name="quick_shell_summary">Run quick terminal commands</string>
     <string name="profile_flags_desc_no_new_privs">Prevent further privilege escalation via KernelSU from within the context of this root profile.</string>
     <string name="hook_mode">Hook Mode</string>
+    <string name="app_profile_template_export_success">Template exported successfully</string>
 </resources>
