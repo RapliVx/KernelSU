@@ -2,6 +2,7 @@
 
 package me.weishu.kernelsu.ui.screen
 
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import com.ramcosta.composedestinations.annotation.Destination
@@ -27,17 +28,22 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.ramcosta.composedestinations.annotation.RootGraph
 import kotlinx.coroutines.Dispatchers
@@ -50,142 +56,157 @@ import com.topjohnwu.superuser.Shell
 @Destination<RootGraph>
 @Composable
 fun QuickShellScreen() {
-    var cmd by rememberSaveable { mutableStateOf("") }
-    var isRunning by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
 
-    val logs = remember { mutableStateListOf<String>() }
-    val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
-
-    fun append(line: String) {
-        logs.add(line)
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
     }
 
-    fun runCommand() {
-        val script = cmd.trim()
-        if (script.isEmpty()) return
+    CompositionLocalProvider(LocalDensity provides customDensity) {
+        var cmd by rememberSaveable { mutableStateOf("") }
+        var isRunning by rememberSaveable { mutableStateOf(false) }
 
-        isRunning = true
-        append("[start] ---- TIME: ${System.currentTimeMillis()} ----")
+        val logs = remember { mutableStateListOf<String>() }
+        val scope = rememberCoroutineScope()
+        val listState = rememberLazyListState()
 
-        val stdoutCb = object : CallbackList<String>() {
-            override fun onAddElement(e: String) {
-                scope.launch(Dispatchers.Main) { append(e) }
-            }
-        }
-        val stderrCb = object : CallbackList<String>() {
-            override fun onAddElement(e: String) {
-                scope.launch(Dispatchers.Main) { append("E: $e") }
-            }
+        fun append(line: String) {
+            logs.add(line)
         }
 
-        Shell.cmd(script)
-            .to(stdoutCb, stderrCb)
-            .submit { result ->
-                scope.launch(Dispatchers.Main) {
-                    append("[exit] code=${result.code}")
-                    isRunning = false
+        fun runCommand() {
+            val script = cmd.trim()
+            if (script.isEmpty()) return
+
+            isRunning = true
+            append("[start] ---- TIME: ${System.currentTimeMillis()} ----")
+
+            val stdoutCb = object : CallbackList<String>() {
+                override fun onAddElement(e: String) {
+                    scope.launch(Dispatchers.Main) { append(e) }
                 }
             }
-    }
-
-    fun cancelCommand() {
-        scope.launch(Dispatchers.IO) {
-            try {
-                Shell.getCachedShell()?.close()
-
-                launch(Dispatchers.Main) {
-                    append("!! [CANCELLED] Process terminated by user !!")
-                    isRunning = false
-                }
-            } catch (e: Exception) {
-                launch(Dispatchers.Main) {
-                    append("Error cancelling: ${e.message}")
+            val stderrCb = object : CallbackList<String>() {
+                override fun onAddElement(e: String) {
+                    scope.launch(Dispatchers.Main) { append("E: $e") }
                 }
             }
-        }
-    }
 
-    LaunchedEffect(logs.size) {
-        if (logs.isNotEmpty()) listState.animateScrollToItem(logs.lastIndex)
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "QuickShell",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                actions = {
-                    IconButton(
-                        onClick = { cancelCommand() },
-                        enabled = isRunning
-                    ) {
-                        Icon(Icons.Outlined.Close, contentDescription = "Stop Command")
-                    }
-                    IconButton(onClick = { logs.clear() }) {
-                        Icon(Icons.Outlined.Delete, contentDescription = "Clear Logs")
+            Shell.cmd(script)
+                .to(stdoutCb, stderrCb)
+                .submit { result ->
+                    scope.launch(Dispatchers.Main) {
+                        append("[exit] code=${result.code}")
+                        isRunning = false
                     }
                 }
-            )
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-        ) {
-            TonalCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = "Commands",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
 
-                    Spacer(Modifier.height(8.dp))
+        fun cancelCommand() {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    Shell.getCachedShell()?.close()
 
-                    OutlinedTextField(
-                        value = cmd,
-                        onValueChange = { cmd = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false,
-                        minLines = 1,
-                        maxLines = 6,
-                        placeholder = { Text("Input Command") },
-                        trailingIcon = {
-                            IconButton(
-                                onClick = { runCommand() },
-                                enabled = cmd.isNotBlank() && !isRunning
-                            ) {
-                                Icon(Icons.Outlined.PlayArrow, contentDescription = "Run")
-                            }
-                        }
-                    )
-
+                    launch(Dispatchers.Main) {
+                        append("!! [CANCELLED] Process terminated by user !!")
+                        isRunning = false
+                    }
+                } catch (e: Exception) {
+                    launch(Dispatchers.Main) {
+                        append("Error cancelling: ${e.message}")
+                    }
                 }
             }
+        }
 
-            Spacer(Modifier.height(10.dp))
+        LaunchedEffect(logs.size) {
+            if (logs.isNotEmpty()) listState.animateScrollToItem(logs.lastIndex)
+        }
 
-            TonalCard(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(14.dp)
-                ) {
-                    itemsIndexed(logs) { _, line ->
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
                         Text(
-                            text = line,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                            text = "QuickShell",
+                            fontWeight = FontWeight.Bold
                         )
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { cancelCommand() },
+                            enabled = isRunning
+                        ) {
+                            Icon(Icons.Outlined.Close, contentDescription = "Stop Command")
+                        }
+                        IconButton(onClick = { logs.clear() }) {
+                            Icon(Icons.Outlined.Delete, contentDescription = "Clear Logs")
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                TonalCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(
+                            text = "Commands",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = cmd,
+                            onValueChange = { cmd = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = false,
+                            minLines = 1,
+                            maxLines = 6,
+                            placeholder = { Text("Input Command") },
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = { runCommand() },
+                                    enabled = cmd.isNotBlank() && !isRunning
+                                ) {
+                                    Icon(Icons.Outlined.PlayArrow, contentDescription = "Run")
+                                }
+                            }
+                        )
+
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                TonalCard(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(14.dp)
+                    ) {
+                        itemsIndexed(logs) { _, line ->
+                            Text(
+                                text = line,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                            )
+                        }
                     }
                 }
             }

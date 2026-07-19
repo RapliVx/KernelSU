@@ -53,6 +53,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf // Tambahan untuk float state
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
@@ -65,7 +66,9 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity // Tambahan untuk memanipulasi DPI
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Density // Tambahan untuk nilai Density
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
@@ -135,6 +138,10 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(prefs.getBoolean("enable_floating_navbar", false))
             }
 
+            var dpiScale by remember {
+                mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f))
+            }
+
             val prefsListener = remember {
                 SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                     if (key == "color_mode" || key == "key_color") {
@@ -142,6 +149,9 @@ class MainActivity : ComponentActivity() {
                     }
                     if (key == "enable_floating_navbar") {
                         isFloatingState = prefs.getBoolean("enable_floating_navbar", false)
+                    }
+                    if (key == "app_dpi_scale") {
+                        dpiScale = prefs.getFloat("app_dpi_scale", 1.0f)
                     }
                 }
             }
@@ -156,184 +166,196 @@ class MainActivity : ComponentActivity() {
             KernelSUTheme(
                 appSettings = appSettingsState.value
             ) {
-                val navController = rememberNavController()
-                val snackBarHostState = remember { SnackbarHostState() }
-
-                val bottomBarRoutes = remember {
-                    BottomBarDestination.entries.map { it.direction.route }.toSet()
+                val systemDensity = LocalDensity.current
+                val customDensity = remember(systemDensity, dpiScale) {
+                    Density(
+                        density = systemDensity.density * dpiScale,
+                        fontScale = systemDensity.fontScale * dpiScale
+                    )
                 }
 
-                val navigator = navController.rememberDestinationsNavigator()
-                val currentBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = currentBackStackEntry?.destination?.route
-                val showBottomBar = currentRoute in bottomBarRoutes
+                CompositionLocalProvider(
+                    LocalDensity provides customDensity
+                ) {
+                    val navController = rememberNavController()
+                    val snackBarHostState = remember { SnackbarHostState() }
 
-                var isScrollingDown by remember { mutableStateOf(false) }
+                    val bottomBarRoutes = remember {
+                        BottomBarDestination.entries.map { it.direction.route }.toSet()
+                    }
 
-                LaunchedEffect(currentRoute) {
-                    isScrollingDown = false
-                }
+                    val navigator = navController.rememberDestinationsNavigator()
+                    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentRoute = currentBackStackEntry?.destination?.route
+                    val showBottomBar = currentRoute in bottomBarRoutes
 
-                val nestedScrollConnection = remember {
-                    object : NestedScrollConnection {
-                        var scrollAccumulator = 0f
-                        override fun onPostScroll(
-                            consumed: Offset,
-                            available: Offset,
-                            source: NestedScrollSource
-                        ): Offset {
-                            val delta = consumed.y
-                            if (delta != 0f) {
-                                scrollAccumulator += delta
-                                scrollAccumulator = scrollAccumulator.coerceIn(-150f, 150f)
+                    var isScrollingDown by remember { mutableStateOf(false) }
 
-                                if (scrollAccumulator < -50f) {
-                                    isScrollingDown = true
-                                    scrollAccumulator = 0f
-                                } else if (scrollAccumulator > 50f) {
-                                    isScrollingDown = false
-                                    scrollAccumulator = 0f
+                    LaunchedEffect(currentRoute) {
+                        isScrollingDown = false
+                    }
+
+                    val nestedScrollConnection = remember {
+                        object : NestedScrollConnection {
+                            var scrollAccumulator = 0f
+                            override fun onPostScroll(
+                                consumed: Offset,
+                                available: Offset,
+                                source: NestedScrollSource
+                            ): Offset {
+                                val delta = consumed.y
+                                if (delta != 0f) {
+                                    scrollAccumulator += delta
+                                    scrollAccumulator = scrollAccumulator.coerceIn(-150f, 150f)
+
+                                    if (scrollAccumulator < -50f) {
+                                        isScrollingDown = true
+                                        scrollAccumulator = 0f
+                                    } else if (scrollAccumulator > 50f) {
+                                        isScrollingDown = false
+                                        scrollAccumulator = 0f
+                                    }
+                                }
+                                return Offset.Zero
+                            }
+                        }
+                    }
+
+                    val homeDestination = BottomBarDestination.entries.firstOrNull()
+                    val startRoute = homeDestination?.direction?.route
+
+                    if (homeDestination != null && startRoute != null) {
+                        BackHandler(enabled = currentRoute != startRoute && currentRoute in bottomBarRoutes) {
+                            navigator.navigate(homeDestination.direction) {
+                                popUpTo(NavGraphs.root) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(zipUri) {
+                        if (!zipUri.isNullOrEmpty()) {
+                            val flashIt = if (isAnyKernel) {
+                                FlashIt.FlashAnyKernel(zipUri.first())
+                            } else {
+                                FlashIt.FlashModules(zipUri)
+                            }
+                            navigator.navigate(
+                                FlashScreenDestination(flashIt)
+                            )
+                        }
+                    }
+
+                    val configuration = LocalConfiguration.current
+                    val defaultTransitions = object : NavHostAnimatedDestinationStyle() {
+                        override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
+                            {
+                                if (targetState.destination.route !in bottomBarRoutes) {
+                                    slideInHorizontally(
+                                        initialOffsetX = { fullWidth -> fullWidth },
+                                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                    ) + fadeIn(animationSpec = tween(300))
+                                } else {
+                                    fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
+                                            scaleIn(
+                                                initialScale = 0.96f,
+                                                animationSpec = tween(220, easing = FastOutSlowInEasing)
+                                            )
                                 }
                             }
-                            return Offset.Zero
-                        }
-                    }
-                }
 
-                val homeDestination = BottomBarDestination.entries.firstOrNull()
-                val startRoute = homeDestination?.direction?.route
-
-                if (homeDestination != null && startRoute != null) {
-                    BackHandler(enabled = currentRoute != startRoute && currentRoute in bottomBarRoutes) {
-                        navigator.navigate(homeDestination.direction) {
-                            popUpTo(NavGraphs.root) {
-                                saveState = true
+                        override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
+                            {
+                                if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
+                                    slideOutHorizontally(
+                                        targetOffsetX = { fullWidth -> -(fullWidth / 4) },
+                                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                    ) + fadeOut(animationSpec = tween(300))
+                                } else {
+                                    fadeOut(animationSpec = tween(150))
+                                }
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                }
 
-                LaunchedEffect(zipUri) {
-                    if (!zipUri.isNullOrEmpty()) {
-                        val flashIt = if (isAnyKernel) {
-                            FlashIt.FlashAnyKernel(zipUri.first())
-                        } else {
-                            FlashIt.FlashModules(zipUri)
-                        }
-                        navigator.navigate(
-                            FlashScreenDestination(flashIt)
-                        )
-                    }
-                }
+                        override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
+                            {
+                                if (targetState.destination.route in bottomBarRoutes) {
+                                    slideInHorizontally(
+                                        initialOffsetX = { fullWidth -> -(fullWidth / 4) },
+                                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                    ) + fadeIn(animationSpec = tween(300))
+                                } else {
+                                    fadeIn(animationSpec = tween(220))
+                                }
+                            }
 
-                val configuration = LocalConfiguration.current
-                val defaultTransitions = object : NavHostAnimatedDestinationStyle() {
-                    override val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
-                        {
-                            if (targetState.destination.route !in bottomBarRoutes) {
-                                slideInHorizontally(
-                                    initialOffsetX = { fullWidth -> fullWidth },
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                                ) + fadeIn(animationSpec = tween(300))
-                            } else {
-                                fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
-                                        scaleIn(
-                                            initialScale = 0.96f,
-                                            animationSpec = tween(220, easing = FastOutSlowInEasing)
+                        override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
+                            {
+                                if (initialState.destination.route !in bottomBarRoutes) {
+                                    slideOutHorizontally(
+                                        targetOffsetX = { fullWidth -> fullWidth },
+                                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                    ) + fadeOut(animationSpec = tween(300))
+                                } else {
+                                    fadeOut(animationSpec = tween(150))
+                                }
+                            }
+                    }
+
+                    Scaffold(
+                        bottomBar = {
+                            if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState) {
+                                BottomBar(navController)
+                            }
+                        },
+                        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+                    ) { innerPadding ->
+                        CompositionLocalProvider(
+                            LocalSnackbarHost provides snackBarHostState,
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection)) {
+
+                                if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFloatingState) {
+                                    Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
+                                        SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
+                                        DestinationsNavHost(
+                                            modifier = Modifier.weight(1f).padding(innerPadding),
+                                            navGraph = NavGraphs.root,
+                                            navController = navController,
+                                            defaultTransitions = defaultTransitions
                                         )
-                            }
-                        }
-
-                    override val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
-                        {
-                            if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
-                                slideOutHorizontally(
-                                    targetOffsetX = { fullWidth -> -(fullWidth / 4) },
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                                ) + fadeOut(animationSpec = tween(300))
-                            } else {
-                                fadeOut(animationSpec = tween(150))
-                            }
-                        }
-
-                    override val popEnterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition =
-                        {
-                            if (targetState.destination.route in bottomBarRoutes) {
-                                slideInHorizontally(
-                                    initialOffsetX = { fullWidth -> -(fullWidth / 4) },
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                                ) + fadeIn(animationSpec = tween(300))
-                            } else {
-                                fadeIn(animationSpec = tween(220))
-                            }
-                        }
-
-                    override val popExitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition =
-                        {
-                            if (initialState.destination.route !in bottomBarRoutes) {
-                                slideOutHorizontally(
-                                    targetOffsetX = { fullWidth -> fullWidth },
-                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
-                                ) + fadeOut(animationSpec = tween(300))
-                            } else {
-                                fadeOut(animationSpec = tween(150))
-                            }
-                        }
-                }
-
-                Scaffold(
-                    bottomBar = {
-                        if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState) {
-                            BottomBar(navController)
-                        }
-                    },
-                    contentWindowInsets = WindowInsets(0, 0, 0, 0)
-                ) { innerPadding ->
-                    CompositionLocalProvider(
-                        LocalSnackbarHost provides snackBarHostState,
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection)) {
-
-                            if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isFloatingState) {
-                                Row(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))) {
-                                    SideBar(navController = navController, modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)))
+                                    }
+                                } else {
                                     DestinationsNavHost(
-                                        modifier = Modifier.weight(1f).padding(innerPadding),
+                                        modifier = Modifier.padding(innerPadding),
                                         navGraph = NavGraphs.root,
                                         navController = navController,
                                         defaultTransitions = defaultTransitions
                                     )
                                 }
-                            } else {
-                                DestinationsNavHost(
-                                    modifier = Modifier.padding(innerPadding),
-                                    navGraph = NavGraphs.root,
-                                    navController = navController,
-                                    defaultTransitions = defaultTransitions
-                                )
-                            }
 
-                            Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                                AnimatedVisibility(
-                                    visible = showBottomBar && isFloatingState && !isScrollingDown,
-                                    enter = slideInVertically(
-                                        initialOffsetY = { it * 2 },
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioLowBouncy,
-                                            stiffness = Spring.StiffnessLow
-                                        )
-                                    ) + fadeIn(tween(400)),
-                                    exit = slideOutVertically(
-                                        targetOffsetY = { it * 2 },
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioNoBouncy,
-                                            stiffness = Spring.StiffnessLow
-                                        )
-                                    ) + fadeOut(tween(400))
-                                ) {
-                                    BottomBar(navController)
+                                Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+                                    AnimatedVisibility(
+                                        visible = showBottomBar && isFloatingState && !isScrollingDown,
+                                        enter = slideInVertically(
+                                            initialOffsetY = { it * 2 },
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessLow
+                                            )
+                                        ) + fadeIn(tween(400)),
+                                        exit = slideOutVertically(
+                                            targetOffsetY = { it * 2 },
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                                stiffness = Spring.StiffnessLow
+                                            )
+                                        ) + fadeOut(tween(400))
+                                    ) {
+                                        BottomBar(navController)
+                                    }
                                 }
                             }
                         }

@@ -60,6 +60,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -71,6 +72,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.expressiveLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,6 +101,7 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.result.ResultBackNavigator
 import com.yalantis.ucrop.UCrop
 import java.io.File
+import kotlin.math.roundToInt // Tambahan impor untuk presisi persen
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
@@ -349,6 +352,47 @@ fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                             }
                         }
                     }
+                }
+            }
+            
+            SettingsGroupCard(title = "UI Scale (DPI)") {
+                var dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "App Interface Scale",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "${(dpiScale * 100).roundToInt()}%",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    
+                    Slider(
+                        value = dpiScale,
+                        onValueChange = { newValue -> 
+                            dpiScale = newValue 
+                        },
+                        onValueChangeFinished = {
+                            prefs.edit { putFloat("app_dpi_scale", dpiScale) }
+                        },
+                        valueRange = 0.8f..1.2f,
+                        steps = 3
+                    )
+                    
+                    Text(
+                        text = "Adjust the size of the elements inside the application.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 

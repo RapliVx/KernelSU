@@ -106,6 +106,10 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import me.weishu.kernelsu.ui.util.getHeaderImage
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -133,83 +137,97 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val context = LocalContext.current
     
     val kernelVersion = getKernelVersion()
-    val isFloating = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("enable_floating_navbar", false) }
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val isFloating = remember { prefs.getBoolean("enable_floating_navbar", false) }
     val useClassicLayout = remember { context.getLayoutStyle() }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) } // Injeksi Skala DPI
     
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val sysNavBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val floatingPadding = if (isFloating) sysNavBarPadding + 96.dp else 0.dp
 
-    Scaffold(
-        topBar = { TopBar(scrollBehavior = scrollBehavior) },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            val isManager = remember { Natives.isManager }
-            val ksuVersion = remember(isManager) { if (isManager) Natives.version else null }
-            val lkmMode = remember(ksuVersion) {
-                ksuVersion?.let { if (kernelVersion.isGKI()) Natives.isLkmMode else null }
-            }
-            val requireNewKernel = remember { Natives.requireNewKernel() }
-            val isRootAvailable = remember { rootAvailable() }
-            val fullFeatured = remember(isManager, requireNewKernel, isRootAvailable) {
-                isManager && !requireNewKernel && isRootAvailable
-            }
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
 
-            StatusCard(
-                kernelVersion = kernelVersion,
-                ksuVersion = ksuVersion,
-                lkmMode = lkmMode,
-                fullFeatured = fullFeatured,
-                useClassicLayout = useClassicLayout,
-                onClickInstall = { navigator.navigate(InstallScreenDestination) },
-                onClickSuperuser = {
-                    navigator.navigate(SuperUserScreenDestination) {
-                        popUpTo(NavGraphs.root) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                onclickModule = {
-                    navigator.navigate(ModuleScreenDestination) {
-                        popUpTo(NavGraphs.root) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
+    CompositionLocalProvider(
+        LocalDensity provides customDensity
+    ) {
+        Scaffold(
+            topBar = { TopBar(scrollBehavior = scrollBehavior) },
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                val isManager = remember { Natives.isManager }
+                val ksuVersion = remember(isManager) { if (isManager) Natives.version else null }
+                val lkmMode = remember(ksuVersion) {
+                    ksuVersion?.let { if (kernelVersion.isGKI()) Natives.isLkmMode else null }
                 }
-            )
+                val requireNewKernel = remember { Natives.requireNewKernel() }
+                val isRootAvailable = remember { rootAvailable() }
+                val fullFeatured = remember(isManager, requireNewKernel, isRootAvailable) {
+                    isManager && !requireNewKernel && isRootAvailable
+                }
+
+                StatusCard(
+                    kernelVersion = kernelVersion,
+                    ksuVersion = ksuVersion,
+                    lkmMode = lkmMode,
+                    fullFeatured = fullFeatured,
+                    useClassicLayout = useClassicLayout,
+                    onClickInstall = { navigator.navigate(InstallScreenDestination) },
+                    onClickSuperuser = {
+                        navigator.navigate(SuperUserScreenDestination) {
+                            popUpTo(NavGraphs.root) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onclickModule = {
+                        navigator.navigate(ModuleScreenDestination) {
+                            popUpTo(NavGraphs.root) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
 //            if (ksuVersion != null && !Natives.isLkmMode) {
 //                WarningCard(stringResource(id = R.string.home_gki_warning))
 //            }
-            if (isManager && requireNewKernel) {
-                WarningCard(
-                    stringResource(id = R.string.require_kernel_version).format(
-                        ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL
+                if (isManager && requireNewKernel) {
+                    WarningCard(
+                        stringResource(id = R.string.require_kernel_version).format(
+                            ksuVersion, Natives.MINIMAL_SUPPORTED_KERNEL
+                        )
                     )
-                )
-            }
-            if (ksuVersion != null && !isRootAvailable) {
-                WarningCard(
-                    stringResource(id = R.string.grant_root_failed)
-                )
-            }
+                }
+                if (ksuVersion != null && !isRootAvailable) {
+                    WarningCard(
+                        stringResource(id = R.string.grant_root_failed)
+                    )
+                }
 //            val checkUpdate =
 //                LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
 //                    .getBoolean("check_update", true)
 //            if (checkUpdate) {
 //                UpdateCard()
 //            }
-            InfoCard()
-            DonateCard()
-            LearnMoreCard()
-            Spacer(modifier = Modifier.height(floatingPadding))
+                InfoCard()
+                DonateCard()
+                LearnMoreCard()
+                Spacer(modifier = Modifier.height(floatingPadding))
+            }
         }
     }
 }

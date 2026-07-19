@@ -74,9 +74,11 @@ import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -89,6 +91,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -103,6 +106,7 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Density
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ramcosta.composedestinations.annotation.Destination
@@ -176,11 +180,15 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     val snackBarHost = LocalSnackbarHost.current
 
     val context = LocalContext.current
-    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
 
-    val isFloating = prefs.getBoolean("enable_floating_navbar", false)
-    val sysNavBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val floatingPadding = if (isFloating) sysNavBarPadding + 96.dp else 0.dp
+    val isFloating = remember { prefs.getBoolean("enable_floating_navbar", false) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) } // Injeksi Skala DPI
+
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+    val sysNavBarPadding = remember(navBarPadding) { navBarPadding.calculateBottomPadding() }
+    val floatingPadding = remember(isFloating, sysNavBarPadding) { if (isFloating) sysNavBarPadding + 96.dp else 0.dp }
+    
     val modules = viewModel.moduleList
     var isFabVisible by remember { mutableStateOf(true) }
 
@@ -231,11 +239,11 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
         contract = ActivityResultContracts.StartActivityForResult()
     ) { viewModel.fetchModuleList() }
 
-    val isSafeMode = Natives.isSafeMode
+    val isSafeMode = remember { Natives.isSafeMode }
     val magiskInstalled by produceState(initialValue = false) {
         value = withContext(Dispatchers.IO) { hasMagisk() }
     }
-    val hideInstallButton = isSafeMode || magiskInstalled
+    val hideInstallButton = remember(isSafeMode, magiskInstalled) { isSafeMode || magiskInstalled }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -253,172 +261,185 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
         else LinearOutSlowInEasing.transform(pullToRefreshState.distanceFraction).coerceIn(0f, 1f)
     }
 
-    Scaffold(
-        modifier = Modifier
-            .pullToRefresh(
-                state = pullToRefreshState,
-                isRefreshing = viewModel.isRefreshing,
-                onRefresh = onRefresh,
-            )
-            .nestedScroll(nestedScrollConnection),
-        topBar = {
-            SearchAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.module),
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                searchText = viewModel.search,
-                onSearchTextChange = { viewModel.search = it },
-                onClearClick = { viewModel.search = TextFieldValue("") },
-                actionsContent = {
-                    IconButton(
-                        onClick = { navigator.navigate(ModuleRepoScreenDestination) }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.CloudDownload,
-                            contentDescription = stringResource(id = R.string.module_repos)
-                        )
-                    }
-                    RebootListPopup()
-                },
-                dropdownContent = {
-                    var showDropdown by remember { mutableStateOf(false) }
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
 
-                    IconButton(
-                        onClick = { showDropdown = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = stringResource(id = R.string.settings)
-                        )
-
-                        DropdownMenu(expanded = showDropdown, onDismissRequest = {
-                            showDropdown = false
-                        }) {
-                            DropdownMenuItem(text = {
-                                Text(stringResource(R.string.module_sort_action_first))
-                            }, trailingIcon = {
-                                Checkbox(viewModel.sortActionFirst, null)
-                            }, onClick = {
-                                viewModel.sortActionFirst = !viewModel.sortActionFirst
-                                prefs.edit {
-                                    putBoolean("module_sort_action_first", viewModel.sortActionFirst)
-                                }
-                                scope.launch { viewModel.fetchModuleList() }
-                            })
-                            DropdownMenuItem(text = {
-                                Text(stringResource(R.string.module_sort_enabled_first))
-                            }, trailingIcon = {
-                                Checkbox(viewModel.sortEnabledFirst, null)
-                            }, onClick = {
-                                viewModel.sortEnabledFirst = !viewModel.sortEnabledFirst
-                                prefs.edit {
-                                    putBoolean("module_sort_enabled_first", viewModel.sortEnabledFirst)
-                                }
-                                scope.launch { viewModel.fetchModuleList() }
-                            })
-                        }
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-            )
-        },
-        floatingActionButton = {
-            if (!hideInstallButton) {
-                val moduleInstall = stringResource(id = R.string.module_install)
-
-                val dynamicFabPadding by animateDpAsState(
-                    targetValue = if (isFabVisible && isFloating) floatingPadding else 0.dp,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessLow
-                    ),
+    CompositionLocalProvider(
+        LocalDensity provides customDensity
+    ) {
+        Scaffold(
+            modifier = Modifier
+                .pullToRefresh(
+                    state = pullToRefreshState,
+                    isRefreshing = viewModel.isRefreshing,
+                    onRefresh = onRefresh,
                 )
-
-                val selectZipLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.StartActivityForResult()
-                ) {
-                    if (it.resultCode != RESULT_OK) {
-                        return@rememberLauncherForActivityResult
-                    }
-                    val data = it.data ?: return@rememberLauncherForActivityResult
-                    val clipData = data.clipData
-
-                    val uris = mutableListOf<Uri>()
-                    if (clipData != null) {
-                        for (i in 0 until clipData.itemCount) {
-                            clipData.getItemAt(i)?.uri?.let { uris.add(it) }
-                        }
-                    } else {
-                        data.data?.let { uris.add(it) }
-                    }
-
-                    navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(uris), skipConfirmation = uris.size == 1))
-                    viewModel.markNeedRefresh()
-                }
-
-                ExtendedFloatingActionButton(
-                    modifier = Modifier.padding(bottom = dynamicFabPadding),
-                    onClick = {
-                        // Select the zip files to install
-                        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                            type = "application/zip"
-                            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                        }
-                        selectZipLauncher.launch(intent)
+                .nestedScroll(nestedScrollConnection),
+            topBar = {
+                SearchAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.module),
+                            fontWeight = FontWeight.Bold
+                        )
                     },
-                    icon = { Icon(Icons.Filled.Add, moduleInstall) },
-                    text = { Text(text = moduleInstall) },
-                )
-            }
-        },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        snackbarHost = { SnackbarHost(hostState = snackBarHost) }
-    ) { innerPadding ->
-
-        when {
-            magiskInstalled -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        stringResource(R.string.module_magisk_conflict),
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
-
-            else -> {
-                ModuleList(
-                    navigator,
-                    viewModel = viewModel,
-                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-                    boxModifier = Modifier.padding(innerPadding),
-                    onInstallModule = {
-                        navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(listOf(it)), skipConfirmation = true))
-                        viewModel.markNeedRefresh()
-                    },
-                    onClickModule = { id, name, hasWebUi ->
-                        if (hasWebUi) {
-                            webUILauncher.launch(
-                                Intent(context, WebUIActivity::class.java)
-                                    .setData(Uri.parse("kernelsu://webui/$id"))
-                                    .putExtra("id", id)
-                                    .putExtra("name", name)
+                    searchText = viewModel.search,
+                    onSearchTextChange = { viewModel.search = it },
+                    onClearClick = { viewModel.search = TextFieldValue("") },
+                    actionsContent = {
+                        IconButton(
+                            onClick = { navigator.navigate(ModuleRepoScreenDestination) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CloudDownload,
+                                contentDescription = stringResource(id = R.string.module_repos)
                             )
                         }
+                        RebootListPopup()
                     },
-                    context = context,
-                    snackBarHost = snackBarHost,
-                    pullToRefreshState = pullToRefreshState,
-                    isRefreshing = viewModel.isRefreshing,
-                    scaleFraction = scaleFraction()
+                    dropdownContent = {
+                        var showDropdown by remember { mutableStateOf(false) }
+
+                        IconButton(
+                            onClick = { showDropdown = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = stringResource(id = R.string.settings)
+                            )
+
+                            DropdownMenu(expanded = showDropdown, onDismissRequest = {
+                                showDropdown = false
+                            }) {
+                                DropdownMenuItem(text = {
+                                    Text(stringResource(R.string.module_sort_action_first))
+                                }, trailingIcon = {
+                                    Checkbox(viewModel.sortActionFirst, null)
+                                }, onClick = {
+                                    viewModel.sortActionFirst = !viewModel.sortActionFirst
+                                    prefs.edit {
+                                        putBoolean("module_sort_action_first", viewModel.sortActionFirst)
+                                    }
+                                    scope.launch { viewModel.fetchModuleList() }
+                                })
+                                DropdownMenuItem(text = {
+                                    Text(stringResource(R.string.module_sort_enabled_first))
+                                }, trailingIcon = {
+                                    Checkbox(viewModel.sortEnabledFirst, null)
+                                }, onClick = {
+                                    viewModel.sortEnabledFirst = !viewModel.sortEnabledFirst
+                                    prefs.edit {
+                                        putBoolean("module_sort_enabled_first", viewModel.sortEnabledFirst)
+                                    }
+                                    scope.launch { viewModel.fetchModuleList() }
+                                })
+                            }
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
                 )
+            },
+            floatingActionButton = {
+                if (!hideInstallButton) {
+                    val moduleInstall = stringResource(id = R.string.module_install)
+
+                    val dynamicFabPadding by animateDpAsState(
+                        targetValue = if (isFabVisible && isFloating) floatingPadding else 0.dp,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow
+                        ),
+                    )
+
+                    val selectZipLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.StartActivityForResult()
+                    ) {
+                        if (it.resultCode != RESULT_OK) {
+                            return@rememberLauncherForActivityResult
+                        }
+                        val data = it.data ?: return@rememberLauncherForActivityResult
+                        val clipData = data.clipData
+
+                        val uris = mutableListOf<Uri>()
+                        if (clipData != null) {
+                            for (i in 0 until clipData.itemCount) {
+                                clipData.getItemAt(i)?.uri?.let { uris.add(it) }
+                            }
+                        } else {
+                            data.data?.let { uris.add(it) }
+                        }
+
+                        navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(uris), skipConfirmation = uris.size == 1))
+                        viewModel.markNeedRefresh()
+                    }
+
+                    ExtendedFloatingActionButton(
+                        modifier = Modifier.padding(bottom = dynamicFabPadding),
+                        onClick = {
+                            // Select the zip files to install
+                            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                                type = "application/zip"
+                                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                            }
+                            selectZipLauncher.launch(intent)
+                        },
+                        icon = { Icon(Icons.Filled.Add, moduleInstall) },
+                        text = { Text(text = moduleInstall) },
+                    )
+                }
+            },
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+            snackbarHost = { SnackbarHost(hostState = snackBarHost) }
+        ) { innerPadding ->
+
+            when {
+                magiskInstalled -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            stringResource(R.string.module_magisk_conflict),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+
+                else -> {
+                    ModuleList(
+                        navigator,
+                        viewModel = viewModel,
+                        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                        boxModifier = Modifier.padding(innerPadding),
+                        floatingPadding = floatingPadding,
+                        onInstallModule = {
+                            navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(listOf(it)), skipConfirmation = true))
+                            viewModel.markNeedRefresh()
+                        },
+                        onClickModule = { id, name, hasWebUi ->
+                            if (hasWebUi) {
+                                webUILauncher.launch(
+                                    Intent(context, WebUIActivity::class.java)
+                                        .setData(Uri.parse("kernelsu://webui/$id"))
+                                        .putExtra("id", id)
+                                        .putExtra("name", name)
+                                )
+                            }
+                        },
+                        context = context,
+                        snackBarHost = snackBarHost,
+                        pullToRefreshState = pullToRefreshState,
+                        isRefreshing = viewModel.isRefreshing,
+                        scaleFraction = scaleFraction()
+                    )
+                }
             }
         }
     }
@@ -431,6 +452,7 @@ private fun ModuleList(
     viewModel: ModuleViewModel,
     modifier: Modifier = Modifier,
     boxModifier: Modifier = Modifier,
+    floatingPadding: androidx.compose.ui.unit.Dp,
     onInstallModule: (Uri) -> Unit,
     onClickModule: (id: String, name: String, hasWebUi: Boolean) -> Unit,
     context: Context,
@@ -458,10 +480,6 @@ private fun ModuleList(
     val scope = rememberCoroutineScope()
     val loadingDialog = rememberLoadingDialog()
     val confirmDialog = rememberConfirmDialog()
-
-    val isFloating = context.getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("enable_floating_navbar", false)
-    val sysNavBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val floatingPadding = if (isFloating) sysNavBarPadding + 96.dp else 0.dp
 
     suspend fun onModuleUpdate(
         module: ModuleViewModel.ModuleInfo,
@@ -572,6 +590,7 @@ private fun ModuleList(
             reboot()
         }
     }
+    
     Box(modifier = boxModifier) {
         LazyColumn(
             modifier = modifier,
@@ -601,7 +620,7 @@ private fun ModuleList(
                 }
 
                 else -> {
-                    items(viewModel.moduleList) { module ->
+                    items(viewModel.moduleList, key = { it.id }) { module ->
                         val scope = rememberCoroutineScope()
                         val moduleUpdateInfo = viewModel.updateInfo[module.id] ?: ModuleViewModel.ModuleUpdateInfo.Empty
 

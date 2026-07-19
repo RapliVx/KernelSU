@@ -79,8 +79,22 @@ fun AppProfileTemplateScreen(
     navigator: DestinationsNavigator,
     resultRecipient: ResultRecipient<TemplateEditorScreenDestination, Boolean>
 ) {
+    val context = LocalContext.current
     val viewModel = viewModel<TemplateViewModel>()
     val scope = rememberCoroutineScope()
+    
+    // Injeksi DPI Skala
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
+
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val pullToRefreshState = rememberPullToRefreshState()
 
@@ -90,7 +104,6 @@ fun AppProfileTemplateScreen(
         }
     }
 
-    // handle result from TemplateEditorScreen, refresh if needed
     resultRecipient.onNavResult { result ->
         if (result.getOr { false }) {
             scope.launch { viewModel.fetchTemplates() }
@@ -98,9 +111,7 @@ fun AppProfileTemplateScreen(
     }
 
     val onRefresh: () -> Unit = {
-        scope.launch {
-            viewModel.fetchTemplates()
-        }
+        scope.launch { viewModel.fetchTemplates() }
     }
 
     val scaleFraction = {
@@ -108,96 +119,100 @@ fun AppProfileTemplateScreen(
         else LinearOutSlowInEasing.transform(pullToRefreshState.distanceFraction).coerceIn(0f, 1f)
     }
 
-    Scaffold(
-        modifier = Modifier.pullToRefresh(
-            state = pullToRefreshState,
-            isRefreshing = viewModel.isRefreshing,
-            onRefresh = onRefresh,
-        ),
-        topBar = {
-            val clipboardManager = LocalClipboardManager.current
-            val context = LocalContext.current
-            val showToast = fun(msg: String) {
-                scope.launch(Dispatchers.Main) {
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                }
-            }
-            TopBar(
-                onBack = dropUnlessResumed { navigator.popBackStack() },
-                onSync = {
-                    scope.launch { viewModel.fetchTemplates(true) }
-                },
-                onImport = {
-                    clipboardManager.getText()?.text?.let {
-                        if (it.isEmpty()) {
-                            showToast(context.getString(R.string.app_profile_template_import_empty))
-                            return@let
-                        }
-                        scope.launch {
-                            viewModel.importTemplates(
-                                it, {
-                                    showToast(context.getString(R.string.app_profile_template_import_success))
-                                    viewModel.fetchTemplates(false)
-                                },
-                                showToast
-                            )
-                        }
+    CompositionLocalProvider(LocalDensity provides customDensity) {
+        Scaffold(
+            modifier = Modifier.pullToRefresh(
+                state = pullToRefreshState,
+                isRefreshing = viewModel.isRefreshing,
+                onRefresh = onRefresh,
+            ),
+            topBar = {
+                val clipboardManager = LocalClipboardManager.current
+                val showToast = remember {
+                    fun(msg: String) {
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                     }
-                },
-                onExport = {
-                    scope.launch {
-                        viewModel.exportTemplates(
-                            {
-                                showToast(context.getString(R.string.app_profile_template_export_empty))
+                }
+                
+                TopBar(
+                    onBack = dropUnlessResumed { navigator.popBackStack() },
+                    onSync = { scope.launch { viewModel.fetchTemplates(true) } },
+                    onImport = {
+                        clipboardManager.getText()?.text?.let { text ->
+                            if (text.isEmpty()) {
+                                showToast(context.getString(R.string.app_profile_template_import_empty))
+                                return@let
                             }
-                        ) {
-                            clipboardManager.setText(AnnotatedString(it))
+                            scope.launch {
+                                viewModel.importTemplates(
+                                    text, {
+                                        showToast(context.getString(R.string.app_profile_template_import_success))
+                                        viewModel.fetchTemplates(false)
+                                    },
+                                    showToast
+                                )
+                            }
                         }
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    navigator.navigate(
-                        TemplateEditorScreenDestination(
-                            TemplateViewModel.TemplateInfo(),
-                            false
+                    },
+                    onExport = {
+                        scope.launch {
+                            viewModel.exportTemplates({
+                                showToast(context.getString(R.string.app_profile_template_export_empty))
+                            }) { exportedText ->
+                                clipboardManager.setText(AnnotatedString(exportedText))
+                                showToast(context.getString(R.string.app_profile_template_export_success))
+                            }
+                        }
+                    },
+                    scrollBehavior = scrollBehavior
+                )
+            },
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        navigator.navigate(
+                            TemplateEditorScreenDestination(
+                                TemplateViewModel.TemplateInfo(),
+                                false
+                            )
                         )
+                    },
+                    icon = { Icon(Icons.Filled.Add, null) },
+                    text = { Text(stringResource(id = R.string.app_profile_template_create)) },
+                )
+            },
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        ) { innerPadding ->
+            Box(Modifier.padding(innerPadding)) {
+                val templateList = viewModel.templateList
+                
+                ExpressiveLazyList(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        top = 8.dp,
+                        end = 16.dp,
+                        bottom = 16.dp + 56.dp + 16.dp 
+                    ),
+                    items = templateList,
+                    itemContent = { template ->
+                        TemplateItem(navigator, template)
+                    }
+                )
+                
+                Box(
+                    modifier = Modifier.align(Alignment.TopCenter).graphicsLayer {
+                        scaleX = scaleFraction()
+                        scaleY = scaleFraction()
+                    }
+                ) {
+                    PullToRefreshDefaults.LoadingIndicator(
+                        state = pullToRefreshState, 
+                        isRefreshing = viewModel.isRefreshing
                     )
-                },
-                icon = { Icon(Icons.Filled.Add, null) },
-                text = { Text(stringResource(id = R.string.app_profile_template_create)) },
-            )
-        },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-    ) { innerPadding ->
-        Box(Modifier.padding(innerPadding)) {
-            val templateList = viewModel.templateList
-            ExpressiveLazyList(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    top = 8.dp,
-                    end = 16.dp,
-                    bottom = 16.dp + 56.dp + 16.dp /* Scaffold Fab Spacing + Fab container height */
-                ),
-                items = templateList,
-                itemContent = { template ->
-                    TemplateItem(navigator, template)
                 }
-            )
-            Box(
-                modifier = Modifier.align(Alignment.TopCenter).graphicsLayer {
-                    scaleX = scaleFraction()
-                    scaleY = scaleFraction()
-                }
-            ) {
-                PullToRefreshDefaults.LoadingIndicator(state = pullToRefreshState, isRefreshing = viewModel.isRefreshing)
             }
         }
     }

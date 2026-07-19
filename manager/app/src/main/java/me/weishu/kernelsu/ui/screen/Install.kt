@@ -38,8 +38,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -48,8 +50,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.dropUnlessResumed
 import com.maxkeppeker.sheets.core.models.base.Header
@@ -103,6 +107,9 @@ fun InstallScreen(navigator: DestinationsNavigator) {
     var hasCustomSelected by remember { mutableStateOf(false) }
     var allowShell by remember { mutableStateOf(false) }
     var enableAdb by remember { mutableStateOf(false) }
+
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
 
     val onInstall = {
         installMethod?.let { method ->
@@ -180,103 +187,115 @@ fun InstallScreen(navigator: DestinationsNavigator) {
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
-    Scaffold(
-        topBar = {
-            TopBar(
-                onBack = dropUnlessResumed { navigator.popBackStack() },
-                scrollBehavior = scrollBehavior
-            )
-        },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(rememberScrollState())
-        ) {
-            SelectInstallMethod { method ->
-                installMethod = method
-            }
-            val isOta = installMethod is InstallMethod.DirectInstallToInactiveSlot
-            val suffix = produceState(initialValue = "", isOta) {
-                value = getSlotSuffix(isOta)
-            }.value
-            val partitions = produceState(initialValue = emptyList()) {
-                value = getAvailablePartitions()
-            }.value
-            val defaultPartition = produceState(initialValue = "") {
-                value = getDefaultPartition()
-            }.value
-            partitionsState = partitions
-            val displayPartitions = partitions.map { name ->
-                if (defaultPartition == name) "$name (default)" else name
-            }
-            val defaultIndex = partitions.indexOf(defaultPartition).takeIf { it >= 0 } ?: 0
-            if (!hasCustomSelected) partitionSelectionIndex = defaultIndex
-            val showOptions = installMethod != null && installMethod !is InstallMethod.AnyKernel
-            AnimatedVisibility(
-                visible = showOptions,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
+
+    CompositionLocalProvider(
+        LocalDensity provides customDensity
+    ) {
+        Scaffold(
+            topBar = {
+                TopBar(
+                    onBack = dropUnlessResumed { navigator.popBackStack() },
+                    scrollBehavior = scrollBehavior
+                )
+            },
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .verticalScroll(rememberScrollState())
             ) {
-                ExpressiveList(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    content = listOf(
-                        {
-                            if (partitions.isNotEmpty()) {
-                                ExpressiveDropdownItem(
-                                    enabled = installMethod is InstallMethod.DirectInstall || installMethod is InstallMethod.DirectInstallToInactiveSlot,
-                                    items = displayPartitions,
-                                    selectedIndex = partitionSelectionIndex,
-                                    title = "${stringResource(R.string.install_select_partition)} (${suffix})",
-                                    onItemSelected = { index ->
-                                        hasCustomSelected = true
-                                        partitionSelectionIndex = index
+                SelectInstallMethod { method ->
+                    installMethod = method
+                }
+                val isOta = installMethod is InstallMethod.DirectInstallToInactiveSlot
+                val suffix = produceState(initialValue = "", isOta) {
+                    value = getSlotSuffix(isOta)
+                }.value
+                val partitions = produceState(initialValue = emptyList()) {
+                    value = getAvailablePartitions()
+                }.value
+                val defaultPartition = produceState(initialValue = "") {
+                    value = getDefaultPartition()
+                }.value
+                partitionsState = partitions
+                val displayPartitions = partitions.map { name ->
+                    if (defaultPartition == name) "$name (default)" else name
+                }
+                val defaultIndex = partitions.indexOf(defaultPartition).takeIf { it >= 0 } ?: 0
+                if (!hasCustomSelected) partitionSelectionIndex = defaultIndex
+                val showOptions = installMethod != null && installMethod !is InstallMethod.AnyKernel
+                AnimatedVisibility(
+                    visible = showOptions,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    ExpressiveList(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        content = listOf(
+                            {
+                                if (partitions.isNotEmpty()) {
+                                    ExpressiveDropdownItem(
+                                        enabled = installMethod is InstallMethod.DirectInstall || installMethod is InstallMethod.DirectInstallToInactiveSlot,
+                                        items = displayPartitions,
+                                        selectedIndex = partitionSelectionIndex,
+                                        title = "${stringResource(R.string.install_select_partition)} (${suffix})",
+                                        onItemSelected = { index ->
+                                            hasCustomSelected = true
+                                            partitionSelectionIndex = index
+                                        },
+                                        icon = Icons.Filled.Edit
+                                    )
+                                }
+                            },
+                            {
+                                ExpressiveListItem(
+                                    leadingContent = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, null) },
+                                    headlineContent = { Text(stringResource(id = R.string.install_upload_lkm_file)) },
+                                    supportingContent = {
+                                        (lkmSelection as? LkmSelection.LkmUri)?.let {
+                                            Text(stringResource(id = R.string.selected_lkm, it.uri.lastPathSegment ?: "(file)"))
+                                        }
                                     },
-                                    icon = Icons.Filled.Edit
+                                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)},
+                                    onClick = { onLkmUpload() }
+                                )
+                            },
+                            {
+                                ExpressiveCheckboxItem(
+                                    title = stringResource(id = R.string.allow_shell),
+                                    summary = stringResource(id = R.string.allow_shell_summary),
+                                    checked = allowShell,
+                                    onCheckedChange = { allowShell = it }
+                                )
+                            },
+                            {
+                                ExpressiveCheckboxItem(
+                                    title = stringResource(id = R.string.enable_adb),
+                                    summary = stringResource(id = R.string.enable_adb_summary),
+                                    checked = enableAdb,
+                                    onCheckedChange = { enableAdb = it }
                                 )
                             }
-                        },
-                        {
-                            ExpressiveListItem(
-                                leadingContent = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, null) },
-                                headlineContent = { Text(stringResource(id = R.string.install_upload_lkm_file)) },
-                                supportingContent = {
-                                    (lkmSelection as? LkmSelection.LkmUri)?.let {
-                                        Text(stringResource(id = R.string.selected_lkm, it.uri.lastPathSegment ?: "(file)"))
-                                    }
-                                },
-                                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)},
-                                onClick = { onLkmUpload() }
-                            )
-                        },
-                        {
-                            ExpressiveCheckboxItem(
-                                title = stringResource(id = R.string.allow_shell),
-                                summary = stringResource(id = R.string.allow_shell_summary),
-                                checked = allowShell,
-                                onCheckedChange = { allowShell = it }
-                            )
-                        },
-                        {
-                            ExpressiveCheckboxItem(
-                                title = stringResource(id = R.string.enable_adb),
-                                summary = stringResource(id = R.string.enable_adb_summary),
-                                checked = enableAdb,
-                                onCheckedChange = { enableAdb = it }
-                            )
-                        }
+                        )
                     )
-                )
+                }
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    enabled = installMethod != null,
+                    onClick = { onClickNext() }
+                ) { Text(stringResource(id = R.string.install_next)) }
             }
-            Button(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                enabled = installMethod != null,
-                onClick = { onClickNext() }
-            ) { Text(stringResource(id = R.string.install_next)) }
         }
     }
 }

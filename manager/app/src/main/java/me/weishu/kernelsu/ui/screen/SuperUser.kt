@@ -82,16 +82,27 @@ fun SuperUserScreen(
     navigator: DestinationsNavigator,
     appProfileResultRecipient: ResultRecipient<AppProfileScreenDestination, Boolean>
 ) {
+    val context = LocalContext.current
     val viewModel = viewModel<SuperUserViewModel>()
     val scope = rememberCoroutineScope()
+    
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
+
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     val pullToRefreshState = rememberPullToRefreshState()
 
     val onRefresh: () -> Unit = {
-        scope.launch {
-            viewModel.loadAppList()
-        }
+        scope.launch { viewModel.loadAppList() }
     }
 
     val scaleFraction = {
@@ -106,135 +117,140 @@ fun SuperUserScreen(
     }
 
     appProfileResultRecipient.onNavResult {
-        scope.launch {
-            viewModel.loadAppList()
+        scope.launch { viewModel.loadAppList() }
+    }
+
+    val filteredApps = remember(viewModel.appList, viewModel.search.text, viewModel.showSystemApps) {
+        val search = viewModel.search.text.lowercase()
+        SuperUserViewModel.apps.filter { app ->
+            val matchesSearch = app.label.lowercase().contains(search) || app.packageName.lowercase().contains(search)
+            val matchesSystem = viewModel.showSystemApps || !app.isSystemApp
+            matchesSearch && matchesSystem && app.packageName != ksuApp.packageName
         }
     }
 
-    Scaffold(
-        modifier = Modifier.pullToRefresh(
-            state = pullToRefreshState,
-            isRefreshing = viewModel.isRefreshing,
-            onRefresh = onRefresh,
-        ),
-        topBar = {
-            SearchAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.superuser),
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                searchText = viewModel.search,
-                onSearchTextChange = { viewModel.search = it },
-                onClearClick = { viewModel.search = TextFieldValue("") },
-                dropdownContent = {
-                    var showDropdown by remember { mutableStateOf(false) }
+    val allGroups = remember(filteredApps) { buildGroups(filteredApps) }
+    val visibleUids = remember(viewModel.appList) { viewModel.appList.map { it.uid }.toSet() }
+    val visibleGroups = remember(allGroups, visibleUids) {
+        allGroups.filter { it.uid in visibleUids }
+    }
 
-                    IconButton(
-                        onClick = { showDropdown = true },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = stringResource(id = R.string.settings)
+    CompositionLocalProvider(LocalDensity provides customDensity) {
+        Scaffold(
+            modifier = Modifier.pullToRefresh(
+                state = pullToRefreshState,
+                isRefreshing = viewModel.isRefreshing,
+                onRefresh = onRefresh,
+            ),
+            topBar = {
+                SearchAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.superuser),
+                            fontWeight = FontWeight.Bold
                         )
+                    },
+                    searchText = viewModel.search,
+                    onSearchTextChange = { viewModel.search = it },
+                    onClearClick = { viewModel.search = TextFieldValue("") },
+                    dropdownContent = {
+                        var showDropdown by remember { mutableStateOf(false) }
 
-                        DropdownMenu(expanded = showDropdown, onDismissRequest = {
-                            showDropdown = false
-                        }) {
-                            DropdownMenuItem(text = {
-                                Text(stringResource(R.string.refresh))
-                            }, onClick = {
-                                scope.launch {
-                                    viewModel.loadAppList()
-                                    listState.scrollToItem(0)
-                                }
-                                showDropdown = false
-                            })
-                            DropdownMenuItem(text = {
-                                Text(
-                                    if (viewModel.showSystemApps) {
-                                        stringResource(R.string.hide_system_apps)
-                                    } else {
-                                        stringResource(R.string.show_system_apps)
+                        IconButton(onClick = { showDropdown = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = stringResource(id = R.string.settings)
+                            )
+                            DropdownMenu(
+                                expanded = showDropdown,
+                                onDismissRequest = { showDropdown = false }
+                            ) {
+                                DropdownMenuItem(text = {
+                                    Text(stringResource(R.string.refresh))
+                                }, onClick = {
+                                    scope.launch {
+                                        viewModel.loadAppList()
+                                        listState.scrollToItem(0)
                                     }
-                                )
-                            }, onClick = {
-                                viewModel.updateShowSystemApps(!viewModel.showSystemApps)
-                                showDropdown = false
-                            })
+                                    showDropdown = false
+                                })
+                                DropdownMenuItem(text = {
+                                    Text(
+                                        if (viewModel.showSystemApps) stringResource(R.string.hide_system_apps)
+                                        else stringResource(R.string.show_system_apps)
+                                    )
+                                }, onClick = {
+                                    viewModel.updateShowSystemApps(!viewModel.showSystemApps)
+                                    showDropdown = false
+                                })
+                            }
                         }
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
-        },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            val filteredApps = remember(SuperUserViewModel.apps) {
-                SuperUserViewModel.apps.filter { it.packageName != ksuApp.packageName }
-            }
-            val allGroups = remember(filteredApps) { buildGroups(filteredApps) }
-            val visibleUids = remember(viewModel.appList) { viewModel.appList.map { it.uid }.toSet() }
-            val expandedSearchUids = remember { mutableStateOf(setOf<Int>()) }
-            val isSearching = viewModel.search.text.isNotEmpty()
+                    },
+                    scrollBehavior = scrollBehavior
+                )
+            },
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding)) {
+                val expandedSearchUids = remember { mutableStateOf(setOf<Int>()) }
+                val isSearching = viewModel.search.text.isNotEmpty()
 
-            val visibleGroups = remember(allGroups, visibleUids) {
-                allGroups.filter { it.uid in visibleUids }
-            }
-
-            ExpressiveLazyList(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
-                items = visibleGroups,
-            ) { group ->
-                val expanded = isSearching || expandedSearchUids.value.contains(group.uid)
-                val onToggleExpand = {
-                    if (group.apps.size > 1) {
-                        expandedSearchUids.value = if (expandedSearchUids.value.contains(group.uid)) {
-                            expandedSearchUids.value - group.uid
-                        } else {
-                            expandedSearchUids.value + group.uid
+                ExpressiveLazyList(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    items = visibleGroups,
+                ) { group ->
+                    val expanded = isSearching || expandedSearchUids.value.contains(group.uid)
+                    val onToggleExpand = {
+                        if (group.apps.size > 1) {
+                            expandedSearchUids.value = if (expandedSearchUids.value.contains(group.uid)) {
+                                expandedSearchUids.value - group.uid
+                            } else {
+                                expandedSearchUids.value + group.uid
+                            }
                         }
                     }
-                }
-                Column {
-                    GroupItem(
-                        group = group,
-                        onToggleExpand = onToggleExpand,
-                    ) {
-                        navigator.navigate(AppProfileScreenDestination(group.primary)) {
-                            launchSingleTop = true
+                    Column {
+                        GroupItem(
+                            group = group,
+                            onToggleExpand = onToggleExpand,
+                        ) {
+                            navigator.navigate(AppProfileScreenDestination(group.primary)) {
+                                launchSingleTop = true
+                            }
                         }
-                    }
-                    AnimatedVisibility(
-                        visible = expanded && group.apps.size > 1,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
-                    ) {
-                        Column {
-                            group.apps.filter { it in viewModel.appList }.forEach { app ->
-                                SimpleAppItem(app) {
-                                    navigator.navigate(AppProfileScreenDestination(app)) {
-                                        launchSingleTop = true
+                        AnimatedVisibility(
+                            visible = expanded && group.apps.size > 1,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column {
+                                group.apps.filter { it in viewModel.appList }.forEach { app ->
+                                    SimpleAppItem(app) {
+                                        navigator.navigate(AppProfileScreenDestination(app)) {
+                                            launchSingleTop = true
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .graphicsLayer {
-                        scaleX = scaleFraction()
-                        scaleY = scaleFraction()
-                    }
-            ) {
-                PullToRefreshDefaults.LoadingIndicator(state = pullToRefreshState, isRefreshing = viewModel.isRefreshing)
+                
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .graphicsLayer {
+                            scaleX = scaleFraction()
+                            scaleY = scaleFraction()
+                        }
+                ) {
+                    PullToRefreshDefaults.LoadingIndicator(
+                        state = pullToRefreshState,
+                        isRefreshing = viewModel.isRefreshing
+                    )
+                }
             }
         }
     }

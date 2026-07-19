@@ -53,8 +53,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -67,14 +69,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
+import androidx.core.net.toUri
 import com.maxkeppeker.sheets.core.models.base.Header
 import com.maxkeppeker.sheets.core.models.base.IconSource
 import com.maxkeppeker.sheets.core.models.base.rememberUseCaseState
@@ -129,78 +134,89 @@ import androidx.core.net.toUri
 @Destination<RootGraph>
 @Composable
 fun SettingScreen(navigator: DestinationsNavigator) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-    val snackBarHost = LocalSnackbarHost.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
 
-    Scaffold(
-        topBar = {
-            TopBar(
-                scrollBehavior = scrollBehavior
-            )
-        },
-        snackbarHost = { SnackbarHost(snackBarHost) },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-    ) { paddingValues ->
-        val aboutDialog = rememberCustomDialog {
-            AboutDialog(it)
-        }
-        val loadingDialog = rememberLoadingDialog()
-        val uninstallConfirmDialog = rememberConfirmDialog()
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
 
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .nestedScroll(scrollBehavior.nestedScrollConnection)
-                .verticalScroll(rememberScrollState())
-        ) {
+    CompositionLocalProvider(LocalDensity provides customDensity) {
+        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+        val snackBarHost = LocalSnackbarHost.current
 
-            val context = LocalContext.current
-            val scope = rememberCoroutineScope()
-            val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-
-            val exportBugreportLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.CreateDocument("application/gzip")
-            ) { uri: Uri? ->
-                if (uri == null) return@rememberLauncherForActivityResult
-                scope.launch(Dispatchers.IO) {
-                    loadingDialog.show()
-                    context.contentResolver.openOutputStream(uri)?.use { output ->
-                        getBugreportFile(context).inputStream().use {
-                            it.copyTo(output)
-                        }
-                    }
-                    loadingDialog.hide()
-                    snackBarHost.showSnackbar(context.getString(R.string.log_saved))
-                }
+        Scaffold(
+            topBar = {
+                TopBar(
+                    scrollBehavior = scrollBehavior
+                )
+            },
+            snackbarHost = { SnackbarHost(snackBarHost) },
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        ) { paddingValues ->
+            val aboutDialog = rememberCustomDialog {
+                AboutDialog(it)
             }
+            val loadingDialog = rememberLoadingDialog()
+            val uninstallConfirmDialog = rememberConfirmDialog()
 
-            val uninstallDialog = rememberUninstallDialog { uninstallType ->
-                scope.launch {
-                    val result = uninstallConfirmDialog.awaitConfirm(
-                        title = context.getString(uninstallType.title),
-                        content = context.getString(uninstallType.message)
-                    )
-                    if (result == ConfirmResult.Confirmed) {
-                        loadingDialog.withLoading {
-                            when (uninstallType) {
-                                UninstallType.PERMANENT -> navigator.navigate(
-                                    FlashScreenDestination(FlashIt.FlashUninstall)
-                                )
-                                UninstallType.RESTORE_STOCK_IMAGE -> navigator.navigate(
-                                    FlashScreenDestination(FlashIt.FlashRestore)
-                                )
-                                else -> Unit
+            Column(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .verticalScroll(rememberScrollState())
+            ) {
+
+                val exportBugreportLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.CreateDocument("application/gzip")
+                ) { uri: Uri? ->
+                    if (uri == null) return@rememberLauncherForActivityResult
+                    scope.launch(Dispatchers.IO) {
+                        loadingDialog.show()
+                        context.contentResolver.openOutputStream(uri)?.use { output ->
+                            getBugreportFile(context).inputStream().use {
+                                it.copyTo(output)
+                            }
+                        }
+                        loadingDialog.hide()
+                        snackBarHost.showSnackbar(context.getString(R.string.log_saved))
+                    }
+                }
+
+                val uninstallDialog = rememberUninstallDialog { uninstallType ->
+                    scope.launch {
+                        val result = uninstallConfirmDialog.awaitConfirm(
+                            title = context.getString(uninstallType.title),
+                            content = context.getString(uninstallType.message)
+                        )
+                        if (result == ConfirmResult.Confirmed) {
+                            loadingDialog.withLoading {
+                                when (uninstallType) {
+                                    UninstallType.PERMANENT -> navigator.navigate(
+                                        FlashScreenDestination(FlashIt.FlashUninstall)
+                                    )
+                                    UninstallType.RESTORE_STOCK_IMAGE -> navigator.navigate(
+                                        FlashScreenDestination(FlashIt.FlashRestore)
+                                    )
+                                    else -> Unit
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            KsuIsValid {
-                ExpressiveList(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    content = listOf(
+                Spacer(modifier = Modifier.height(8.dp))
+                KsuIsValid {
+                    ExpressiveList(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        content = listOf(
 //                        {
 //                            var checkUpdate by rememberSaveable {
 //                                mutableStateOf(
@@ -218,72 +234,35 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 //                                }
 //                            )
 //                        },
-                        {
-                            var checkModuleUpdate by rememberSaveable {
-                                mutableStateOf(prefs.getBoolean("module_check_update", true))
-                            }
-                            ExpressiveSwitchItem(
-                                icon = Icons.Rounded.UploadFile,
-                                title = stringResource(id = R.string.settings_module_check_update),
-                                summary = stringResource(id = R.string.settings_check_update_summary),
-                                checked = checkModuleUpdate,
-                                onCheckedChange = { bool ->
-                                    prefs.edit { putBoolean("module_check_update", bool) }
-                                    checkModuleUpdate = bool
+                            {
+                                var checkModuleUpdate by rememberSaveable {
+                                    mutableStateOf(prefs.getBoolean("module_check_update", true))
                                 }
-                            )
-                        }
-                    )
-                )
-            }
-
-            val theme = stringResource(id = R.string.settings_theme)
-            ExpressiveList(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                content = listOf {
-                    ExpressiveListItem(
-                        onClick = { navigator.navigate(ColorPaletteScreenDestination) },
-                        headlineContent = { Text(theme) },
-                        supportingContent = { Text(stringResource(id = R.string.settings_theme_summary)) },
-                        leadingContent = { Icon(Icons.Filled.Palette, theme) },
-                        trailingContent = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                null
-                            )
-                        }
+                                ExpressiveSwitchItem(
+                                    icon = Icons.Rounded.UploadFile,
+                                    title = stringResource(id = R.string.settings_module_check_update),
+                                    summary = stringResource(id = R.string.settings_check_update_summary),
+                                    checked = checkModuleUpdate,
+                                    onCheckedChange = { bool ->
+                                        prefs.edit { putBoolean("module_check_update", bool) }
+                                        checkModuleUpdate = bool
+                                    }
+                                )
+                            }
+                        )
                     )
                 }
-            )
 
-            ExpressiveList(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                content = listOf {
-                    ExpressiveListItem(
-                        onClick = { navigator.navigate(QuickShellScreenDestination) },
-                        headlineContent = { Text(stringResource(R.string.quick_shell)) },
-                        supportingContent = { Text(stringResource(R.string.quick_shell_summary)) },
-                        leadingContent = { Icon(Icons.Outlined.Terminal, stringResource(R.string.quick_shell)) },
-                        trailingContent = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                null
-                            )
-                        }
-                    )
-                }
-            )
-
-            val profileTemplate = stringResource(id = R.string.settings_profile_template)
-            KsuIsValid {
+                val theme = stringResource(id = R.string.settings_theme)
+                val themeSummary = stringResource(id = R.string.settings_theme_summary)
                 ExpressiveList(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     content = listOf {
                         ExpressiveListItem(
-                            onClick = { navigator.navigate(AppProfileTemplateScreenDestination) },
-                            headlineContent = { Text(profileTemplate) },
-                            supportingContent = { Text(stringResource(id = R.string.settings_profile_template_summary)) },
-                            leadingContent = { Icon(Icons.Filled.Fence, profileTemplate) },
+                            onClick = { navigator.navigate(ColorPaletteScreenDestination) },
+                            headlineContent = { Text(theme) },
+                            supportingContent = { Text(themeSummary) },
+                            leadingContent = { Icon(Icons.Filled.Palette, theme) },
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -293,545 +272,593 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                         )
                     }
                 )
-            }
 
-            val isToolKitInstalled = produceState(initialValue = false) {
-                value = isWebuiModuleInstalled("ksu_toolkit")
-            }.value
-            val isKpatchNextInstalled = produceState(initialValue = false) {
-                value = isWebuiModuleInstalled("KPatch-Next")
-            }.value
-            val webUILauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.StartActivityForResult()
-            ) { }
-            if (isToolKitInstalled || isKpatchNextInstalled) {
-                ExpressiveList(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    content = listOf (
-                        {
-                            if (isToolKitInstalled) {
-                                ExpressiveListItem(
-                                    onClick = {
-                                        webUILauncher.launch(
-                                            Intent(context, WebUIActivity::class.java)
-                                                .setData("kernelsu://webui/ksu_toolkit".toUri())
-                                                .putExtra("id", "ksu_toolkit")
-                                                .putExtra("name", "KernelSU Toolkit")
-                                        )
-                                    },
-                                    headlineContent = { Text(stringResource(R.string.settings_kernelsu_toolkit)) },
-                                    supportingContent = { Text(stringResource(R.string.settings_kernelsu_toolkit_summary)) },
-                                    leadingContent = {
-                                        Icon(
-                                            Icons.Filled.Build,
-                                            stringResource(R.string.settings_kernelsu_toolkit)
-                                        )
-                                    },
-                                    trailingContent = {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                            null
-                                        )
-                                    }
-                                )
-                            }
-                        },
-                        {
-                            if (isKpatchNextInstalled) {
-                                ExpressiveListItem(
-                                    onClick = {
-                                        webUILauncher.launch(
-                                            Intent(context, WebUIActivity::class.java)
-                                                .setData("kernelsu://webui/KPatch-Next".toUri())
-                                                .putExtra("id", "KPatch-Next")
-                                                .putExtra("name", "KPatch-Next")
-                                        )
-                                    },
-                                    headlineContent = { Text(stringResource(R.string.settings_kpatch_next)) },
-                                    supportingContent = { Text(stringResource(R.string.settings_kpatch_nextt_summary)) },
-                                    leadingContent = {
-                                        Icon(
-                                            Icons.Filled.Build,
-                                            stringResource(R.string.settings_kpatch_next)
-                                        )
-                                    },
-                                    trailingContent = {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                            null
-                                        )
-                                    }
-                                )
-                            }
-                        }
-                    )
-                )
-            }
-
-            KsuIsValid {
-                val modeItems = listOf(
-                    stringResource(id = R.string.settings_mode_default),
-                    stringResource(id = R.string.settings_mode_temp_enable),
-                    stringResource(id = R.string.settings_mode_always_enable),
-                )
-
-                ExpressiveList(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    content = listOf(
-                        {
-                            val currentSuEnabled = Natives.isSuEnabled()
-                            var suCompatMode by rememberSaveable { mutableIntStateOf(if (!currentSuEnabled) 1 else 0) }
-                            val suPersistValue by produceState(initialValue = null as Long?) {
-                                value = getFeaturePersistValue("su_compat")
-                            }
-                            LaunchedEffect(suPersistValue) {
-                                suPersistValue?.let { v ->
-                                    suCompatMode = if (v == 0L) 2 else if (!currentSuEnabled) 1 else 0
-                                }
-                            }
-                            val suStatus by produceState(initialValue = "") {
-                                value = getFeatureStatus("su_compat")
-                            }
-                            val suSummary = when (suStatus) {
-                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
-                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
-                                else -> stringResource(id = R.string.settings_disable_su_summary)
-                            }
-                            ExpressiveDropdownItem(
-                                icon = Icons.Filled.RemoveModerator,
-                                title = stringResource(id = R.string.settings_disable_su),
-                                summary = suSummary,
-                                items = modeItems,
-                                enabled = suStatus == "supported",
-                                selectedIndex = suCompatMode,
-                                onItemSelected = { index ->
-                                    when (index) {
-                                        // Default: enable and save to persist
-                                        0 -> if (Natives.setSuEnabled(true)) {
-                                            execKsud("feature save", true)
-                                            prefs.edit { putInt("su_compat_mode", 0) }
-                                            suCompatMode = 0
-                                        }
-
-                                        // Temporarily disable: save enabled state first, then disable
-                                        1 -> if (Natives.setSuEnabled(true)) {
-                                            execKsud("feature save", true)
-                                            if (Natives.setSuEnabled(false)) {
-                                                prefs.edit { putInt("su_compat_mode", 0) }
-                                                suCompatMode = 1
-                                            }
-                                        }
-
-                                        // Permanently disable: disable and save
-                                        2 -> if (Natives.setSuEnabled(false)) {
-                                            execKsud("feature save", true)
-                                            prefs.edit { putInt("su_compat_mode", 2) }
-                                            suCompatMode = 2
-                                        }
-                                    }
-                                }
-                            )
-                        },
-                        {
-                            val currentUmountEnabled = Natives.isKernelUmountEnabled()
-                            var kernelUmountMode by rememberSaveable { mutableIntStateOf(if (!currentUmountEnabled) 1 else 0) }
-                            val umountPersistValue by produceState(initialValue = null as Long?) {
-                                value = getFeaturePersistValue("kernel_umount")
-                            }
-                            LaunchedEffect(umountPersistValue) {
-                                umountPersistValue?.let { v ->
-                                    kernelUmountMode = if (v == 0L) 2 else if (!currentUmountEnabled) 1 else 0
-                                }
-                            }
-                            val umountStatus by produceState(initialValue = "") {
-                                value = getFeatureStatus("kernel_umount")
-                            }
-                            val umountSummary = when (umountStatus) {
-                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
-                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
-                                else -> stringResource(id = R.string.settings_disable_kernel_umount_summary)
-                            }
-                            ExpressiveDropdownItem(
-                                icon = Icons.Filled.RemoveCircle,
-                                title = stringResource(id = R.string.settings_disable_kernel_umount),
-                                summary = umountSummary,
-                                items = modeItems,
-                                enabled = umountStatus == "supported",
-                                selectedIndex = kernelUmountMode,
-                                onItemSelected = { index ->
-                                    when (index) {
-                                        // Default: enable and save to persist
-                                        0 -> if (Natives.setKernelUmountEnabled(true)) {
-                                            execKsud("feature save", true)
-                                            prefs.edit { putInt("kernel_umount_mode", 0) }
-                                            kernelUmountMode = 0
-                                        }
-
-                                        // Temporarily disable: save enabled state first, then disable
-                                        1 -> if (Natives.setKernelUmountEnabled(true)) {
-                                            execKsud("feature save", true)
-                                            if (Natives.setKernelUmountEnabled(false)) {
-                                                prefs.edit { putInt("kernel_umount_mode", 0) }
-                                                kernelUmountMode = 1
-                                            }
-                                        }
-
-                                        // Permanently disable: disable and save
-                                        2 -> if (Natives.setKernelUmountEnabled(false)) {
-                                            execKsud("feature save", true)
-                                            prefs.edit { putInt("kernel_umount_mode", 2) }
-                                            kernelUmountMode = 2
-                                        }
-                                    }
-                                }
-                            )
-                        },
-                        {
-                            val currentAvcSpoofEnabled = Natives.isAvcSpoofEnabled()
-                            var avcSpoofMode by rememberSaveable { mutableIntStateOf(if (!currentAvcSpoofEnabled) 1 else 0) }
-                            val avcSpoofPersistValue by produceState(initialValue = null as Long?) {
-                                value = getFeaturePersistValue("avc_spoof")
-                            }
-                            LaunchedEffect(avcSpoofPersistValue) {
-                                avcSpoofPersistValue?.let { v ->
-                                    avcSpoofMode = if (v == 0L) 2 else if (!currentAvcSpoofEnabled) 1 else 0
-                                }
-                            }
-                            val avcSpoofStatus by produceState(initialValue = "") {
-                                value = getFeatureStatus("avc_spoof")
-                            }
-                            val avcSpoofSummary = when (avcSpoofStatus) {
-                                "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
-                                "managed" -> stringResource(id = R.string.feature_status_managed_summary)
-                                else -> stringResource(id = R.string.settings_disable_avc_spoof_summary)
-                            }
-                            if (avcSpoofStatus == "supported") {
-                                ExpressiveDropdownItem(
-                                    icon = Icons.AutoMirrored.Filled.Article,
-                                    title = stringResource(id = R.string.settings_disable_avc_spoof),
-                                    summary = avcSpoofSummary,
-                                    items = modeItems,
-                                    enabled = avcSpoofStatus == "supported",
-                                    selectedIndex = avcSpoofMode,
-                                    onItemSelected = { index ->
-                                        when (index) {
-                                            // Default: enable and save to persist
-                                            0 -> if (Natives.setAvcSpoofEnabled(true)) {
-                                                execKsud("feature save", true)
-                                                prefs.edit { putInt("avc_spoof_mode", 0) }
-                                                avcSpoofMode = 0
-                                            }
-
-                                            // Temporarily disable: save enabled state first, then disable
-                                            1 -> if (Natives.setAvcSpoofEnabled(true)) {
-                                                execKsud("feature save", true)
-                                                if (Natives.setAvcSpoofEnabled(false)) {
-                                                    prefs.edit { putInt("avc_spoof_mode", 1) }
-                                                    avcSpoofMode = 1
-                                                }
-                                            }
-
-                                            // Permanently disable: disable and save
-                                            2 -> if (Natives.setAvcSpoofEnabled(false)) {
-                                                execKsud("feature save", true)
-                                                prefs.edit { putInt("avc_spoof_mode", 2) }
-                                                avcSpoofMode = 2
-                                            }
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    )
-                )
-            }
-
-            KsuIsValid {
-                var selinuxMode by rememberSaveable { mutableStateOf(SELinuxMode.Unknown) }
-                var showSelinuxDialog by rememberSaveable { mutableStateOf(false) }
-
-                LaunchedEffect(Unit) {
-                    selinuxMode = withContext(Dispatchers.IO) { getSELinuxModeRaw() }
-                }
-
-                val selinuxTitle = stringResource(R.string.settings_selinux)
-                val selinuxSummary = stringResource(R.string.settings_selinux_summary)
-                val selinuxDialogTitle = stringResource(R.string.settings_selinux_dialog_title)
-                val enforcingText = stringResource(R.string.selinux_status_enforcing)
-                val permissiveText = stringResource(R.string.selinux_status_permissive)
-                val disabledText = stringResource(R.string.selinux_status_disabled)
-                val unknownText = stringResource(R.string.selinux_status_unknown)
-                val cancelText = stringResource(android.R.string.cancel)
-                val setFailedText = stringResource(R.string.settings_selinux_set_failed)
-
-                val selinuxStatusText = when (selinuxMode) {
-                    SELinuxMode.Enforcing -> enforcingText
-                    SELinuxMode.Permissive -> permissiveText
-                    SELinuxMode.Disabled -> disabledText
-                    SELinuxMode.Unknown -> unknownText
-                }
-
+                val quickShell = stringResource(R.string.quick_shell)
+                val quickShellSummary = stringResource(R.string.quick_shell_summary)
                 ExpressiveList(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     content = listOf {
                         ExpressiveListItem(
-                            onClick = {
-                                if (selinuxMode != SELinuxMode.Disabled && selinuxMode != SELinuxMode.Unknown) {
-                                    showSelinuxDialog = true
-                                }
-                            },
-                            headlineContent = { Text(selinuxTitle) },
-                            supportingContent = { Text(selinuxSummary) },
-                            leadingContent = {
-                                Icon(
-                                    Icons.Filled.Security,
-                                    contentDescription = selinuxTitle
-                                )
-                            },
+                            onClick = { navigator.navigate(QuickShellScreenDestination) },
+                            headlineContent = { Text(quickShell) },
+                            supportingContent = { Text(quickShellSummary) },
+                            leadingContent = { Icon(Icons.Outlined.Terminal, quickShell) },
                             trailingContent = {
-                                Text(
-                                    text = selinuxStatusText,
-                                    color = MaterialTheme.colorScheme.primary
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    null
                                 )
                             }
                         )
                     }
                 )
 
-                if (showSelinuxDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showSelinuxDialog = false },
-                        icon = {
-                            Icon(
-                                Icons.Filled.Security,
-                                contentDescription = null
+                val profileTemplate = stringResource(id = R.string.settings_profile_template)
+                val profileTemplateSummary = stringResource(id = R.string.settings_profile_template_summary)
+                KsuIsValid {
+                    ExpressiveList(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        content = listOf {
+                            ExpressiveListItem(
+                                onClick = { navigator.navigate(AppProfileTemplateScreenDestination) },
+                                headlineContent = { Text(profileTemplate) },
+                                supportingContent = { Text(profileTemplateSummary) },
+                                leadingContent = { Icon(Icons.Filled.Fence, profileTemplate) },
+                                trailingContent = {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                        null
+                                    )
+                                }
                             )
-                        },
-                        title = { Text(selinuxDialogTitle) },
-                        text = {
-                            Column {
-                                ExpressiveRadioItem(
-                                    title = enforcingText,
-                                    selected = selinuxMode == SELinuxMode.Enforcing,
-                                    onClick = {
-                                        scope.launch(Dispatchers.IO) {
-                                            if (setSELinuxMode(SELinuxMode.Enforcing)) {
-                                                selinuxMode = SELinuxMode.Enforcing
-                                            } else {
-                                                snackBarHost.showSnackbar(setFailedText)
+                        }
+                    )
+                }
+
+                val isToolKitInstalled by produceState(initialValue = false) {
+                    value = isWebuiModuleInstalled("ksu_toolkit")
+                }
+                val isKpatchNextInstalled by produceState(initialValue = false) {
+                    value = isWebuiModuleInstalled("KPatch-Next")
+                }
+                val webUILauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.StartActivityForResult()
+                ) { }
+                
+                if (isToolKitInstalled || isKpatchNextInstalled) {
+                    val ksuToolkitTitle = stringResource(R.string.settings_kernelsu_toolkit)
+                    val ksuToolkitSummary = stringResource(R.string.settings_kernelsu_toolkit_summary)
+                    val kpatchNextTitle = stringResource(R.string.settings_kpatch_next)
+                    val kpatchNextSummary = stringResource(R.string.settings_kpatch_nextt_summary)
+                    
+                    ExpressiveList(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        content = listOf (
+                            {
+                                if (isToolKitInstalled) {
+                                    ExpressiveListItem(
+                                        onClick = {
+                                            webUILauncher.launch(
+                                                Intent(context, WebUIActivity::class.java)
+                                                    .setData("kernelsu://webui/ksu_toolkit".toUri())
+                                                    .putExtra("id", "ksu_toolkit")
+                                                    .putExtra("name", "KernelSU Toolkit")
+                                            )
+                                        },
+                                        headlineContent = { Text(ksuToolkitTitle) },
+                                        supportingContent = { Text(ksuToolkitSummary) },
+                                        leadingContent = {
+                                            Icon(Icons.Filled.Build, ksuToolkitTitle)
+                                        },
+                                        trailingContent = {
+                                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
+                                        }
+                                    )
+                                }
+                            },
+                            {
+                                if (isKpatchNextInstalled) {
+                                    ExpressiveListItem(
+                                        onClick = {
+                                            webUILauncher.launch(
+                                                Intent(context, WebUIActivity::class.java)
+                                                    .setData("kernelsu://webui/KPatch-Next".toUri())
+                                                    .putExtra("id", "KPatch-Next")
+                                                    .putExtra("name", "KPatch-Next")
+                                            )
+                                        },
+                                        headlineContent = { Text(kpatchNextTitle) },
+                                        supportingContent = { Text(kpatchNextSummary) },
+                                        leadingContent = {
+                                            Icon(Icons.Filled.Build, kpatchNextTitle)
+                                        },
+                                        trailingContent = {
+                                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
+                                        }
+                                    )
+                                }
+                            }
+                        )
+                    )
+                }
+
+                KsuIsValid {
+                    val modeItems = remember {
+                        listOf(
+                            context.getString(R.string.settings_mode_default),
+                            context.getString(R.string.settings_mode_temp_enable),
+                            context.getString(R.string.settings_mode_always_enable),
+                        )
+                    }
+
+                    ExpressiveList(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        content = listOf(
+                            {
+                                val currentSuEnabled = remember { Natives.isSuEnabled() }
+                                var suCompatMode by rememberSaveable { mutableIntStateOf(if (!currentSuEnabled) 1 else 0) }
+                                val suPersistValue by produceState(initialValue = null as Long?) {
+                                    value = getFeaturePersistValue("su_compat")
+                                }
+                                LaunchedEffect(suPersistValue) {
+                                    suPersistValue?.let { v ->
+                                        suCompatMode = if (v == 0L) 2 else if (!currentSuEnabled) 1 else 0
+                                    }
+                                }
+                                val suStatus by produceState(initialValue = "") {
+                                    value = getFeatureStatus("su_compat")
+                                }
+                                val suSummary = when (suStatus) {
+                                    "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                    "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                    else -> stringResource(id = R.string.settings_disable_su_summary)
+                                }
+                                ExpressiveDropdownItem(
+                                    icon = Icons.Filled.RemoveModerator,
+                                    title = stringResource(id = R.string.settings_disable_su),
+                                    summary = suSummary,
+                                    items = modeItems,
+                                    enabled = suStatus == "supported",
+                                    selectedIndex = suCompatMode,
+                                    onItemSelected = { index ->
+                                        when (index) {
+                                        // Default: enable and save to persist
+                                            0 -> if (Natives.setSuEnabled(true)) {
+                                                execKsud("feature save", true)
+                                                prefs.edit { putInt("su_compat_mode", 0) }
+                                                suCompatMode = 0
+                                            }
+
+                                        // Temporarily disable: save enabled state first, then disable
+                                            1 -> if (Natives.setSuEnabled(true)) {
+                                                execKsud("feature save", true)
+                                                if (Natives.setSuEnabled(false)) {
+                                                    prefs.edit { putInt("su_compat_mode", 0) }
+                                                    suCompatMode = 1
+                                                }
+                                            }
+
+                                        // Permanently disable: disable and save
+                                            2 -> if (Natives.setSuEnabled(false)) {
+                                                execKsud("feature save", true)
+                                                prefs.edit { putInt("su_compat_mode", 2) }
+                                                suCompatMode = 2
                                             }
                                         }
-                                        showSelinuxDialog = false
                                     }
                                 )
-                                ExpressiveRadioItem(
-                                    title = permissiveText,
-                                    selected = selinuxMode == SELinuxMode.Permissive,
-                                    onClick = {
-                                        scope.launch(Dispatchers.IO) {
-                                            if (setSELinuxMode(SELinuxMode.Permissive)) {
-                                                selinuxMode = SELinuxMode.Permissive
-                                            } else {
-                                                snackBarHost.showSnackbar(setFailedText)
+                            },
+                            {
+                                val currentUmountEnabled = remember { Natives.isKernelUmountEnabled() }
+                                var kernelUmountMode by rememberSaveable { mutableIntStateOf(if (!currentUmountEnabled) 1 else 0) }
+                                val umountPersistValue by produceState(initialValue = null as Long?) {
+                                    value = getFeaturePersistValue("kernel_umount")
+                                }
+                                LaunchedEffect(umountPersistValue) {
+                                    umountPersistValue?.let { v ->
+                                        kernelUmountMode = if (v == 0L) 2 else if (!currentUmountEnabled) 1 else 0
+                                    }
+                                }
+                                val umountStatus by produceState(initialValue = "") {
+                                    value = getFeatureStatus("kernel_umount")
+                                }
+                                val umountSummary = when (umountStatus) {
+                                    "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                    "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                    else -> stringResource(id = R.string.settings_disable_kernel_umount_summary)
+                                }
+                                ExpressiveDropdownItem(
+                                    icon = Icons.Filled.RemoveCircle,
+                                    title = stringResource(id = R.string.settings_disable_kernel_umount),
+                                    summary = umountSummary,
+                                    items = modeItems,
+                                    enabled = umountStatus == "supported",
+                                    selectedIndex = kernelUmountMode,
+                                    onItemSelected = { index ->
+                                        when (index) {
+                                        // Default: enable and save to persist
+                                            0 -> if (Natives.setKernelUmountEnabled(true)) {
+                                                execKsud("feature save", true)
+                                                prefs.edit { putInt("kernel_umount_mode", 0) }
+                                                kernelUmountMode = 0
+                                            }
+
+                                        // Temporarily disable: save enabled state first, then disable
+                                            1 -> if (Natives.setKernelUmountEnabled(true)) {
+                                                execKsud("feature save", true)
+                                                if (Natives.setKernelUmountEnabled(false)) {
+                                                    prefs.edit { putInt("kernel_umount_mode", 0) }
+                                                    kernelUmountMode = 1
+                                                }
+                                            }
+
+                                        // Permanently disable: disable and save
+                                            2 -> if (Natives.setKernelUmountEnabled(false)) {
+                                                execKsud("feature save", true)
+                                                prefs.edit { putInt("kernel_umount_mode", 2) }
+                                                kernelUmountMode = 2
                                             }
                                         }
-                                        showSelinuxDialog = false
+                                    }
+                                )
+                            },
+                            {
+                                val currentAvcSpoofEnabled = remember { Natives.isAvcSpoofEnabled() }
+                                var avcSpoofMode by rememberSaveable { mutableIntStateOf(if (!currentAvcSpoofEnabled) 1 else 0) }
+                                val avcSpoofPersistValue by produceState(initialValue = null as Long?) {
+                                    value = getFeaturePersistValue("avc_spoof")
+                                }
+                                LaunchedEffect(avcSpoofPersistValue) {
+                                    avcSpoofPersistValue?.let { v ->
+                                        avcSpoofMode = if (v == 0L) 2 else if (!currentAvcSpoofEnabled) 1 else 0
+                                    }
+                                }
+                                val avcSpoofStatus by produceState(initialValue = "") {
+                                    value = getFeatureStatus("avc_spoof")
+                                }
+                                val avcSpoofSummary = when (avcSpoofStatus) {
+                                    "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                    "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                    else -> stringResource(id = R.string.settings_disable_avc_spoof_summary)
+                                }
+                                if (avcSpoofStatus == "supported") {
+                                    ExpressiveDropdownItem(
+                                        icon = Icons.AutoMirrored.Filled.Article,
+                                        title = stringResource(id = R.string.settings_disable_avc_spoof),
+                                        summary = avcSpoofSummary,
+                                        items = modeItems,
+                                        enabled = avcSpoofStatus == "supported",
+                                        selectedIndex = avcSpoofMode,
+                                        onItemSelected = { index ->
+                                            when (index) {
+                                            // Default: enable and save to persist
+                                                0 -> if (Natives.setAvcSpoofEnabled(true)) {
+                                                    execKsud("feature save", true)
+                                                    prefs.edit { putInt("avc_spoof_mode", 0) }
+                                                    avcSpoofMode = 0
+                                                }
+
+                                            // Temporarily disable: save enabled state first, then disable
+                                                1 -> if (Natives.setAvcSpoofEnabled(true)) {
+                                                    execKsud("feature save", true)
+                                                    if (Natives.setAvcSpoofEnabled(false)) {
+                                                        prefs.edit { putInt("avc_spoof_mode", 1) }
+                                                        avcSpoofMode = 1
+                                                    }
+                                                }
+
+                                            // Permanently disable: disable and save
+                                                2 -> if (Natives.setAvcSpoofEnabled(false)) {
+                                                    execKsud("feature save", true)
+                                                    prefs.edit { putInt("avc_spoof_mode", 2) }
+                                                    avcSpoofMode = 2
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        )
+                    )
+                }
+
+                KsuIsValid {
+                    var selinuxMode by rememberSaveable { mutableStateOf(SELinuxMode.Unknown) }
+                    var showSelinuxDialog by rememberSaveable { mutableStateOf(false) }
+
+                    LaunchedEffect(Unit) {
+                        selinuxMode = withContext(Dispatchers.IO) { getSELinuxModeRaw() }
+                    }
+
+                    val selinuxTitle = stringResource(R.string.settings_selinux)
+                    val selinuxSummary = stringResource(R.string.settings_selinux_summary)
+                    val selinuxDialogTitle = stringResource(R.string.settings_selinux_dialog_title)
+                    val enforcingText = stringResource(R.string.selinux_status_enforcing)
+                    val permissiveText = stringResource(R.string.selinux_status_permissive)
+                    val disabledText = stringResource(R.string.selinux_status_disabled)
+                    val unknownText = stringResource(R.string.selinux_status_unknown)
+                    val cancelText = stringResource(android.R.string.cancel)
+                    val setFailedText = stringResource(R.string.settings_selinux_set_failed)
+
+                    val selinuxStatusText = when (selinuxMode) {
+                        SELinuxMode.Enforcing -> enforcingText
+                        SELinuxMode.Permissive -> permissiveText
+                        SELinuxMode.Disabled -> disabledText
+                        SELinuxMode.Unknown -> unknownText
+                    }
+
+                    ExpressiveList(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        content = listOf {
+                            ExpressiveListItem(
+                                onClick = {
+                                    if (selinuxMode != SELinuxMode.Disabled && selinuxMode != SELinuxMode.Unknown) {
+                                        showSelinuxDialog = true
+                                    }
+                                },
+                                headlineContent = { Text(selinuxTitle) },
+                                supportingContent = { Text(selinuxSummary) },
+                                leadingContent = {
+                                    Icon(
+                                        Icons.Filled.Security,
+                                        contentDescription = selinuxTitle
+                                    )
+                                },
+                                trailingContent = {
+                                    Text(
+                                        text = selinuxStatusText,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            )
+                        }
+                    )
+
+                    if (showSelinuxDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showSelinuxDialog = false },
+                            icon = {
+                                Icon(
+                                    Icons.Filled.Security,
+                                    contentDescription = null
+                                )
+                            },
+                            title = { Text(selinuxDialogTitle) },
+                            text = {
+                                Column {
+                                    ExpressiveRadioItem(
+                                        title = enforcingText,
+                                        selected = selinuxMode == SELinuxMode.Enforcing,
+                                        onClick = {
+                                            scope.launch(Dispatchers.IO) {
+                                                if (setSELinuxMode(SELinuxMode.Enforcing)) {
+                                                    selinuxMode = SELinuxMode.Enforcing
+                                                } else {
+                                                    snackBarHost.showSnackbar(setFailedText)
+                                                }
+                                            }
+                                            showSelinuxDialog = false
+                                        }
+                                    )
+                                    ExpressiveRadioItem(
+                                        title = permissiveText,
+                                        selected = selinuxMode == SELinuxMode.Permissive,
+                                        onClick = {
+                                            scope.launch(Dispatchers.IO) {
+                                                if (setSELinuxMode(SELinuxMode.Permissive)) {
+                                                    selinuxMode = SELinuxMode.Permissive
+                                                } else {
+                                                    snackBarHost.showSnackbar(setFailedText)
+                                                }
+                                            }
+                                            showSelinuxDialog = false
+                                        }
+                                    )
+                                }
+                            },
+                            confirmButton = {},
+                            dismissButton = {
+                                TextButton(onClick = { showSelinuxDialog = false }) {
+                                    Text(cancelText)
+                                }
+                            }
+                        )
+                    }
+                }
+
+                KsuIsValid {
+                    val umountTitle = stringResource(id = R.string.settings_umount_modules_default)
+                    val umountSummary = stringResource(id = R.string.settings_umount_modules_default_summary)
+                    val webDebugTitle = stringResource(id = R.string.enable_web_debugging)
+                    val webDebugSummary = stringResource(id = R.string.enable_web_debugging_summary)
+
+                    ExpressiveList(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        content = listOf(
+                            {
+                                var umountChecked by rememberSaveable {
+                                    mutableStateOf(Natives.isDefaultUmountModules())
+                                }
+                                ExpressiveSwitchItem(
+                                    icon = Icons.Filled.FolderDelete,
+                                    title = umountTitle,
+                                    summary = umountSummary,
+                                    checked = umountChecked,
+                                    onCheckedChange = {
+                                        if (Natives.setDefaultUmountModules(it)) {
+                                            umountChecked = it
+                                        }
+                                    }
+                                )
+                            },
+                            {
+                                var enableWebDebugging by rememberSaveable {
+                                    mutableStateOf(
+                                        prefs.getBoolean("enable_web_debugging", false)
+                                    )
+                                }
+                                ExpressiveSwitchItem(
+                                    icon = Icons.Filled.DeveloperMode,
+                                    title = webDebugTitle,
+                                    summary = webDebugSummary,
+                                    checked = enableWebDebugging,
+                                    onCheckedChange = {
+                                        prefs.edit { putBoolean("enable_web_debugging", it) }
+                                        enableWebDebugging = it
                                     }
                                 )
                             }
+                        )
+                    )
+                }
+
+                if (Natives.isLkmMode) {
+                    val uninstall = stringResource(id = R.string.settings_uninstall)
+                    ExpressiveList(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        content = listOf(
+                            {
+                                ExpressiveListItem(
+                                    onClick = { uninstallDialog.show() },
+                                    headlineContent = { Text(uninstall) },
+                                    leadingContent = { Icon(Icons.Filled.Delete, uninstall) }
+                                )
+                            }
+                        )
+                    )
+                }
+
+                var showBottomsheet by remember { mutableStateOf(false) }
+                val sendLogTitle = stringResource(id = R.string.send_log)
+                val aboutTitle = stringResource(id = R.string.about)
+                
+                ExpressiveList(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    content = listOf(
+                        {
+                            ExpressiveListItem(
+                                onClick = { showBottomsheet = true },
+                                headlineContent = { Text(sendLogTitle) },
+                                leadingContent = {
+                                    Icon(
+                                        Icons.Filled.BugReport,
+                                        sendLogTitle
+                                    )
+                                },
+                            )
                         },
-                        confirmButton = {},
-                        dismissButton = {
-                            TextButton(onClick = { showSelinuxDialog = false }) {
-                                Text(cancelText)
+                        {
+                            ExpressiveListItem(
+                                onClick = { aboutDialog.show() },
+                                headlineContent = { Text(aboutTitle) },
+                                leadingContent = {
+                                    Icon(
+                                        Icons.Filled.ContactPage,
+                                        aboutTitle
+                                    )
+                                },
+                            )
+                        }
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (showBottomsheet) {
+                    val dateFormatter = remember { DateTimeFormatter.ofPattern("yyyy-MM-dd_HH_mm") }
+                    val saveLogTitle = stringResource(id = R.string.save_log)
+
+                    ModalBottomSheet(
+                        onDismissRequest = { showBottomsheet = false },
+                        content = {
+                            Row(
+                                modifier = Modifier
+                                    .padding(10.dp)
+                                    .align(Alignment.CenterHorizontally)
+
+                            ) {
+                                Box {
+                                    Column(
+                                        modifier = Modifier
+                                            .padding(16.dp)
+                                            .clickable {
+                                                val current = LocalDateTime.now().format(dateFormatter)
+                                                exportBugreportLauncher.launch("KernelSU_bugreport_${current}.tar.gz")
+                                                showBottomsheet = false
+                                            }
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Save,
+                                            contentDescription = null,
+                                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                                        )
+                                        Text(
+                                            text = saveLogTitle,
+                                            modifier = Modifier.padding(top = 16.dp),
+                                            textAlign = TextAlign.Center.also {
+                                                LineHeightStyle(
+                                                    alignment = LineHeightStyle.Alignment.Center,
+                                                    trim = LineHeightStyle.Trim.None
+                                                )
+                                            }
+
+                                        )
+                                    }
+                                }
+                                Box {
+                                    Column(
+                                        modifier = Modifier
+                                            .padding(16.dp)
+                                            .clickable {
+                                                scope.launch {
+                                                    val bugreport = loadingDialog.withLoading {
+                                                        withContext(Dispatchers.IO) {
+                                                            getBugreportFile(context)
+                                                        }
+                                                    }
+
+                                                    val uri: Uri =
+                                                        FileProvider.getUriForFile(
+                                                            context,
+                                                            "${BuildConfig.APPLICATION_ID}.fileprovider",
+                                                            bugreport
+                                                        )
+
+                                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                                        setDataAndType(uri, "application/gzip")
+                                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                    }
+
+                                                    context.startActivity(
+                                                        Intent.createChooser(
+                                                            shareIntent,
+                                                            sendLogTitle
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Share,
+                                            contentDescription = null,
+                                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                                        )
+                                        Text(
+                                            text = sendLogTitle,
+                                            modifier = Modifier.padding(top = 16.dp),
+                                            textAlign = TextAlign.Center.also {
+                                                LineHeightStyle(
+                                                    alignment = LineHeightStyle.Alignment.Center,
+                                                    trim = LineHeightStyle.Trim.None
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     )
                 }
-            }
-
-            KsuIsValid {
-                ExpressiveList(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    content = listOf(
-                        {
-                            var umountChecked by rememberSaveable {
-                                mutableStateOf(Natives.isDefaultUmountModules())
-                            }
-                            ExpressiveSwitchItem(
-                                icon = Icons.Filled.FolderDelete,
-                                title = stringResource(id = R.string.settings_umount_modules_default),
-                                summary = stringResource(id = R.string.settings_umount_modules_default_summary),
-                                checked = umountChecked,
-                                onCheckedChange = {
-                                    if (Natives.setDefaultUmountModules(it)) {
-                                        umountChecked = it
-                                    }
-                                }
-                            )
-                        },
-                        {
-                            var enableWebDebugging by rememberSaveable {
-                                mutableStateOf(
-                                    prefs.getBoolean("enable_web_debugging", false)
-                                )
-                            }
-                            ExpressiveSwitchItem(
-                                icon = Icons.Filled.DeveloperMode,
-                                title = stringResource(id = R.string.enable_web_debugging),
-                                summary = stringResource(id = R.string.enable_web_debugging_summary),
-                                checked = enableWebDebugging,
-                                onCheckedChange = {
-                                    prefs.edit { putBoolean("enable_web_debugging", it) }
-                                    enableWebDebugging = it
-                                }
-                            )
-                        }
-                    )
-                )
-            }
-
-            if (Natives.isLkmMode) {
-                ExpressiveList(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    content = listOf(
-                        {
-                            val uninstall = stringResource(id = R.string.settings_uninstall)
-                            ExpressiveListItem(
-                                onClick = { uninstallDialog.show() },
-                                headlineContent = { Text(uninstall) },
-                                leadingContent = { Icon(Icons.Filled.Delete, uninstall) }
-                            )
-                        }
-                    )
-                )
-            }
-
-            var showBottomsheet by remember { mutableStateOf(false) }
-            ExpressiveList(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                content = listOf(
-                    {
-                        ExpressiveListItem(
-                            onClick = { showBottomsheet = true },
-                            headlineContent = { Text(stringResource(id = R.string.send_log)) },
-                            leadingContent = {
-                                Icon(
-                                    Icons.Filled.BugReport,
-                                    stringResource(id = R.string.send_log)
-                                )
-                            },
-                        )
-                    },
-                    {
-                        ExpressiveListItem(
-                            onClick = { aboutDialog.show() },
-                            headlineContent = { Text(stringResource(id = R.string.about)) },
-                            leadingContent = {
-                                Icon(
-                                    Icons.Filled.ContactPage,
-                                    stringResource(id = R.string.about)
-                                )
-                            },
-                        )
-                    }
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            if (showBottomsheet) {
-                ModalBottomSheet(
-                    onDismissRequest = { showBottomsheet = false },
-                    content = {
-                        Row(
-                            modifier = Modifier
-                                .padding(10.dp)
-                                .align(Alignment.CenterHorizontally)
-
-                        ) {
-                            Box {
-                                Column(
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                        .clickable {
-                                            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH_mm")
-                                            val current = LocalDateTime.now().format(formatter)
-                                            exportBugreportLauncher.launch("KernelSU_bugreport_${current}.tar.gz")
-                                            showBottomsheet = false
-                                        }
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Save,
-                                        contentDescription = null,
-                                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                                    )
-                                    Text(
-                                        text = stringResource(id = R.string.save_log),
-                                        modifier = Modifier.padding(top = 16.dp),
-                                        textAlign = TextAlign.Center.also {
-                                            LineHeightStyle(
-                                                alignment = LineHeightStyle.Alignment.Center,
-                                                trim = LineHeightStyle.Trim.None
-                                            )
-                                        }
-
-                                    )
-                                }
-                            }
-                            Box {
-                                Column(
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                        .clickable {
-                                            scope.launch {
-                                                val bugreport = loadingDialog.withLoading {
-                                                    withContext(Dispatchers.IO) {
-                                                        getBugreportFile(context)
-                                                    }
-                                                }
-
-                                                val uri: Uri =
-                                                    FileProvider.getUriForFile(
-                                                        context,
-                                                        "${BuildConfig.APPLICATION_ID}.fileprovider",
-                                                        bugreport
-                                                    )
-
-                                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                                    setDataAndType(uri, "application/gzip")
-                                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                }
-
-                                                context.startActivity(
-                                                    Intent.createChooser(
-                                                        shareIntent,
-                                                        context.getString(R.string.send_log)
-                                                    )
-                                                )
-                                            }
-                                        }
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Share,
-                                        contentDescription = null,
-                                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                                    )
-                                    Text(
-                                        text = stringResource(id = R.string.send_log),
-                                        modifier = Modifier.padding(top = 16.dp),
-                                        textAlign = TextAlign.Center.also {
-                                            LineHeightStyle(
-                                                alignment = LineHeightStyle.Alignment.Center,
-                                                trim = LineHeightStyle.Trim.None
-                                            )
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                )
             }
         }
     }

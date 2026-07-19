@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -36,9 +37,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBar
@@ -52,11 +55,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -211,6 +216,34 @@ fun AppProfileScreen(
 }
 
 @Composable
+private fun ProfileGroupCard(
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    content: @Composable () -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(modifier = Modifier.padding(if (title != null) 16.dp else 8.dp)) {
+            if (title != null) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+            content()
+        }
+    }
+}
+
+@Composable
 private fun AppProfileInner(
     modifier: Modifier = Modifier,
     packageName: String,
@@ -229,9 +262,11 @@ private fun AppProfileInner(
 ) {
     val isRootGranted = profile.allowSu
 
-    Column(modifier = modifier) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.padding(bottom = 16.dp)) {
+        
+        ProfileGroupCard {
             ListItem(
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 headlineContent = { Text(appLabel) },
                 supportingContent = {
                     Column {
@@ -258,18 +293,21 @@ private fun AppProfileInner(
             )
         }
 
-        SwitchItem(
-            icon = Icons.Filled.Security,
-            title = stringResource(id = R.string.superuser),
-            checked = isRootGranted,
-            onCheckedChange = { onProfileChange(profile.copy(allowSu = it)) },
-        )
+        ProfileGroupCard(title = stringResource(id = R.string.superuser)) {
+            SwitchItem(
+                icon = Icons.Filled.Security,
+                title = stringResource(id = R.string.superuser),
+                checked = isRootGranted,
+                onCheckedChange = { onProfileChange(profile.copy(allowSu = it)) },
+            )
 
-        Crossfade(targetState = isRootGranted, label = "") { current ->
-            Column(
-                modifier = Modifier.padding(bottom = 6.dp + 48.dp + 6.dp /* SnackBar height */)
+            AnimatedVisibility(
+                visible = isRootGranted,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
             ) {
-                if (current) {
+                Column {
+                    HorizontalDivider(thickness = Dp.Hairline, modifier = Modifier.padding(horizontal = 16.dp))
                     
                     val profileFlags = profile.flags.toRootProfileFlags()
                     val isNoNewPrivsEnabled = profileFlags.contains(RootProfileFlag.NO_NEW_PRIVS)
@@ -288,8 +326,13 @@ private fun AppProfileInner(
                             onProfileChange(profile.copy(flags = newFlags.toRawFlags()))
                         }
                     )
-                    HorizontalDivider(thickness = Dp.Hairline, modifier = Modifier.padding(horizontal = 16.dp))
+                }
+            }
+        }
 
+        Crossfade(targetState = isRootGranted, label = "ProfileMode") { currentRootGranted ->
+            ProfileGroupCard(title = "Mount Profile") {
+                if (currentRootGranted) {
                     val initialMode = if (profile.rootUseDefault) {
                         Mode.Default
                     } else if (profile.rootTemplate != null) {
@@ -297,11 +340,9 @@ private fun AppProfileInner(
                     } else {
                         Mode.Custom
                     }
-                    var mode by rememberSaveable {
-                        mutableStateOf(initialMode)
-                    }
+                    var mode by rememberSaveable { mutableStateOf(initialMode) }
+
                     ProfileBox(mode, true) {
-                        // template mode shouldn't change profile here!
                         if (it == Mode.Default || it == Mode.Custom) {
                             onProfileChange(
                                 profile.copy(
@@ -312,6 +353,7 @@ private fun AppProfileInner(
                         }
                         mode = it
                     }
+                    
                     AnimatedVisibility(
                         visible = mode == Mode.Template,
                         enter = expandVertically() + fadeIn(),
@@ -353,28 +395,31 @@ private fun AppProfileInner(
                         )
                     }
                 }
-                if (isUidGroup) {
-                    val appItems = affectedApps.map<SuperUserViewModel.AppInfo, @Composable () -> Unit> { app ->
-                        {
-                            ExpressiveListItem(
-                                headlineContent = { Text(app.label) },
-                                supportingContent = { Text(app.packageName) },
-                                leadingContent = {
-                                    AppIconImage(
-                                        packageInfo = app.packageInfo,
-                                        label = app.label,
-                                        modifier = Modifier.size(36.dp)
-                                    )
-                                }
-                            )
-                        }
+            }
+        }
+
+        if (isUidGroup) {
+            ProfileGroupCard(title = stringResource(R.string.app_profile_affects_following_apps)) {
+                val appItems = affectedApps.map<SuperUserViewModel.AppInfo, @Composable () -> Unit> { app ->
+                    {
+                        ExpressiveListItem(
+                            headlineContent = { Text(app.label) },
+                            supportingContent = { Text(app.packageName) },
+                            leadingContent = {
+                                AppIconImage(
+                                    packageInfo = app.packageInfo,
+                                    label = app.label,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                        )
                     }
-                    ExpressiveList(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        title = stringResource(R.string.app_profile_affects_following_apps),
-                        content = appItems
-                    )
                 }
+                ExpressiveList(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    title = "", // Left blank because the title already exists in the ProfileGroupCard
+                    content = appItems
+                )
             }
         }
     }
@@ -455,43 +500,49 @@ private fun ProfileBox(
     onModeChange: (Mode) -> Unit,
 ) {
     ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent), // Transparan agar menyatu dengan Card
         headlineContent = { Text(stringResource(R.string.profile)) },
         supportingContent = { Text(mode.text, color = MaterialTheme.colorScheme.outline) },
         leadingContent = { Icon(Icons.Filled.AccountCircle, null) },
     )
     HorizontalDivider(thickness = Dp.Hairline, modifier = Modifier.padding(horizontal = 16.dp))
-    ListItem(headlineContent = {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-        ) {
-            val options = listOf(
-                Mode.Default to stringResource(R.string.profile_default),
-                Mode.Template to stringResource(R.string.profile_template),
-                Mode.Custom to stringResource(R.string.profile_custom),
-            )
+    ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        headlineContent = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+            ) {
+                val options = listOf(
+                    Mode.Default to stringResource(R.string.profile_default),
+                    Mode.Template to stringResource(R.string.profile_template),
+                    Mode.Custom to stringResource(R.string.profile_custom),
+                )
 
-            options.forEachIndexed { index, (m, label) ->
-                ToggleButton(
-                    checked = mode == m,
-                    onCheckedChange = {
-                        if (m != Mode.Template || hasTemplate) onModeChange(m)
-                    },
-                    enabled = if (m == Mode.Template) hasTemplate else true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { role = Role.RadioButton },
-                    shapes = when (index) {
-                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                        options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-                    },
-                ) {
-                    Text(label)
+                options.forEachIndexed { index, (m, label) ->
+                    ToggleButton(
+                        checked = mode == m,
+                        onCheckedChange = {
+                            if (m != Mode.Template || hasTemplate) onModeChange(m)
+                        },
+                        enabled = if (m == Mode.Template) hasTemplate else true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .semantics { role = Role.RadioButton },
+                        shapes = when (index) {
+                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                            options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                        },
+                    ) {
+                        Text(label)
+                    }
                 }
             }
         }
-    })
+    )
 }
 
 @Preview

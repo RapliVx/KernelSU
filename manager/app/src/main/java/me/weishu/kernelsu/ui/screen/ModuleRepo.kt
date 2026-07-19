@@ -78,8 +78,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -92,6 +94,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
@@ -99,6 +102,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -185,12 +189,17 @@ fun ModuleRepoScreen(
     val viewModel = viewModel<ModuleRepoViewModel>()
     val installedVm = viewModel<ModuleViewModel>()
     val context = LocalContext.current
-    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     val repoSortByNameState = remember { mutableStateOf(prefs.getBoolean("module_repo_sort_name", false)) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+    
     val listState = rememberLazyListState()
 
-    val offline = !isNetworkAvailable(context)
-    val sysNavBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val offline = remember { !isNetworkAvailable(context) }
+    
+    val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
+    val sysNavBarPadding = remember(navBarPadding) { navBarPadding.calculateBottomPadding() }
 
     LaunchedEffect(Unit) {
         if (viewModel.modules.value.isEmpty()) {
@@ -211,283 +220,293 @@ fun ModuleRepoScreen(
             1f to cs.surface.copy(alpha = if (isDark) 0.40f else 0.32f)
         )
     }
-    val bannerAlpha = if (isDark) 0.12f else 0.16f
+    val bannerAlpha = remember(isDark) { if (isDark) 0.12f else 0.16f }
 
-    Scaffold(
-        topBar = {
-            SearchAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.module_repos),
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                onBackClick = { navigator.popBackStack() },
-                searchText = viewModel.search,
-                onSearchTextChange = { viewModel.search = it },
-                onClearClick = { viewModel.search = TextFieldValue("") },
-                scrollBehavior = scrollBehavior,
-                dropdownContent = {
-                    var showDropdown by remember { mutableStateOf(false) }
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
 
-                    IconButton(
-                        onClick = { showDropdown = true }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = stringResource(id = R.string.settings)
+    CompositionLocalProvider(LocalDensity provides customDensity) {
+        Scaffold(
+            topBar = {
+                SearchAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.module_repos),
+                            fontWeight = FontWeight.Bold
                         )
+                    },
+                    onBackClick = { navigator.popBackStack() },
+                    searchText = viewModel.search,
+                    onSearchTextChange = { viewModel.search = it },
+                    onClearClick = { viewModel.search = TextFieldValue("") },
+                    scrollBehavior = scrollBehavior,
+                    dropdownContent = {
+                        var showDropdown by remember { mutableStateOf(false) }
 
-                        DropdownMenu(expanded = showDropdown, onDismissRequest = {
-                            showDropdown = false
-                        }) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.module_repos_sort_name)) },
-                                trailingIcon = { Checkbox(repoSortByNameState.value, null) },
-                                onClick = {
-                                    repoSortByNameState.value = !repoSortByNameState.value
-                                    prefs.edit {
-                                        putBoolean("module_repo_sort_name", repoSortByNameState.value)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-            )
-        },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-    ) { innerPadding ->
-        val isLoading = viewModel.modules.value.isEmpty()
-
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                if (offline) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = stringResource(R.string.network_offline), color = MaterialTheme.colorScheme.outline)
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            onClick = { viewModel.refresh() },
+                        IconButton(
+                            onClick = { showDropdown = true }
                         ) {
-                            Text(stringResource(R.string.network_retry))
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = stringResource(id = R.string.settings)
+                            )
+
+                            DropdownMenu(expanded = showDropdown, onDismissRequest = {
+                                showDropdown = false
+                            }) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.module_repos_sort_name)) },
+                                    trailingIcon = { Checkbox(repoSortByNameState.value, null) },
+                                    onClick = {
+                                        repoSortByNameState.value = !repoSortByNameState.value
+                                        prefs.edit {
+                                            putBoolean("module_repo_sort_name", repoSortByNameState.value)
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
-                } else {
-                    LoadingIndicator()
+                )
+            },
+            contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        ) { innerPadding ->
+            val isLoading = viewModel.modules.value.isEmpty()
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (offline) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(text = stringResource(R.string.network_offline), color = MaterialTheme.colorScheme.outline)
+                            Spacer(Modifier.height(12.dp))
+                            Button(
+                                onClick = { viewModel.refresh() },
+                            ) {
+                                Text(stringResource(R.string.network_retry))
+                            }
+                        }
+                    } else {
+                        LoadingIndicator()
+                    }
                 }
-            }
-        } else {
-            val displayModules = run {
-                val base = viewModel.filteredModules
-                val sortByName = repoSortByNameState.value
-                val collator = Collator.getInstance(Locale.getDefault())
-                if (!sortByName) base else base.sortedWith(compareBy(collator) { it.moduleName })
-            }
+            } else {
+                val displayModules = run {
+                    val base = viewModel.filteredModules
+                    val sortByName = repoSortByNameState.value
+                    val collator = Collator.getInstance(Locale.getDefault())
+                    if (!sortByName) base else base.sortedWith(compareBy(collator) { it.moduleName })
+                }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .padding(innerPadding),
-                state = listState,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(
-                    start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + sysNavBarPadding
-                ),
-            ) {
-                items(displayModules, key = { it.moduleId }) { module ->
-                    val latestReleaseTime = remember(module.latestReleaseTime) { module.latestReleaseTime }
-                    val moduleAuthor = stringResource(id = R.string.module_author)
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection)
+                        .padding(innerPadding),
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(
+                        start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + sysNavBarPadding
+                    ),
+                ) {
+                    items(displayModules, key = { it.moduleId }) { module ->
+                        val latestReleaseTime = remember(module.latestReleaseTime) { module.latestReleaseTime }
+                        val moduleAuthor = stringResource(id = R.string.module_author)
 
-                    TonalCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                    ) {
-                        Box(
+                        TonalCard(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 170.dp)
-                                .clickable {
-                                    val args = RepoModuleArg(
-                                        moduleId = module.moduleId,
-                                        moduleName = module.moduleName,
-                                        authors = module.authors,
-                                        description = module.summary,
-                                        repoUrl = module.repoUrl ?: "",
-                                        license = module.license ?: "",
-                                        bannerUrl = module.bannerUrl,
-                                        repoType = module.repoType,
-                                        authorsList = module.authorList.map { AuthorArg(it.name, it.link) },
-                                        latestRelease = module.latestRelease,
-                                        latestReleaseTime = module.latestReleaseTime,
-                                        releases = emptyList()
-                                    )
-                                    navigator.navigate(ModuleRepoDetailScreenDestination(args)) {
-                                        launchSingleTop = true
-                                    }
-                                }
+                                .clip(RoundedCornerShape(14.dp))
                         ) {
-                            val useBanner = prefs.getBoolean("use_banner", true)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 170.dp)
+                                    .clickable {
+                                        val args = RepoModuleArg(
+                                            moduleId = module.moduleId,
+                                            moduleName = module.moduleName,
+                                            authors = module.authors,
+                                            description = module.summary,
+                                            repoUrl = module.repoUrl ?: "",
+                                            license = module.license ?: "",
+                                            bannerUrl = module.bannerUrl,
+                                            repoType = module.repoType,
+                                            authorsList = module.authorList.map { AuthorArg(it.name, it.link) },
+                                            latestRelease = module.latestRelease,
+                                            latestReleaseTime = module.latestReleaseTime,
+                                            releases = emptyList()
+                                        )
+                                        navigator.navigate(ModuleRepoDetailScreenDestination(args)) {
+                                            launchSingleTop = true
+                                        }
+                                    }
+                            ) {
+                                val useBanner = remember { prefs.getBoolean("use_banner", true) }
 
-                            if (useBanner && !module.bannerUrl.isNullOrEmpty()) {
-                                val req = remember(module.bannerUrl) {
-                                    ImageRequest.Builder(context)
-                                        .data(module.bannerUrl)
-                                        .crossfade(true)
-                                        .build()
+                                if (useBanner && !module.bannerUrl.isNullOrEmpty()) {
+                                    val req = remember(module.bannerUrl) {
+                                        ImageRequest.Builder(context)
+                                            .data(module.bannerUrl)
+                                            .crossfade(true)
+                                            .build()
+                                    }
+                                    AsyncImage(
+                                        model = req,
+                                        contentDescription = null,
+                                        modifier = Modifier.matchParentSize(),
+                                        contentScale = ContentScale.Crop,
+                                        alpha = bannerAlpha
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .background(cs.surfaceContainerLow)
+                                    )
                                 }
-                                AsyncImage(
-                                    model = req,
-                                    contentDescription = null,
-                                    modifier = Modifier.matchParentSize(),
-                                    contentScale = ContentScale.Crop,
-                                    alpha = bannerAlpha
-                                )
-                            } else {
+
                                 Box(
                                     modifier = Modifier
                                         .matchParentSize()
-                                        .background(cs.surfaceContainerLow)
+                                        .background(scrim)
                                 )
-                            }
 
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .background(scrim)
-                            )
-
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 22.dp, top = 22.dp, end = 22.dp, bottom = 12.dp)
-                            ) {
-                                Row(
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(bottom = 12.dp)
-                                        .zIndex(3f),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .padding(start = 22.dp, top = 22.dp, end = 22.dp, bottom = 12.dp)
                                 ) {
-                                    val typeStr = module.repoType
-                                    val typeColor = when (typeStr.uppercase()) {
-                                        "META" -> MaterialTheme.colorScheme.tertiaryContainer
-                                        "NON-FREE" -> MaterialTheme.colorScheme.errorContainer
-                                        else -> MaterialTheme.colorScheme.primaryContainer
-                                    }
-                                    val typeTextColor = when (typeStr.uppercase()) {
-                                        "META" -> MaterialTheme.colorScheme.onTertiaryContainer
-                                        "NON-FREE" -> MaterialTheme.colorScheme.onErrorContainer
-                                        else -> MaterialTheme.colorScheme.onPrimaryContainer
-                                    }
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 12.dp)
+                                            .zIndex(3f),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val typeStr = module.repoType
+                                        val typeColor = when (typeStr.uppercase()) {
+                                            "META" -> MaterialTheme.colorScheme.tertiaryContainer
+                                            "NON-FREE" -> MaterialTheme.colorScheme.errorContainer
+                                            else -> MaterialTheme.colorScheme.primaryContainer
+                                        }
+                                        val typeTextColor = when (typeStr.uppercase()) {
+                                            "META" -> MaterialTheme.colorScheme.onTertiaryContainer
+                                            "NON-FREE" -> MaterialTheme.colorScheme.onErrorContainer
+                                            else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                        }
 
-                                    BadgeChipCustom(
-                                        text = typeStr,
-                                        containerColor = typeColor,
-                                        contentColor = typeTextColor
-                                    )
-
-                                    if (!module.license.isNullOrEmpty()) {
                                         BadgeChipCustom(
-                                            text = module.license,
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f),
-                                            contentColor = MaterialTheme.colorScheme.onSurface
+                                            text = typeStr,
+                                            containerColor = typeColor,
+                                            contentColor = typeTextColor
+                                        )
+
+                                        if (!module.license.isNullOrEmpty()) {
+                                            BadgeChipCustom(
+                                                text = module.license,
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f),
+                                                contentColor = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+
+                                    if (module.moduleName.isNotEmpty()) {
+                                        Text(
+                                            text = module.moduleName,
+                                            color = cs.onSurface,
+                                            fontSize = MaterialTheme.typography.titleMedium.fontSize,
+                                            fontWeight = FontWeight.SemiBold,
+                                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                            fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
                                         )
                                     }
-                                }
-
-                                if (module.moduleName.isNotEmpty()) {
+                                    if (module.moduleId.isNotEmpty()) {
+                                        Text(
+                                            text = "ID: ${module.moduleId}",
+                                            color = cs.onSurface.copy(alpha = 0.78f),
+                                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                            fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                            fontWeight = FontWeight.Medium,
+                                        )
+                                    }
                                     Text(
-                                        text = module.moduleName,
-                                        color = cs.onSurface,
-                                        fontSize = MaterialTheme.typography.titleMedium.fontSize,
-                                        fontWeight = FontWeight.SemiBold,
-                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                        fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
-                                    )
-                                }
-                                if (module.moduleId.isNotEmpty()) {
-                                    Text(
-                                        text = "ID: ${module.moduleId}",
+                                        text = "$moduleAuthor: ${module.authors}",
                                         color = cs.onSurface.copy(alpha = 0.78f),
                                         fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                         fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
                                         fontWeight = FontWeight.Medium,
                                     )
-                                }
-                                Text(
-                                    text = "$moduleAuthor: ${module.authors}",
-                                    color = cs.onSurface.copy(alpha = 0.78f),
-                                    fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                                if (module.summary.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    Text(
-                                        text = module.summary,
-                                        color = cs.onSurface.copy(alpha = 0.80f),
-                                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                                        fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                        fontWeight = FontWeight.Medium,
-                                        overflow = TextOverflow.Ellipsis,
-                                        maxLines = 4,
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                Row(
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    if (module.stargazerCount > 0) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Star,
-                                                contentDescription = "stars",
-                                                tint = cs.onSurface.copy(alpha = 0.78f),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            Text(
-                                                text = module.stargazerCount.toString(),
-                                                color = cs.onSurface.copy(alpha = 0.78f),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                fontWeight = FontWeight.Medium,
-                                                modifier = Modifier.padding(start = 4.dp)
-                                            )
-                                        }
-                                    } else {
-                                        Spacer(modifier = Modifier.width(1.dp))
-                                    }
-                                    Spacer(Modifier.weight(1f))
-                                    if (latestReleaseTime.isNotEmpty()) {
+                                    if (module.summary.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(12.dp))
                                         Text(
-                                            text = latestReleaseTime,
-                                            color = cs.onSurface.copy(alpha = 0.78f),
+                                            text = module.summary,
+                                            color = cs.onSurface.copy(alpha = 0.80f),
                                             fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                             fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
                                             lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                                             fontWeight = FontWeight.Medium,
+                                            overflow = TextOverflow.Ellipsis,
+                                            maxLines = 4,
                                         )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        if (module.stargazerCount > 0) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.Star,
+                                                    contentDescription = "stars",
+                                                    tint = cs.onSurface.copy(alpha = 0.78f),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Text(
+                                                    text = module.stargazerCount.toString(),
+                                                    color = cs.onSurface.copy(alpha = 0.78f),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    fontWeight = FontWeight.Medium,
+                                                    modifier = Modifier.padding(start = 4.dp)
+                                                )
+                                            }
+                                        } else {
+                                            Spacer(modifier = Modifier.width(1.dp))
+                                        }
+                                        Spacer(Modifier.weight(1f))
+                                        if (latestReleaseTime.isNotEmpty()) {
+                                            Text(
+                                                text = latestReleaseTime,
+                                                color = cs.onSurface.copy(alpha = 0.78f),
+                                                fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                                                fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
+                                                lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
+                                                fontWeight = FontWeight.Medium,
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                    item { Spacer(Modifier.height(12.dp)) }
                 }
-                item { Spacer(Modifier.height(12.dp)) }
             }
         }
     }
@@ -504,145 +523,159 @@ fun ModuleRepoDetailScreen(
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
-    val confirmTitle = stringResource(R.string.module_install)
-    var pendingDownload by remember { mutableStateOf<(() -> Unit)?>(null) }
-    val confirmDialog = rememberConfirmDialog(onConfirm = { pendingDownload?.invoke() })
-    val onInstallModule: (Uri) -> Unit = { uri ->
-        navigator.navigate(FlashScreenDestination(FlashIt.FlashModules(listOf(uri)))) {
-            launchSingleTop = true
-        }
+    
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
     }
 
-    var readmeHtml by remember(module.moduleId) { mutableStateOf<String?>(null) }
-    var readmeLoaded by remember(module.moduleId) { mutableStateOf(false) }
-    var detailReleases by remember(module.moduleId) { mutableStateOf<List<ReleaseArg>>(emptyList()) }
-    var webUrl by remember(module.moduleId) { mutableStateOf(module.repoUrl) }
-    var sourceUrl by remember(module.moduleId) { mutableStateOf(module.repoUrl) }
+    CompositionLocalProvider(LocalDensity provides customDensity) {
+        val confirmTitle = stringResource(R.string.module_install)
+        var pendingDownload by remember { mutableStateOf<(() -> Unit)?>(null) }
+        val confirmDialog = rememberConfirmDialog(onConfirm = { pendingDownload?.invoke() })
+        val onInstallModule: (Uri) -> Unit = { uri ->
+            navigator.navigate(FlashScreenDestination(FlashIt.FlashModules(listOf(uri)))) {
+                launchSingleTop = true
+            }
+        }
 
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+        var readmeHtml by remember(module.moduleId) { mutableStateOf<String?>(null) }
+        var readmeLoaded by remember(module.moduleId) { mutableStateOf(false) }
+        var detailReleases by remember(module.moduleId) { mutableStateOf<List<ReleaseArg>>(emptyList()) }
+        var webUrl by remember(module.moduleId) { mutableStateOf(module.repoUrl) }
+        var sourceUrl by remember(module.moduleId) { mutableStateOf(module.repoUrl) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = module.moduleName) },
-                navigationIcon = {
-                    IconButton(onClick = { navigator.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = null,
-                        )
-                    }
-                },
-                actions = {
-                    if (webUrl.isNotEmpty()) {
-                        IconButton(onClick = { uriHandler.openUri(webUrl) }) {
+        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(text = module.moduleName) },
+                    navigationIcon = {
+                        IconButton(onClick = { navigator.popBackStack() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ChromeReaderMode,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = null,
                             )
                         }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor =  MaterialTheme.colorScheme.surfaceContainer,
-                )
-            )
-        },
-        contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal),
-    ) { innerPadding ->
-        LaunchedEffect(module.moduleId) {
-            if (module.moduleId.isNotEmpty()) {
-                withContext(Dispatchers.IO) {
-                    runCatching {
-                        val detail = fetchModuleDetail(module.moduleId)
-                        if (detail != null && detail.readmeHtml.isNotEmpty()) {
-                            readmeHtml = detail.readmeHtml
-                            if (detail.sourceUrl.isNotEmpty()) sourceUrl = detail.sourceUrl
-                            detailReleases = detail.releases.map { r ->
-                                ReleaseArg(
-                                    tagName = r.tagName,
-                                    name = r.name,
-                                    publishedAt = r.publishedAt,
-                                    assets = r.assets.map { a -> ReleaseAssetArg(a.name, a.downloadUrl, a.size, a.downloadCount) },
-                                    descriptionHTML = r.descriptionHTML
+                    },
+                    actions = {
+                        if (webUrl.isNotEmpty()) {
+                            IconButton(onClick = { uriHandler.openUri(webUrl) }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.ChromeReaderMode,
+                                    contentDescription = null,
                                 )
                             }
-                        } else {
-                            val (fetchedReadmeHtml, fetchedReleases) = fetchGitHubDetails(module.repoUrl)
-                            readmeHtml = fetchedReadmeHtml
-                            detailReleases = fetchedReleases
                         }
-                    }.onSuccess {
-                        readmeLoaded = true
-                    }.onFailure {
-                        readmeLoaded = true
-                        detailReleases = emptyList()
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor =  MaterialTheme.colorScheme.surfaceContainer,
+                    )
+                )
+            },
+            contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal),
+        ) { innerPadding ->
+            LaunchedEffect(module.moduleId) {
+                if (module.moduleId.isNotEmpty()) {
+                    withContext(Dispatchers.IO) {
+                        runCatching {
+                            val detail = fetchModuleDetail(module.moduleId)
+                            if (detail != null && detail.readmeHtml.isNotEmpty()) {
+                                readmeHtml = detail.readmeHtml
+                                if (detail.sourceUrl.isNotEmpty()) sourceUrl = detail.sourceUrl
+                                detailReleases = detail.releases.map { r ->
+                                    ReleaseArg(
+                                        tagName = r.tagName,
+                                        name = r.name,
+                                        publishedAt = r.publishedAt,
+                                        assets = r.assets.map { a -> ReleaseAssetArg(a.name, a.downloadUrl, a.size, a.downloadCount) },
+                                        descriptionHTML = r.descriptionHTML
+                                    )
+                                }
+                            } else {
+                                val (fetchedReadmeHtml, fetchedReleases) = fetchGitHubDetails(module.repoUrl)
+                                readmeHtml = fetchedReadmeHtml
+                                detailReleases = fetchedReleases
+                            }
+                        }.onSuccess {
+                            readmeLoaded = true
+                        }.onFailure {
+                            readmeLoaded = true
+                            detailReleases = emptyList()
+                        }
+                    }
+                } else {
+                    readmeLoaded = true
+                }
+            }
+            val tabs = listOf(
+                stringResource(R.string.tab_readme),
+                stringResource(R.string.tab_releases),
+                stringResource(R.string.tab_info)
+            )
+            val pagerState = rememberPagerState(initialPage = 0, pageCount = { tabs.size })
+            val layoutDirection = LocalLayoutDirection.current
+            Box(modifier = Modifier.fillMaxSize()) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    val paddedInnerPadding = PaddingValues(
+                        top = innerPadding.calculateTopPadding() + 56.dp + 8.dp,
+                        start = innerPadding.calculateStartPadding(layoutDirection),
+                        end = innerPadding.calculateEndPadding(layoutDirection),
+                        bottom = innerPadding.calculateBottomPadding() + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+                    )
+                    when (page) {
+                        0 -> ReadmePage(
+                            readmeHtml = readmeHtml,
+                            readmeLoaded = readmeLoaded,
+                            innerPadding = paddedInnerPadding,
+                            scrollBehavior = scrollBehavior
+                        )
+                        1 -> ReleasesPage(
+                            detailReleases = detailReleases,
+                            innerPadding = paddedInnerPadding,
+                            scrollBehavior = scrollBehavior,
+                            confirmTitle = confirmTitle,
+                            confirmDialog = confirmDialog,
+                            scope = scope,
+                            onInstallModule = onInstallModule,
+                            setPendingDownload = { pendingDownload = it }
+                        )
+                        2 -> InfoPage(
+                            module = module,
+                            innerPadding = paddedInnerPadding,
+                            scrollBehavior = scrollBehavior,
+                            uriHandler = uriHandler,
+                            sourceUrl = sourceUrl
+                        )
                     }
                 }
-            } else {
-                readmeLoaded = true
-            }
-        }
-        val tabs = listOf(
-            stringResource(R.string.tab_readme),
-            stringResource(R.string.tab_releases),
-            stringResource(R.string.tab_info)
-        )
-        val pagerState = rememberPagerState(initialPage = 0, pageCount = { tabs.size })
-        val layoutDirection = LocalLayoutDirection.current
-        Box(modifier = Modifier.fillMaxSize()) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                val paddedInnerPadding = PaddingValues(
-                    top = innerPadding.calculateTopPadding() + 56.dp + 8.dp,
-                    start = innerPadding.calculateStartPadding(layoutDirection),
-                    end = innerPadding.calculateEndPadding(layoutDirection),
-                    bottom = innerPadding.calculateBottomPadding() + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
-                )
-                when (page) {
-                    0 -> ReadmePage(
-                        readmeHtml = readmeHtml,
-                        readmeLoaded = readmeLoaded,
-                        innerPadding = paddedInnerPadding,
-                        scrollBehavior = scrollBehavior
-                    )
-                    1 -> ReleasesPage(
-                        detailReleases = detailReleases,
-                        innerPadding = paddedInnerPadding,
-                        scrollBehavior = scrollBehavior,
-                        confirmTitle = confirmTitle,
-                        confirmDialog = confirmDialog,
-                        scope = scope,
-                        onInstallModule = onInstallModule,
-                        setPendingDownload = { pendingDownload = it }
-                    )
-                    2 -> InfoPage(
-                        module = module,
-                        innerPadding = paddedInnerPadding,
-                        scrollBehavior = scrollBehavior,
-                        uriHandler = uriHandler,
-                        sourceUrl = sourceUrl
-                    )
+                PrimaryTabRow(
+                    selectedTabIndex = pagerState.currentPage,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
+                ) {
+                    tabs.forEachIndexed { index, tab ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                            text = { Text(tab) },
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
-            PrimaryTabRow(
-                selectedTabIndex = pagerState.currentPage,
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
-            ) {
-                tabs.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = { Text(tab) },
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            DownloadListener(context) { uri -> onInstallModule(uri) }
         }
-        DownloadListener(context) { uri -> onInstallModule(uri) }
     }
 }
 
