@@ -1,14 +1,41 @@
 #!/bin/bash
-set -e
 
 # Minimal: ./build.sh ksud
 # Full: ./build.sh ksuinit lkm all
 # Specific: ./build.sh ksuinit lkm <kmi-version>
 
+set -e
+
+# Intercept failures and interrupts to kill all background jobs
+_cleanup() {
+    local exit_code=$?
+    trap - EXIT SIGINT SIGTERM
+    if [ $exit_code -ne 0 ]; then
+        echo -e "\n\033[31mBuild failed or interrupted, cleaning up background tasks...\033[0m"
+        local pids=$(jobs -p)
+        if [ -n "$pids" ]; then
+            kill $pids 2>/dev/null || true
+        fi
+        pkill -P $$ 2>/dev/null || true
+    fi
+    exit $exit_code
+}
+trap _cleanup EXIT SIGINT SIGTERM
+
 if [ ! -d "out" ]; then
     mkdir out
     echo "*" > out/.gitignore
     echo "\033[32mTips: copy this script to out/build.sh for clean workspace, run with bash out/build.sh\033[0m"
+fi
+
+# Container
+CONTAINER="${CONTAINER:-}"
+if [ -z "$CONTAINER" ]; then
+    if command -v podman &> /dev/null; then
+        CONTAINER="podman"
+    elif command -v docker &> /dev/null; then
+        CONTAINER="docker"
+    fi
 fi
 
 # Signing key for manager
@@ -65,14 +92,15 @@ build_lkm() {
     {
         echo "=== Building kernelsu.ko for KMI: $kmi (DDK: $DDK_RELEASE) ==="
 
-        docker run --rm --privileged -v "$DIR:/workspace" -w /workspace \
+        [ -z "$CONTAINER" ] && echo "Error: No container found." && return 1
+        $CONTAINER run --rm --privileged -v "$DIR:/workspace:z" -w /workspace \
             ghcr.io/ylarod/ddk-min:$kmi-$DDK_RELEASE /bin/bash -c "
                 set -e
                 git config --global --add safe.directory /workspace
                 cd kernel
                 CONFIG_KSU=m CC=clang make
-                cp kernelsu.ko ../out/${kmi}_kernelsu.ko
-                cp kernelsu.ko ../userspace/ksud/bin/aarch64/${kmi}_kernelsu.ko
+                cp -f kernelsu.ko ../out/${kmi}_kernelsu.ko
+                cp -f kernelsu.ko ../userspace/ksud/bin/aarch64/${kmi}_kernelsu.ko
                 echo 'Built: ../out/${kmi}_kernelsu.ko'
             "
     } > "$logfile" 2>&1 || {
@@ -88,9 +116,10 @@ while [[ $# -gt 0 ]]; do
             rm -rf out/*.apk out/*.ko dist/
             cd manager && ./gradlew clean
             cd "$DIR"
-            DDK_IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^ghcr.io/ylarod/ddk-min:")
+            find kernel -type f \( -name '*.o' -o -name '*.cmd' -o -name '*.ko' -o -name '*.mod' -o -name '*.mod.c' -o -name 'modules.order' -o -name 'Module.symvers' \) -delete 2>/dev/null || true
+            [ -n "$CONTAINER" ] && DDK_IMAGES=$($CONTAINER images --format "{{.Repository}}:{{.Tag}}" | grep "^ghcr.io/ylarod/ddk-min:" || echo "")
             if [ -n "$DDK_IMAGES" ]; then
-                echo "$DDK_IMAGES" | xargs docker rmi
+                echo "$DDK_IMAGES" | xargs $CONTAINER rmi
             fi
             exit 0
             ;;
@@ -180,7 +209,7 @@ if [[ "$BUILD_LKM" == "all" ]]; then
         build_lkm_all() {
             export -f build_lkm
             export DIR DDK_RELEASE VALID_KMIS
-            echo "$VALID_KMIS" | xargs -P0 -I{} bash -c 'build_lkm "$@"' _ {}
+            echo "$VALID_KMIS" | xargs -n1 -P1 -I{} bash -c 'build_lkm "$@"' _ {}
         }
         build_lkm_all
     ) &
