@@ -62,6 +62,10 @@ class SuperUserViewModel : ViewModel() {
         val packageInfo: PackageInfo,
         val profile: Natives.Profile?,
     ) : Parcelable {
+
+        val isSystemApp: Boolean
+            get() = (packageInfo.applicationInfo!!.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+
         val packageName: String
             get() = packageInfo.packageName
         val uid: Int
@@ -69,17 +73,11 @@ class SuperUserViewModel : ViewModel() {
 
         val allowSu: Boolean
             get() = profile != null && profile.allowSu
+
         val hasCustomProfile: Boolean
             get() {
-                if (profile == null) {
-                    return false
-                }
-
-                return if (profile.allowSu) {
-                    !profile.rootUseDefault
-                } else {
-                    !profile.nonRootUseDefault
-                }
+                if (profile == null) return false
+                return if (profile.allowSu) !profile.rootUseDefault else !profile.nonRootUseDefault
             }
     }
 
@@ -113,17 +111,14 @@ class SuperUserViewModel : ViewModel() {
     val appList by derivedStateOf {
         val search = search.text
         sortedList.filter {
-            search.isEmpty() || it.label.contains(search, true) || it.packageName.contains(
-                search,
-                true
-            ) || HanziToPinyin.getInstance()
-                .toPinyinString(it.label).contains(search, true)
+            search.isEmpty() || it.label.contains(search, true) || it.packageName.contains(search, true)
+                    || HanziToPinyin.getInstance().toPinyinString(it.label).contains(search, true)
         }.filter {
             it.uid == 2000
                     || showSystemApps
                     || it.allowSu
                     || it.hasCustomProfile
-                    || it.packageInfo.applicationInfo!!.flags.and(ApplicationInfo.FLAG_SYSTEM) == 0
+                    || !it.isSystemApp
         }
     }
 
