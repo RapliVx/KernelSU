@@ -47,7 +47,7 @@
 #include "avc.h"
 #endif
 
-// kernel compat, lite ones
+// kernel compat
 #include "kernel_compat.h"
 
 #include "policy/app_profile.h"
@@ -74,11 +74,16 @@
 #include "selinux/sepolicy.h"
 
 #ifdef CONFIG_KPROBES
-#include "kprobes_common.h"
+#include "downstream/kprobes_common.h"
+#endif
+
+#ifdef CONFIG_KALLSYMS
+#include "external/chibihash64.h"
+#include "downstream/kallsyms_common.h"
 #endif
 
 #ifdef CONFIG_ARM64
-#include "arm64_bl_insn.h"
+#include "downstream/arm64_branch_insn.h"
 #endif
 
 // unity build
@@ -135,15 +140,15 @@
 #endif /* CONFIG_KSU_TAMPER_SYSCALL_TABLE */
 
 #ifdef CONFIG_KSU_HACK_ARM64_BRANCH_LINK
+#undef syscall_table_sucompat_enable
+#undef syscall_table_sucompat_disable
+#include "hook/syscall_table_hook_arm64.c" // included as fallback
 #include "hook/branch_link_hook_arm64.c"
 #endif
 
 #if defined(CONFIG_KSU_KPROBES_KSUD) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
 #include "hook/kp_ksud.c"
 #endif
-
-// __weak fn's
-#include "kernel_compat.c"
 
 struct cred* ksu_cred;
 
@@ -258,23 +263,30 @@ static int __init kernelsu_init(void)
 	return 0;
 }
 
-#if defined(MODULE)
-static void __exit kernelsu_exit(void)
+#if !defined(MODULE)
+device_initcall(kernelsu_init);
+#else
+static int __init kernelsu_lkm_init(void)
+{
+	kobject_del(&THIS_MODULE->mkobj.kobj); 	// tiann/KernelSU fefb02e
+	return kernelsu_init();
+}
+
+static void __exit kernelsu_lkm_exit(void)
 {
 	__builtin_trap();
 	__builtin_unreachable();
 }
-module_init(kernelsu_init);
-module_exit(kernelsu_exit);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
 MODULE_IMPORT_NS("VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver");
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
 MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
 #endif
-#else
-device_initcall(kernelsu_init);
-#endif
+
+module_init(kernelsu_lkm_init);
+module_exit(kernelsu_lkm_exit);
+#endif // MODULE
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("weishu");

@@ -11,15 +11,15 @@ MDIR := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 $(info -- KDIR: $(KDIR))
 $(info -- MDIR: $(MDIR))
 
-# compliant to last upstream kernel change as of dbff91c
-CFLAGS_ksu.o += -DKSU_VERSION=32546
+# compliant to last upstream kernel change as of be53d75
+CFLAGS_ksu.o += -DKSU_VERSION=32565
 
 ifndef KSU_EXPECTED_SIZE
-KSU_EXPECTED_SIZE := 0x384
+KSU_EXPECTED_SIZE := 0x033b
 endif
 
 ifndef KSU_EXPECTED_HASH
-KSU_EXPECTED_HASH := a9462b8b98ea1ca7901b0cbdcebfaa35f0aa95e51b01d66e6b6d2c81b97746d8
+KSU_EXPECTED_HASH := c371061b19d8c7d7d6133c6a9bafe198fa944e50c1b31c9d8daa8d7f1fc2d2d6
 endif
 
 ifdef KSU_MANAGER_PACKAGE
@@ -39,15 +39,15 @@ $(info -- KernelSU/compat: security_add_hooks v2 found!)
 CFLAGS_ksu.o += -DKSU_COMPAT_SECURITY_ADD_HOOKS_V2
 endif
 
-ifeq ($(shell grep -q "^struct security_operations selinux_ops" $(srctree)/security/selinux/hooks.c; echo $$?),0)
-$(info -- KernelSU/compat: exported selinux_ops found!)
-CFLAGS_ksu.o += -DKSU_HAS_EXPORTED_SELINUX_OPS
-endif
-
 # see security_delete_hooks
 ifeq ($(shell grep -A5 "^struct security_hook_list" $(srctree)/include/linux/lsm_hooks.h 2>/dev/null | grep -q "struct hlist_node" 2>/dev/null; echo $$?),0)
 $(info -- KernelSU/compat: security_hook_list - hlist_node found!)
 CFLAGS_ksu.o += -DKSU_COMPAT_SECURITY_DELETE_HOOKS_HLIST
+endif
+
+ifeq ($(shell grep -q "^struct security_operations selinux_ops" $(srctree)/security/selinux/hooks.c; echo $$?),0)
+$(info -- KernelSU/compat: exported selinux_ops found!)
+CFLAGS_ksu.o += -DKSU_HAS_EXPORTED_SELINUX_OPS
 endif
 
 ifeq ($(shell grep -q " current_sid(void)" $(srctree)/security/selinux/include/objsec.h; echo $$?),0)
@@ -120,11 +120,19 @@ CFLAGS_REMOVE_ksu.o += -fno-builtin
 ifneq ($(CONFIG_KSU_DEBUG),y)
 # strip, remove tracing / profiling
 # comment out if proper backtrace is needed
-CFLAGS_ksu.o += -O3
 CFLAGS_ksu.o += -g0 -fno-unwind-tables -fno-asynchronous-unwind-tables -fomit-frame-pointer
 CFLAGS_ksu.o += $(call cc-option, -momit-leaf-frame-pointer)
+
+# no profiling
 CFLAGS_REMOVE_ksu.o = $(CC_FLAGS_FTRACE)
 CFLAGS_REMOVE_ksu.o += -pg
+
+CFLAGS_ksu.o += -O3
+
+# hot paths dont have loops so lets make code smaller
+CFLAGS_ksu.o += $(call cc-option, -fno-unroll-loops)
+CFLAGS_ksu.o += $(call cc-option, -fno-unswitch-loops) # gcc
+CFLAGS_ksu.o += $(call cc-option, -fno-vectorize)
 
 # if cflags can be macro'd, this will be called 'TRUST_ME'
 CFLAGS_ksu.o += -fno-stack-protector -fno-stack-check

@@ -10,45 +10,46 @@
  * published by the Free Software Foundation.
  *
  */
+// k4.2 ~ 6.7, LSM Hijacking, pure function pointer edition.
+extern struct security_hook_heads security_hook_heads;
 
-static int ksu_inode_rename(struct inode *old_inode, struct dentry *old_dentry,
-			    struct inode *new_inode, struct dentry *new_dentry)
-{
-	ksu_rename_observer(old_dentry, new_dentry);
-	return 0;
-}
-
-static int ksu_task_fix_setuid(struct cred *new, const struct cred *old, int flags)
+static int (*task_fix_setuid_fn)(struct cred *new, const struct cred *old, int flags) __read_mostly = NULL;
+static __nocfi int ksu_task_fix_setuid(struct cred *new, const struct cred *old, int flags)
 {
 	// see sys_setresuid
 	if (flags == LSM_SETID_RES)
 		ksu_handle_setresuid_cred(new, old);
 
-	return 0;
+	return task_fix_setuid_fn(new, old, flags);
 }
 
-static int ksu_bprm_check(struct linux_binprm *bprm)
+static int (*inode_rename_fn)(struct inode *old_inode, struct dentry *old_dentry, struct inode *new_inode, struct dentry *new_dentry) __read_mostly = NULL;
+static __nocfi int ksu_inode_rename(struct inode *old_inode, struct dentry *old_dentry, struct inode *new_inode, struct dentry *new_dentry)
+{
+	ksu_rename_observer(old_dentry, new_dentry);
+	return inode_rename_fn(old_inode, old_dentry, new_inode, new_dentry);
+}
+
+static void (*bprm_committing_creds_fn)(struct linux_binprm *bprm) __read_mostly = NULL;
+static __nocfi void ksu_bprm_committing_creds(struct linux_binprm *bprm)
 {
 #ifdef CONFIG_KSU_FEATURE_SULOG
 	ksu_sulog_emit_bprm((const char *)bprm->filename);
 #endif
-	return 0;
+	bprm_committing_creds_fn(bprm); // NOTE: void LSM hook
 }
 
-static int ksu_file_permission(struct file *file, int mask)
+static int (*file_permission_fn)(struct file *file, int mask) __read_mostly = NULL;
+static __nocfi int ksu_file_permission(struct file *file, int mask)
 {
-#if !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
 	if (unlikely(ksu_vfs_read_hook))
 		ksu_install_rc_hook(file);
-#endif
 
-	return 0;
+	return file_permission_fn(file, mask);
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
-static uintptr_t cap_bprm_set_creds_slot __read_mostly = NULL;
-extern int cap_bprm_set_creds(struct linux_binprm *bprm);
-
+static int (*bprm_set_creds_fn)(struct linux_binprm *bprm) __read_mostly = NULL;
 static __nocfi int ksu_bprm_set_creds(struct linux_binprm *bprm)
 {
 	if (likely(ksu_boot_completed))
@@ -67,13 +68,165 @@ static __nocfi int ksu_bprm_set_creds(struct linux_binprm *bprm)
 	escape_to_root_forced(); // give this context all permissions
 
 capability_fn:
-	return cap_bprm_set_creds(bprm);
+	return bprm_set_creds_fn(bprm);
 }
+#endif
 
-static struct security_hook_list ksu_hooks_bprm_set_creds[] __ro_after_init = {
-	LSM_HOOK_INIT(bprm_set_creds, ksu_bprm_set_creds),
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0) || defined(KSU_COMPAT_SECURITY_ADD_HOOKS_V2)
+static int (*setprocattr_fn)(const char *name, void *value, size_t size) __read_mostly = NULL;
+static __nocfi int ksu_setprocattr(const char *name, void *value, size_t size)
+{
+	ksu_hide_setprocattr_inline(name, value, size);
+	return setprocattr_fn(name, value, size);
+
+}
+#else
+static int (*setprocattr_fn)(struct task_struct *p, char *name, void *value, size_t size) __read_mostly = NULL;
+static __nocfi int ksu_setprocattr(struct task_struct *p, char *name, void *value, size_t size)
+{
+	ksu_hide_setprocattr_inline(name, value, size);
+	return setprocattr_fn(p, name, value, size);
+}
+#endif
+
+struct lsm_patch_param {
+	void **target_slot;	// pptr to writable vmapped lsm slot
+	void *fn_ptr;		// fn_ptr to write on that slot
 };
 
+static int patch_lsm_slot_stop_machine(void *data)
+{
+	struct lsm_patch_param *param = (struct lsm_patch_param *)data;
+
+	// write on the actual lsm slot
+	*(param->target_slot) = param->fn_ptr;
+
+	return 0;
+}
+
+static inline int ksu_write_to_readonly_slot(uintptr_t slot_ptr, uintptr_t new_ptr)
+{
+	uintptr_t addr = (uintptr_t)slot_ptr;
+	uintptr_t base = addr & PAGE_MASK;
+	uintptr_t offset = addr & ~PAGE_MASK;
+
+	struct page *page = phys_to_page(__pa(base));
+	if (!page)
+		return -EFAULT;
+
+	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
+	if (!writable_addr)
+		return -ENOMEM;
+
+	void **target_slot = (void **)((unsigned long)writable_addr + offset);
+
+	struct lsm_patch_param param;
+	param.target_slot = target_slot;
+	param.fn_ptr = new_ptr;
+
+	stop_machine(patch_lsm_slot_stop_machine, (void *)&param, NULL);
+
+	vunmap(writable_addr);
+	smp_mb();
+
+	return 0;
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0) || defined(KSU_COMPAT_SECURITY_DELETE_HOOKS_HLIST)
+static void ksu_hack_lsm_slot(struct hlist_head *hook_head, uintptr_t *old_ptr, uintptr_t new_ptr)
+{
+	struct security_hook_list *pos;
+	struct hlist_head *head = hook_head;
+	bool found = false;
+
+	// just grab first entry
+	hlist_for_each_entry(pos, head, list) {
+		found = true;
+		break;
+	}
+
+	if (!found) {
+		pr_info("LSM: No LSM hook on slot\n");
+		return;
+	}
+
+	// make sure this happens first, this way we dont have to pre-check on the handler
+	WRITE_ONCE(*old_ptr, *(uintptr_t *)&pos->hook);
+	smp_mb();
+
+	pr_info("LSM: 0x%lx found at 0x%lx slot, name: %s \n", *(uintptr_t *)&pos->hook, (uintptr_t)&pos->hook, pos->lsm);
+	int err = ksu_write_to_readonly_slot((uintptr_t)&pos->hook, new_ptr);
+	if (err) {
+		pr_err("LSM: ksu_write_to_readonly_slot err: %d\n", err);
+		return;
+	}
+
+	pr_info("LSM: 0x%lx written to slot\n", new_ptr);
+}
+#else
+static void ksu_hack_lsm_slot(struct list_head *hook_head, uintptr_t *old_ptr, uintptr_t new_ptr)
+{
+	struct security_hook_list *pos;
+	struct list_head *head = hook_head;
+	bool found = false;
+
+	// just grab first entry
+	list_for_each_entry(pos, head, list) {
+		found = true;
+		break;
+	}
+
+	if (!found) {
+		pr_info("LSM: No hook on slot!\n");
+		return;
+	}
+
+	WRITE_ONCE(*old_ptr, *(uintptr_t *)&pos->hook);
+	smp_mb();
+
+	pr_info("LSM: 0x%lx found at first slot 0x%lx\n", *(uintptr_t *)&pos->hook, (uintptr_t)&pos->hook);
+
+	int err = ksu_write_to_readonly_slot((uintptr_t)&pos->hook, new_ptr);
+	if (err) {
+		pr_err("LSM: ksu_write_to_readonly_slot err: %d\n", err);
+		return;
+	}
+
+	pr_info("LSM: 0x%lx written to slot\n", new_ptr);
+}
+#endif
+
+#define LSM_HACK_INIT(hook_name, hook_fn)									\
+do {														\
+	pr_info("LSM: Initializing hook for %s\n", #hook_name);							\
+	ksu_hack_lsm_slot(&security_hook_heads.hook_name, (uintptr_t *)&hook_name##_fn, (uintptr_t)(hook_fn));	\
+} while (0)
+
+#define LSM_HACK_RESTORE(hook_name)										\
+do {														\
+	if (!hook_name##_fn)											\
+		break;												\
+	uintptr_t dummy_int;											\
+	pr_info("LSM: Restoring original hook for %s\n", #hook_name);						\
+	ksu_hack_lsm_slot(&security_hook_heads.hook_name, &dummy_int, (uintptr_t)hook_name##_fn);		\
+} while (0)
+
+static int ksu_restore_file_permission(void *data)
+{
+	set_user_nice(current, 19); // low prio
+
+loop_start:
+	msleep(1000);
+	if (*(volatile bool *)&ksu_vfs_read_hook)
+		goto loop_start;
+
+	msleep(1000);
+
+	LSM_HACK_RESTORE(file_permission);
+	return 0;
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
 static int ksu_restore_bprm_set_creds(void *data)
 {
 	set_user_nice(current, 19); // low prio
@@ -85,646 +238,34 @@ loop_start:
 
 	msleep(1000);
 
-	// now we write capability back into its slot
-	uintptr_t addr = cap_bprm_set_creds_slot;
-	uintptr_t base = addr & PAGE_MASK;
-	uintptr_t offset = addr & ~PAGE_MASK;
-
-	struct page *page = phys_to_page(__pa(base));
-	if (!page)
-		return 0;
-
-	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		return 0;
-
-	void **target_slot = (void **)(writable_addr + offset);
-				
-	preempt_disable();
-	local_irq_disable();
-					
-	WRITE_ONCE(*target_slot, (uintptr_t)cap_bprm_set_creds);
-					
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(writable_addr);
-	smp_mb();
-	
-	pr_info("ksu_bprm_set_creds: restored cap_bprm_set_creds: *0x%lx = 0x%lx\n", (uintptr_t)addr, *(uintptr_t *)addr);
-
+	LSM_HACK_RESTORE(bprm_set_creds);
 	return 0;
 }
-#endif // < 4.14
-
-static struct security_hook_list ksu_hooks[] __ro_after_init = {
-	LSM_HOOK_INIT(inode_rename, ksu_inode_rename),
-	LSM_HOOK_INIT(task_fix_setuid, ksu_task_fix_setuid),
-#ifdef CONFIG_KSU_FEATURE_SULOG
-	LSM_HOOK_INIT(bprm_check_security, ksu_bprm_check),
 #endif
-};
-
-// vfs_read hook
-static struct security_hook_list ksu_hooks_file_permission[] __ro_after_init = {
-	LSM_HOOK_INIT(file_permission, ksu_file_permission),
-};
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0) || defined(KSU_COMPAT_SECURITY_ADD_HOOKS_V2)
-static int (*selinux_setprocattr_fn)(const char *name, void *value, size_t size) __read_mostly = NULL;
-static __nocfi int ksu_setprocattr_wrapper(const char *name, void *value, size_t size)
-{
-	ksu_hide_setprocattr_inline(name, value, size);
-	if (likely(selinux_setprocattr_fn))
-		return selinux_setprocattr_fn(name, value, size);
-	return 0;
-}
-#define ksu_security_add_hooks security_add_hooks
-#else
-static int (*selinux_setprocattr_fn)(struct task_struct *p, char *name, void *value, size_t size) __read_mostly = NULL;
-static __nocfi int ksu_setprocattr_wrapper(struct task_struct *p, char *name, void *value, size_t size)
-{
-	ksu_hide_setprocattr_inline(name, value, size);
-	if (likely(selinux_setprocattr_fn))
-		return selinux_setprocattr_fn(p, name, value, size);
-
-	return 0;
-}
-#define ksu_security_add_hooks(a, b, c) security_add_hooks(a, b)
-#endif
-
-/**
- *  security_setprocattr is a weird LSM on 5.4 and up, and this is normally backported
- *  down to 4.14 and 4.19. somehow this LSM is a one-shot. only the first on list is called.
- *
- */
-#define SETPROCATTR_HOOK_NAME "ksu_setprocattr"
-static struct security_hook_list ksu_hooks_setprocattr[] __ro_after_init = {
-	LSM_HOOK_INIT(setprocattr, ksu_setprocattr_wrapper),
-};
-
-/**
- * LSMs are actually unhookable, however, it requires CONFIG_SECURITY_SELINUX_DISABLE
- * ref: security_delete_hooks(), lsm_hooks.h
- *
- * when that is disabled, we get an issue as we will be writing to ro memory.
- * "Unable to handle kernel write to read-only memory at virtual address fffffffffffuckyou"
- *
- * however we can just do vmap-as-rw trick to create another reality where this memory segment is rw.
- *
- */
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0) || defined(KSU_COMPAT_SECURITY_DELETE_HOOKS_HLIST)
-static void ksu_hlist_del_safe(struct hlist_node *n)
-{
-	struct hlist_node *next = n->next;
-	struct hlist_node **pprev = n->pprev;
-
-	if (!pprev)
-		return;
-
-	// this is here so we don't get lost
-	/**
-	 *	original state
-	 * n			ptr	*ptr
-	 * H	hlist_head	0x1000	0xA000
-	 *
-	 * A	node->next	0xA000	0xB000
-	 *	node->pprev	0xA008	0x1000
-	 *
-	 * B	node->next	0xB000	0xC000
-	 *	node->pprev	0xB008	0xA000
-	 *
-	 * C	node->next	0xC000	0xFFFF
-	 *	node->pprev	0xC008	0xB000
-	 *
-	 */
-
-	// on hlist, pprev is the address of the 'next' pointer in the previous element
-	// so what we do is:
-	// 	write the value 0xC000 (next) into address 0xA000 (A->next)
-	// 	write the value 0xA000 (pprev) into address 0xC008 (C->pprev)
-
-	/**
-	 * 	after this routine
-	 *
-	 * H	hlist_head	0x1000	0xA000
-	 *
-	 * A	node->next	0xA000	0xC000  <-- now points to C
-	 *	node->pprev	0xA008	0x1000
-	 *
-	 * B	node->next	0xB000	0xC000  <-- orphaned
-	 *	node->pprev	0xB008	0xA000  <-- orphaned
-	 *
-	 * C	node->next	0xC000	0xFFFF
-	 *	node->pprev	0xC008	0xA000  <-- now points to A's next
-	 *
-	 */
-
-	// NOTE: pprev is **
-	uintptr_t addr = (uintptr_t)pprev;
-	uintptr_t base = addr & PAGE_MASK;
-	uintptr_t offset = addr & ~PAGE_MASK;
-
-	struct page *page = phys_to_page(__pa(base));
-	if (!page)
-		return;
-
-	// vmap pprev
-	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		return;
-
-	uintptr_t target_slot = (uintptr_t)((uintptr_t)writable_addr + offset);
-
-	preempt_disable();
-	local_irq_disable();
-
-	WRITE_ONCE(*(struct hlist_node **)target_slot, next);
-
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(writable_addr);
-
-	smp_mb();
-
-	if (!next)
-		return;
-
-	// NOTE: pprev is **, taking ref, it becomes ***
-	addr = (uintptr_t)&next->pprev;
-	base = addr & PAGE_MASK;
-	offset = addr & ~PAGE_MASK;
-
-	page = phys_to_page(__pa(base));
-	if (!page)
-		return;
-
-	writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		return;
-
-	target_slot = (uintptr_t)((uintptr_t)writable_addr + offset);
-
-	preempt_disable();
-	local_irq_disable();
-
-	// use our pprev as the new pprev for the next in chain
-	WRITE_ONCE(*(struct hlist_node ***)target_slot, pprev);
-
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(writable_addr);
-
-	smp_mb();
-}
-
-// see security_delete_hooks
-static inline void ksu_security_delete_hooks(struct security_hook_list *hooks, int count)
-{
-	int i;
-	for (i = 0; i < count; i++)
-		ksu_hlist_del_safe(&hooks[i].list);
-}
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
-static void ksu_grab_cap_bprm_set_creds_slot()
-{
-	struct hlist_head *head = ksu_hooks_bprm_set_creds[0].head; 
-	struct security_hook_list *pos;
-	struct hlist_node *tmp;
-
-	if (!head)
-		return;
-
-	hlist_for_each_entry_safe(pos, tmp, head, list) {
-		// look for capabilities
-		if (pos->hook.bprm_set_creds != cap_bprm_set_creds)
-			continue;
-
-		cap_bprm_set_creds_slot = &pos->hook.bprm_set_creds;
-		pr_info("ksu_bprm_set_creds: found cap_bprm_set_creds slot at 0x%lx\n", (uintptr_t)cap_bprm_set_creds_slot);
-	}
-	
-	// now that we got the slot, we can unreg ourself
-	ksu_security_delete_hooks(ksu_hooks_bprm_set_creds, ARRAY_SIZE(ksu_hooks_bprm_set_creds));
-	
-	// then we write our fn ptr over on capability slot
-	uintptr_t addr = cap_bprm_set_creds_slot;
-	uintptr_t base = addr & PAGE_MASK;
-	uintptr_t offset = addr & ~PAGE_MASK;
-
-	struct page *page = phys_to_page(__pa(base));
-	if (!page)
-		return;
-
-	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		return;
-
-	void **target_slot = (void **)((unsigned long)writable_addr + offset);
-
-	preempt_disable();
-	local_irq_disable();
-
-	WRITE_ONCE(*target_slot, ksu_bprm_set_creds);
-					
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(writable_addr);
-	smp_mb();
-
-	pr_info("ksu_bprm_set_creds: cap_bprm_set_creds hijacked!\n");
-
-}
-#endif
-
-static void ksu_dethrone_selinux_setprocattr()
-{
-	struct hlist_head *head = ksu_hooks_setprocattr[0].head; 
-	struct security_hook_list *pos;
-	struct hlist_node *tmp;
-
-	if (!head)
-		return;
-
-	hlist_for_each_entry_safe(pos, tmp, head, list) {
-
-		// grab selinux_setprocattr fn ptr
-		if (!strcmp(pos->lsm, "selinux")) {
-			selinux_setprocattr_fn = pos->hook.setprocattr;
-			pr_info("ksu_setprocattr: selinux_setprocattr found at 0x%lx \n", (uintptr_t)selinux_setprocattr_fn);
-		}
-
-		// remove everything else that aint us.
-		// NOTE: on some kernels BPF_LSM is enabled and it will also register setprocattr
-		// so this has to be done!
-		if (!!strcmp(pos->lsm, SETPROCATTR_HOOK_NAME)) {
-			pr_info("ksu_setprocattr: delete setprocattr LSM: %s\n", pos->lsm);
-			ksu_hlist_del_safe(&pos->list);
-		}
-	}
-}
-
-#else // ! KSU_COMPAT_SECURITY_DELETE_HOOKS_HLIST 
-
-static void ksu_list_del_safe(struct list_head *entry)
-{
-	struct list_head *next = entry->next;
-	struct list_head *prev = entry->prev;
-
-	// on a linked list we have to patch both the before us and the next to us
-	if (!prev)
-		return;
-
-	// smash prev->next, basically we write 'next' into 'prev->next'
-	unsigned long addr_p = (unsigned long)&prev->next;
-	unsigned long base_p = addr_p & PAGE_MASK;
-	unsigned long offset_p = addr_p & ~PAGE_MASK;
-
-	struct page *page_p = phys_to_page(__pa(base_p));
-	if (!page_p)
-		return;
-
-	void *w_page = vmap(&page_p, 1, VM_MAP, PAGE_KERNEL);
-	if (!w_page)
-		return;
-
-	struct list_head **target = (void *)((unsigned long)w_page + offset_p);
-	
-	preempt_disable();
-	local_irq_disable();
-
-	WRITE_ONCE(*target, next);
-
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(w_page);
-	
-	smp_mb();
-
-	if (!next)
-		return;
-
-	// smash next->prev, basically we need to write 'prev' into 'next->prev'
-	unsigned long addr_n = (unsigned long)&next->prev;
-	unsigned long base_n = addr_n & PAGE_MASK;
-	unsigned long offset_n = addr_n & ~PAGE_MASK;
-
-	struct page *page_n = phys_to_page(__pa(base_n));
-	if (!page_n)
-		return;
-
-	w_page = vmap(&page_n, 1, VM_MAP, PAGE_KERNEL);
-	if (!w_page)
-		return;
-	
-	target = (void *)((unsigned long)w_page + offset_n);
-
-	preempt_disable();
-	local_irq_disable();
-
-	WRITE_ONCE(*target, prev);
-
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(w_page);
-
-	smp_mb();
-
-}
-
-// see security_delete_hooks
-static inline void ksu_security_delete_hooks(struct security_hook_list *hooks, int count)
-{
-	int i;
-	for (i = 0; i < count; i++)
-		ksu_list_del_safe(&hooks[i].list);
-}
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
-static void ksu_grab_cap_bprm_set_creds_slot()
-{
-	struct list_head *head = ksu_hooks_bprm_set_creds[0].head;
-	struct security_hook_list *pos, *tmp;
-
-	if (!head)
-		return;
-
-	if (list_empty(head))
-		return;
-
-	list_for_each_entry_safe(pos, tmp, head, list) {
-		// look for capabilities
-		if (pos->hook.bprm_set_creds != cap_bprm_set_creds)
-			continue;
-
-		cap_bprm_set_creds_slot = &pos->hook.bprm_set_creds;
-		pr_info("ksu_bprm_set_creds: found cap_bprm_set_creds slot at 0x%lx\n", (uintptr_t)cap_bprm_set_creds_slot);
-	}
-	
-	// now that we got the slot, we can unreg ourself
-	ksu_security_delete_hooks(ksu_hooks_bprm_set_creds, ARRAY_SIZE(ksu_hooks_bprm_set_creds));
-	
-	// then we write our fn ptr over on capability slot
-	uintptr_t addr = cap_bprm_set_creds_slot;
-	uintptr_t base = addr & PAGE_MASK;
-	uintptr_t offset = addr & ~PAGE_MASK;
-
-	struct page *page = phys_to_page(__pa(base));
-	if (!page)
-		return;
-
-	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		return;
-
-	void **target_slot = (void **)((unsigned long)writable_addr + offset);
-
-	preempt_disable();
-	local_irq_disable();
-					
-	WRITE_ONCE(*target_slot, ksu_bprm_set_creds);
-					
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(writable_addr);
-	smp_mb();
-
-	pr_info("ksu_bprm_set_creds: cap_bprm_set_creds hijacked!\n");
-
-}
-#endif
-
-static void ksu_dethrone_selinux_setprocattr()
-{
-	struct list_head *head = ksu_hooks_setprocattr[0].head;
-	struct security_hook_list *pos, *tmp;
-
-	if (!head)
-		return;
-
-	if (list_empty(head))
-		return;
-
-	list_for_each_entry_safe(pos, tmp, head, list) {
-		// dont unhook ourself!
-		if (pos->hook.setprocattr == ksu_setprocattr_wrapper)
-			continue;
-
-		// this is likely selinux_setprocattr, we save its address
-		if (!selinux_setprocattr_fn && pos->hook.setprocattr) {
-			selinux_setprocattr_fn = pos->hook.setprocattr;
-			pr_info("ksu_setprocattr: found first setprocattr at 0x%lx\n", (uintptr_t)selinux_setprocattr_fn);
-		}
-
-		// just delete evrything
-		pr_info("ksu_setprocattr: delete setprocattr LSM at 0x%lx\n", (uintptr_t)pos->hook.setprocattr);
-		ksu_list_del_safe(&pos->list);
-	}
-}
-
-#endif // KSU_COMPAT_SECURITY_DELETE_HOOKS_HLIST
-
-static int ksu_lsm_hook_restore(void *data)
-{
-	set_user_nice(current, 19); // low prio
-
-loop_start:
-	msleep(1000);
-	if (*(volatile bool *)&ksu_vfs_read_hook)
-		goto loop_start;
-
-	msleep(1000);
-
-	pr_info("ksu_file_permission: unhook!\n");
-
-	ksu_security_delete_hooks(ksu_hooks_file_permission, ARRAY_SIZE(ksu_hooks_file_permission));
-
-	return 0;
-}
 
 static __init void ksu_lsm_hook_init(void)
 {
-	ksu_security_add_hooks(ksu_hooks, ARRAY_SIZE(ksu_hooks), "ksu");
-	pr_info("core_hook: initialized %d LSMs \n", ARRAY_SIZE(ksu_hooks));
+	LSM_HACK_INIT(task_fix_setuid, ksu_task_fix_setuid);
+	LSM_HACK_INIT(inode_rename, ksu_inode_rename);
+	LSM_HACK_INIT(setprocattr, ksu_setprocattr);
+
+#ifdef CONFIG_KSU_FEATURE_SULOG
+	LSM_HACK_INIT(bprm_committing_creds, ksu_bprm_committing_creds);
+#endif
 
 #if !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
-	ksu_security_add_hooks(ksu_hooks_file_permission, ARRAY_SIZE(ksu_hooks_file_permission), "ksu_file_permission");
-	kthread_run(ksu_lsm_hook_restore, NULL, "kthread");
+	LSM_HACK_INIT(file_permission, ksu_file_permission);
+	kthread_run(ksu_restore_file_permission, NULL, "kthread");
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
-	ksu_security_add_hooks(ksu_hooks_bprm_set_creds, ARRAY_SIZE(ksu_hooks_bprm_set_creds), "ksu");
-	ksu_grab_cap_bprm_set_creds_slot();
+	LSM_HACK_INIT(bprm_set_creds, ksu_bprm_set_creds);
 	kthread_run(ksu_restore_bprm_set_creds, NULL, "kthread");
 #endif
 
-	ksu_security_add_hooks(ksu_hooks_setprocattr, ARRAY_SIZE(ksu_hooks_setprocattr), SETPROCATTR_HOOK_NAME);
-	ksu_dethrone_selinux_setprocattr();
-
 }
-
-#ifdef MODULE // imported from https://github.com/tiann/KernelSU/blob/v1.0.5/kernel/core_hook.c#L715
-static int override_security_head(void *head, const void *new_head, size_t len)
-{
-	unsigned long base = (unsigned long)head & PAGE_MASK;
-	unsigned long offset = offset_in_page(head);
-
-	// this is impossible for our case because the page alignment
-	// but be careful for other cases!
-	BUG_ON(offset + len > PAGE_SIZE);
-	struct page *page = phys_to_page(__pa(base));
-	if (!page) {
-		return -EFAULT;
-	}
-
-	void *addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!addr) {
-		return -ENOMEM;
-	}
-	local_irq_disable();
-	memcpy(addr + offset, new_head, len);
-	local_irq_enable();
-	vunmap(addr);
-	return 0;
-}
-
-static void free_security_hook_list(struct hlist_head *head)
-{
-	struct hlist_node *temp;
-	struct security_hook_list *entry;
-
-	if (!head)
-		return;
-
-	hlist_for_each_entry_safe (entry, temp, head, list) {
-		hlist_del(&entry->list);
-		kfree(entry);
-	}
-
-	kfree(head);
-}
-
-struct hlist_head *copy_security_hlist(struct hlist_head *orig)
-{
-	struct hlist_head *new_head = kmalloc(sizeof(*new_head), GFP_KERNEL);
-	if (!new_head)
-		return NULL;
-
-	INIT_HLIST_HEAD(new_head);
-
-	struct security_hook_list *entry;
-	struct security_hook_list *new_entry;
-
-	hlist_for_each_entry (entry, orig, list) {
-		new_entry = kmalloc(sizeof(*new_entry), GFP_KERNEL);
-		if (!new_entry) {
-			free_security_hook_list(new_head);
-			return NULL;
-		}
-
-		*new_entry = *entry;
-
-		hlist_add_tail_rcu(&new_entry->list, new_head);
-	}
-
-	return new_head;
-}
-
-#define KSU_LSM_HOOK_HACK_INIT(head_ptr, name, ksu_func)					\
-do {												\
-	static struct security_hook_list hook = {  .hook = { .name = ksu_func } };		\
-	hook.head = head_ptr;									\
-	hook.lsm = "ksu";									\
-	struct hlist_head *new_head = copy_security_hlist(hook.head);				\
-	if (!new_head) {									\
-		pr_info("Failed to copy security list: %s\n", #name);				\
-		break;										\
-	}											\
-	hlist_add_tail_rcu(&hook.list, new_head);						\
-	if (override_security_head(hook.head, new_head, sizeof(*new_head))) {			\
-		free_security_hook_list(new_head);						\
-		pr_info("LSM hack fail for: %s\n", #name);					\
-	} else	{										\
-		pr_info("LSM hack done for: %s\n", #name);					\
-	}											\
-} while (0)
-
-extern struct security_hook_heads security_hook_heads;
-
-static void ksu_proxy_selinux_setprocattr()
-{
-	struct security_hook_list *pos;
-	struct hlist_head *head = &security_hook_heads.setprocattr;
-
-	hlist_for_each_entry(pos, head, list) {
-		if (pos->lsm && !strcmp(pos->lsm, "selinux")) {
-			selinux_setprocattr_fn = pos->hook.setprocattr;
-			pr_info("ksu_setprocattr: selinux_setprocattr found at 0x%lx \n", (uintptr_t)selinux_setprocattr_fn);
-			break;
-		}
-	}
-
-	if (!pos->hook.setprocattr)
-		return;
-
-	// then we write our fn ptr over on that slot
-	uintptr_t addr = (uintptr_t)&pos->hook.setprocattr;
-	uintptr_t base = addr & PAGE_MASK;
-	uintptr_t offset = addr & ~PAGE_MASK;
-
-	struct page *page = phys_to_page(__pa(base));
-	if (!page)
-		return;
-
-	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		return;
-
-	void **target_slot = (void **)((unsigned long)writable_addr + offset);
-
-	preempt_disable();
-	local_irq_disable();
-					
-	WRITE_ONCE(*target_slot, ksu_setprocattr_wrapper);
-					
-	local_irq_enable();
-	preempt_enable();
-
-	vunmap(writable_addr);
-	smp_mb();
-
-	pr_info("ksu_setprocattr: setprocattr hijacked!\n");
-
-}
-
-static __init void ksu_lsm_hack_init(void)
-{
-	KSU_LSM_HOOK_HACK_INIT(&security_hook_heads.task_fix_setuid, task_fix_setuid, ksu_task_fix_setuid);
-	KSU_LSM_HOOK_HACK_INIT(&security_hook_heads.inode_rename, inode_rename, ksu_inode_rename);
-#if !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
-	KSU_LSM_HOOK_HACK_INIT(&security_hook_heads.file_permission, file_permission, ksu_file_permission);
-#endif
-#ifdef CONFIG_KSU_FEATURE_SULOG
-	KSU_LSM_HOOK_HACK_INIT(&security_hook_heads.bprm_check_security, bprm_check_security, ksu_bprm_check);
-#endif
-	ksu_proxy_selinux_setprocattr();
-
-}
-#endif // MODULE
 
 static void __init ksu_core_init(void)
 {
-#ifdef MODULE
-	ksu_lsm_hack_init();
-	return;
-#endif
 	ksu_lsm_hook_init();
 }

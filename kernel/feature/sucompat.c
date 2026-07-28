@@ -91,50 +91,8 @@ static __always_inline bool is_su_allowed(const void **ptr_to_check)
 #endif // KSU_CAN_USE_JUMP_LABEL
 #endif
 
-	/**
-	 *  comparison:
-	 *
-	 * 	if (test_thread_flag(TIF_SECCOMP)) 
-	 *		return false;
-	 *
-	 * ffffff800922ffa0 <hook_aarch64_faccessat>:
-	 * ffffff800922ffa0: d10183ff     	sub	sp, sp, #0x60
-	 * ffffff800922ffa4: f9001bfe     	str	x30, [sp, #0x30]
-	 * ffffff800922ffa8: a90457f6     	stp	x22, x21, [sp, #0x40]
-	 * ffffff800922ffac: a9054ff4     	stp	x20, x19, [sp, #0x50]
-	 * ffffff800922ffb0: d5384113     	mrs	x19, SP_EL0
-	 * ffffff800922ffb4: f9400268     	ldr	x8, [x19]							// load thread_info->flags long (x8 register, 64-bit)
-	 * ffffff800922ffb8: 375809c8     	tbnz	w8, #0xb, 0xffffff80092300f0 <hook_aarch64_faccessat+0x150>	// TIF_SECCOMP is 11, 0xb, run test branch if not zero
-	 * ...
-	 * ffffff80092300f0: 97c18550     	bl	0xffffff8008291630 <sys_faccessat>
-	 * ffffff80092300f4: a9454ff4     	ldp	x20, x19, [sp, #0x50]
-	 * ffffff80092300f8: a94457f6     	ldp	x22, x21, [sp, #0x40]
-	 * ffffff80092300fc: f9401bfe     	ldr	x30, [sp, #0x30]
-	 * ffffff8009230100: 910183ff     	add	sp, sp, #0x60
-	 * ffffff8009230104: d65f03c0     	ret
-	 * 
-	 * to:
-	 * 	if (!!current->seccomp.mode)
-	 *		return false;
-	 * 
-	 * ffffff800922ffa0 <hook_aarch64_faccessat>:
-	 * ffffff800922ffa0: d10183ff     	sub	sp, sp, #0x60
-	 * ffffff800922ffa4: f9001bfe     	str	x30, [sp, #0x30]
-	 * ffffff800922ffa8: a90457f6     	stp	x22, x21, [sp, #0x40]
-	 * ffffff800922ffac: a9054ff4     	stp	x20, x19, [sp, #0x50]
-	 * ffffff800922ffb0: d5384113     	mrs	x19, SP_EL0
-	 * ffffff800922ffb4: b947aa68     	ldr	w8, [x19, #0x7a8]					// load seccomp.mode int (w8 register)
-	 * ffffff800922ffb8: 340000e8     	cbz	w8, 0xffffff800922ffd4 <hook_aarch64_faccessat+0x34>	// branch if zero, else move to next insn
-	 * ffffff800922ffbc: 97c1859d     	bl	0xffffff8008291630 <sys_faccessat>
-	 * ffffff800922ffc0: a9454ff4     	ldp	x20, x19, [sp, #0x50]
-	 * ffffff800922ffc4: a94457f6     	ldp	x22, x21, [sp, #0x40]
-	 * ffffff800922ffc8: f9401bfe     	ldr	x30, [sp, #0x30]
-	 * ffffff800922ffcc: 910183ff     	add	sp, sp, #0x60
-	 * ffffff800922ffd0: d65f03c0     	ret
-	 *
-	 */
-
-	if (test_thread_flag(TIF_SECCOMP))
+	// put ret hot on insn pipeline
+	if (likely(test_thread_flag(TIF_SECCOMP)))
 		return false;
 
 	// see seccomp check above
@@ -381,8 +339,8 @@ SUCOMPAT_HOOK_TYPE ksu_legacy_execve_sucompat(const char **filename_ptr, void *a
 static void syscall_table_sucompat_enable();
 static void syscall_table_sucompat_disable();
 #else
-static inline void syscall_table_sucompat_enable() { } // no-op
-static inline void syscall_table_sucompat_disable() { } // no-op
+#define syscall_table_sucompat_enable() do { } while (0)
+#define syscall_table_sucompat_disable() do { } while (0)
 #endif
 
 static void ksu_sucompat_enable()

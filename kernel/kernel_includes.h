@@ -1,3 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2026 \xx
+ *
+ * This file is a downstream extension and NOT affiliated, endorsed by,
+ * or maintained by the official KernelSU developers.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ */
+
 #ifndef __KSU_H_KERNEL_INCLUDES
 #define __KSU_H_KERNEL_INCLUDES
 
@@ -149,6 +162,14 @@
 #include <linux/kprobes.h>
 #endif
 
+#ifndef __ro_after_init
+#define __ro_after_init
+#endif
+
+#ifndef __nocfi
+#define __nocfi
+#endif
+
 /**
  * Linux kernel forbids c99 restrict
  * however we can use builtin's restrict
@@ -166,6 +187,24 @@
 # else
 #  define fallthrough do {} while (0) /* fallthrough */
 # endif
+#endif
+
+/**
+ * we do NOT have memset_explicit on the linux kernel
+ *
+ * from: OPENSSL_cleanse, volatile function pointer prevents memset optimization
+ * https://github.com/openssl/openssl/blob/master/crypto/mem_clr.c
+ * 
+ */
+static void *(*volatile memset_fnptr)(void *s, int c, size_t count) = memset;
+static __nocfi void *memset_explicit(void *s, int c, size_t count)
+{
+	return memset_fnptr(s, c, count);
+}
+
+// pseudo-raii / defer on C via __attribute__((__cleanup__()))
+#ifndef __cleanup
+#define __cleanup(fn) __attribute__((__cleanup__(fn)))
 #endif
 
 /**

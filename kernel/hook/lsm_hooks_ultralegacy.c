@@ -305,7 +305,7 @@ static inline void set_selinux_ops()
 }
 
 // stop_machine
-static int ksu_unregister_lsm_hook(void *data)
+static int ksu_restore_file_permission_stop_machine(void *data)
 {
 	struct security_operations *ops = (struct security_operations *)selinux_ops_addr;
 
@@ -317,7 +317,7 @@ static int ksu_unregister_lsm_hook(void *data)
 	return 0;
 }
 
-static int ksu_lsm_hook_restore(void *data)
+static int ksu_restore_file_permission(void *data)
 {
 	struct security_operations *ops = (struct security_operations *)selinux_ops_addr;
 	if (!ops)
@@ -333,9 +333,8 @@ loop_start:
 	if (*(volatile bool *)&ksu_vfs_read_hook)
 		goto loop_start;
 
-	pr_info("%s: selinux_ops: 0x%lx .name = %s\n", __func__, (long)ops, (const char *)ops );
-
-	stop_machine(ksu_unregister_lsm_hook, NULL, NULL);
+	// pr_info("%s: selinux_ops: 0x%lx .name = %s\n", __func__, (long)ops, (const char *)ops );
+	stop_machine(ksu_restore_file_permission_stop_machine, NULL, NULL);
 
 	return 0;
 }
@@ -385,7 +384,7 @@ static void ksu_lsm_hook_init(void)
 
 	stop_machine(ksu_register_lsm_hook, NULL, NULL);
 	
-	kthread_run(ksu_lsm_hook_restore, NULL, "unhook");
+	kthread_run(ksu_restore_file_permission, NULL, "unhook");
 	return;
 }
 

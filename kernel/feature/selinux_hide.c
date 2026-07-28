@@ -459,7 +459,7 @@ bail_out:
 }
 
 // init kthread
-static int ksu_hide_init_thread(void *data)
+static int ksu_selinux_hide_init_thread(void *data)
 {
 	set_user_nice(current, 19); // low prio
 
@@ -543,7 +543,7 @@ static const struct ksu_feature_handler selinux_hide_handler = {
 void __init ksu_selinux_hide_init()
 {
 	// we init this on a kthread
-	kthread_run(ksu_hide_init_thread, NULL, "kthread");
+	kthread_run(ksu_selinux_hide_init_thread, NULL, "kthread");
 
 	if (ksu_register_feature_handler(&selinux_hide_handler)) {
 		pr_err("Failed to register selinux_hide feature handler\n");

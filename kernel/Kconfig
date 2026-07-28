@@ -22,16 +22,19 @@ config KSU_KPROBES_KSUD
 config KSU_HACK_ARM64_BRANCH_LINK
 	bool "EXPERIMENTAL: inline call-site hijacking (ARM64 bl insn)"
 	depends on KSU
-	depends on ARM64 && KALLSYMS && KSU_KPROBES_KSUD
+	depends on ARM64 && KALLSYMS
 	depends on !KSU_TAMPER_SYSCALL_TABLE
-	default n
+	default y if KSU = m
 	help
-	  EXPERIMENTAL: provides sucompat by patching callsites, scanning kernel text and 
-	  patching bl (branch-with-link) insn. This routes calls into our custom functions
-	  without the need for trampolines. Theory comes from ARM64 optprobes on lkml.
-	  KProbes is required for sys_reboot and sys_newfstat hooks and symbol resolution.
-	  NOT usable for pre-4.17 kernels. For those, please use KSU_TAMPER_SYSCALL_TABLE.
-	  Verified on 4.19/5.4 GKI1, 5.10~6.12 GKI2.
+	  EXPERIMENTAL: Attempts to provide sucompat by scanning kernel text and
+	  overwriting caller's branch insn ('b' or 'bl') directly to our hooks,
+	  bypassing trampoline overhead and CFI fuckups. Inspired by ARM64 optprobes.
+
+	  Successful patching relies on symbol stability, so hooking success will
+	  vary across different compliers, optimization, tweaks and backports.
+	  When patching fails, it keeps syscall table hook for the target symbol.
+
+	  Tested and verified on 3.10~4.14, 4.19/5.4 GKI1 and 5.10 ~ 6.12 GKI2.
 
 config KSU_TAMPER_SYSCALL_TABLE
 	bool "tamper sys_call_table for sucompat + sys_reboot"

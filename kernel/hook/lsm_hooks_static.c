@@ -150,11 +150,7 @@ static void __init ksu_core_init(void)
 	uintptr_t target_callsite;
 	uintptr_t symbol_addr;
 
-#ifdef CONFIG_KPROBES
-#define ksu_kallsyms_lookup_name kp_cfi_kallsyms_lookup_name
-#else
-#define ksu_kallsyms_lookup_name kallsyms_lookup_name
-#endif
+#define ksu_kallsyms_lookup_name kallsyms_lookup_retry
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 	target_callsite = ksu_kallsyms_lookup_name("do_renameat2");

@@ -67,8 +67,7 @@
 - if easy, backport newer kernel fn/macro's as is, then redefine.
 - if hard, mimic what it does then redefine. as long as it works it is good enough.
 - lots of casting hacks / type punning / void* / void** abuse are used
-- kernel_compat.h for small functions
-- kernel_compat.c for big functions marked __weak and tagged with extern on callee site
+- kernel_compat.h holds most compat handling / hacks
 
 ## kthreads
 - theres a lot of these on the codebase even for mundane tasks

@@ -151,7 +151,7 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 	unsigned long data_app_magic = 0;
 
 	// First depth
-	struct data_path *data __attribute__((__cleanup__(ksu_kfree_byref))) = kzalloc(sizeof(*data), GFP_KERNEL);
+	struct data_path *data __cleanup(kfree_byref) = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return;
 
@@ -400,7 +400,7 @@ void track_throne(bool prune_only)
 #endif
 
 	// HACK: force cast prune_only to be a void *
-	kthread_run(throne_tracker_thread, (void *)prune_only, "ksu_throne");
+	kthread_run(throne_tracker_thread, (void *)prune_only, "kthread");
 }
 
 void ksu_throne_tracker_init()
