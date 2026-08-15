@@ -61,6 +61,9 @@ endif
 ifeq ($(CONFIG_KSU_DEBUG),y)
 ccflags-y += -DCONFIG_KSU_DEBUG=1
 endif
+ifeq ($(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER),y)
+ccflags-y += -DCONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=1
+endif
 endif
 
 kernelsu-objs += extras.o
@@ -105,13 +108,13 @@ endif
 # Calculate version if git version is available
 ifdef KSU_GIT_VERSION_VALID
 # ksu_version: major * 10000 + git version + 200 for historical reasons
-$(eval KSU_VERSION=$(shell expr 30100 + $(KSU_GIT_VERSION)))
+$(eval KSU_VERSION=$(shell expr 30000 + $(KSU_GIT_VERSION)))
 $(info -- KernelSU version: $(KSU_VERSION))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 else
 # If there is no .git directory, use default version
 $(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU a git repository!")
-ccflags-y += -DKSU_VERSION=33000
+ccflags-y += -DKSU_VERSION=16
 endif
 
 KSU_NEW_DCACHE_FLUSH := $(shell grep -q __flush_dcache_area $(srctree)/arch/arm64/include/asm/cacheflush.h ; echo $$?)
