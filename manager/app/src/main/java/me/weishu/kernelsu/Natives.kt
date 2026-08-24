@@ -89,7 +89,9 @@ object Natives {
      * 1: enabled
      * negative : error
      */
-    external fun isSelinuxHideEnabled(): Boolean
+    @JvmStatic
+    external fun isSelinuxHideEnabled(): Boolean?
+    @JvmStatic
     external fun setSelinuxHideEnabled(enabled: Boolean): Int
 
     /**
@@ -99,7 +101,13 @@ object Natives {
      * negative : error
      */
     external fun isAvcSpoofEnabled(): Boolean
+    @JvmStatic
     external fun setAvcSpoofEnabled(enabled: Boolean): Boolean
+
+    @JvmStatic
+    external fun isAdbRootEnabled(): Boolean?
+    @JvmStatic
+    external fun setAdbRootEnabled(enabled: Boolean): Boolean
 
     /**
      * Get the user name for the uid.

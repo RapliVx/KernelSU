@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.Adb
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ContactPage
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Fence
 import androidx.compose.material.icons.filled.FolderDelete
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.filled.RemoveModerator
 import androidx.compose.material.icons.filled.Save
@@ -100,6 +102,9 @@ import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.BuildConfig
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.util.AdbRootManager
+import me.weishu.kernelsu.ui.util.SelinuxHideManager
+import androidx.compose.runtime.collectAsState
 import me.weishu.kernelsu.ui.component.AboutDialog
 import me.weishu.kernelsu.ui.component.ConfirmResult
 import me.weishu.kernelsu.ui.component.DialogHandle
@@ -138,6 +143,24 @@ fun SettingScreen(navigator: DestinationsNavigator) {
     val scope = rememberCoroutineScope()
     
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+
+    LaunchedEffect(Unit) {
+        AdbRootManager.fetchState()
+        SelinuxHideManager.fetchState()
+    }
+    
+    val selinuxHideStatusEvent by SelinuxHideManager.statusEvent.collectAsState()
+    LaunchedEffect(selinuxHideStatusEvent) {
+        selinuxHideStatusEvent?.let { status ->
+            if (status == -android.system.OsConstants.EAGAIN) {
+                android.widget.Toast.makeText(context, R.string.settings_selinux_hide_reboot_required, android.widget.Toast.LENGTH_LONG).show()
+            } else if (status != 0) {
+                android.widget.Toast.makeText(context, context.getString(R.string.settings_selinux_hide_failed, status), android.widget.Toast.LENGTH_LONG).show()
+            }
+            SelinuxHideManager.clearStatusEvent()
+        }
+    }
+    
     val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
 
     val systemDensity = LocalDensity.current
@@ -393,7 +416,24 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 
                     ExpressiveList(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        content = listOf(
+                        content = listOfNotNull(
+                            {
+                                val adbRootState by AdbRootManager.adbRootState.collectAsState()
+                                val isProcessing by AdbRootManager.isProcessing.collectAsState()
+                                
+                                if (adbRootState != null) {
+                                    ExpressiveSwitchItem(
+                                        icon = Icons.Filled.Adb,
+                                        title = stringResource(id = R.string.settings_adb_root),
+                                        summary = stringResource(id = R.string.settings_adb_root_summary),
+                                        checked = adbRootState == true,
+                                        enabled = !isProcessing,
+                                        onCheckedChange = { isChecked ->
+                                            AdbRootManager.setAdbRoot(isChecked)
+                                        }
+                                    )
+                                }
+                            }.takeIf { AdbRootManager.adbRootState.value != null },
                             {
                                 val currentSuEnabled = remember { Natives.isSuEnabled() }
                                 var suCompatMode by rememberSaveable { mutableIntStateOf(if (!currentSuEnabled) 1 else 0) }
@@ -557,7 +597,26 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                                         }
                                     )
                                 }
-                            }
+                            },
+                            {
+                                val selinuxHideState by SelinuxHideManager.selinuxHideState.collectAsState()
+                                val isProcessing by SelinuxHideManager.isProcessing.collectAsState()
+                                
+                                if (selinuxHideState != null) {
+                                    ExpressiveSwitchItem(
+                                        icon = Icons.Filled.Policy,
+                                        title = stringResource(id = R.string.settings_selinux_hide),
+                                        summary = stringResource(id = R.string.settings_selinux_hide_summary),
+                                        checked = selinuxHideState == true,
+                                        enabled = !isProcessing,
+                                        onCheckedChange = { isChecked ->
+                                            SelinuxHideManager.setSelinuxHide(isChecked) { cmd, root ->
+                                                execKsud(cmd, root)
+                                            }
+                                        }
+                                    )
+                                }
+                            }.takeIf { SelinuxHideManager.selinuxHideState.value != null }
                         )
                     )
                 }

@@ -355,9 +355,14 @@ Java_me_weishu_kernelsu_Natives_setKernelUmountEnabled(JNIEnv *env, jobject thiz
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL
+JNIEXPORT jobject JNICALL
 Java_me_weishu_kernelsu_Natives_isSelinuxHideEnabled(JNIEnv *env, jobject thiz) {
-    return is_selinux_hide_enabled();
+    if (!is_selinux_hide_supported()) {
+        return nullptr;
+    }
+    jclass booleanClass = env->FindClass("java/lang/Boolean");
+    jmethodID valueOfMethod = env->GetStaticMethodID(booleanClass, "valueOf", "(Z)Ljava/lang/Boolean;");
+    return env->CallStaticObjectMethod(booleanClass, valueOfMethod, (jboolean)is_selinux_hide_enabled());
 }
 
 extern "C"
@@ -375,6 +380,23 @@ extern "C"
 JNIEXPORT jboolean JNICALL
 Java_me_weishu_kernelsu_Natives_setAvcSpoofEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     return set_avc_spoof_enabled(enabled);
+}
+
+extern "C"
+JNIEXPORT jobject JNICALL
+Java_me_weishu_kernelsu_Natives_isAdbRootEnabled(JNIEnv *env, jobject thiz) {
+    if (!is_adb_root_supported()) {
+        return nullptr;
+    }
+    jclass booleanClass = env->FindClass("java/lang/Boolean");
+    jmethodID valueOfMethod = env->GetStaticMethodID(booleanClass, "valueOf", "(Z)Ljava/lang/Boolean;");
+    return env->CallStaticObjectMethod(booleanClass, valueOfMethod, (jboolean)is_adb_root_enabled());
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_me_weishu_kernelsu_Natives_setAdbRootEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+    return set_adb_root_enabled(enabled);
 }
 
 extern "C"
