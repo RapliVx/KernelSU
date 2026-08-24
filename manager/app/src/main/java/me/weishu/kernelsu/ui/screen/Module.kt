@@ -871,21 +871,21 @@ fun ModuleItem(
                         } else this
                     }
                     .clickable { expanded = !expanded }
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    )
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .animateContentSize(
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessLow
-                            )
-                        )
                         .padding(
                             start = 22.dp,
                             top = contentTopPadding,
                             end = 22.dp,
-                            bottom = if (expanded) 0.dp else 12.dp
+                            bottom = 12.dp
                         ),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
@@ -983,8 +983,8 @@ fun ModuleItem(
                     .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
                     .zIndex(2f),
                 visible = expanded,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
