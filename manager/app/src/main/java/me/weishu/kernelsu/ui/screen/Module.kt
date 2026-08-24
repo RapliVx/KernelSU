@@ -871,16 +871,16 @@ fun ModuleItem(
                         } else this
                     }
                     .clickable { expanded = !expanded }
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    )
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .animateContentSize(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        )
                         .padding(
                             start = 22.dp,
                             top = contentTopPadding,
