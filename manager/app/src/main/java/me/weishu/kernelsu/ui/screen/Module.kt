@@ -704,17 +704,10 @@ fun ModuleItem(
 
         var expanded by rememberSaveable(module.id) { mutableStateOf(false) }
 
-        val contentTopPadding by animateDpAsState(
-            targetValue = if (expanded)
-                BadgeAreaHeight + 8.dp   // expanded
-            else
-                BadgeAreaHeight,         // collapsed
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMedium
-            ),
-            label = "contentTopPadding"
-        )
+        val contentTopPadding = if (expanded)
+            BadgeAreaHeight + 8.dp   // expanded
+        else
+            BadgeAreaHeight         // collapsed
 
         val cs = MaterialTheme.colorScheme
         val isDark = isSystemInDarkTheme()
@@ -962,7 +955,6 @@ fun ModuleItem(
             AnimatedVisibility(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
                     .zIndex(2f),
                 visible = expanded,
                 enter = fadeIn() + expandVertically(
@@ -981,7 +973,9 @@ fun ModuleItem(
                 )
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
