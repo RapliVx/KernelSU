@@ -855,9 +855,9 @@ fun ModuleItem(
                 }
             }
 
-            Box(
+            Column(
                 modifier = Modifier
-                    .matchParentSize()
+                    .fillMaxWidth()
                     .run {
                         if (module.hasWebUi) {
                             toggleable(
@@ -877,13 +877,17 @@ fun ModuleItem(
                             stiffness = Spring.StiffnessLow
                         )
                     )
-                    .padding(
-                        start = 22.dp,
-                        top = contentTopPadding,
-                        end = 22.dp,
-                        bottom = 12.dp
-                    )
             ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = 22.dp,
+                            top = contentTopPadding,
+                            end = 22.dp,
+                            bottom = if (expanded) 0.dp else 12.dp
+                        )
+                ) {
 
                 Column(
                     modifier = Modifier
@@ -971,10 +975,12 @@ fun ModuleItem(
                 onCheckedChange = onCheckChanged,
                 interactionSource = if (!module.hasWebUi) interactionSource else null
             )
+                }
+
             AnimatedVisibility(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(12.dp)
+                    .align(Alignment.End)
+                    .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
                     .zIndex(2f),
                 visible = expanded,
                 enter = fadeIn() + expandVertically(),
