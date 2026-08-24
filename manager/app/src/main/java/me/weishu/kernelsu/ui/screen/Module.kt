@@ -102,7 +102,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateIntAsState
+
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
@@ -928,10 +928,7 @@ fun ModuleItem(
                             fontWeight = FontWeight.Medium
                         )
 
-                        val descMaxLines by animateIntAsState(
-                            targetValue = if (expanded) 10 else 2,
-                            label = "descMaxLines"
-                        )
+                        val descMaxLines = if (expanded) 10 else 2
 
                         val descText = remember(module.description) {
                             if (module.description.length > 300)
