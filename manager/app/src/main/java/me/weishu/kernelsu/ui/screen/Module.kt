@@ -704,27 +704,7 @@ fun ModuleItem(
 
         var expanded by rememberSaveable(module.id) { mutableStateOf(false) }
 
-        val cardHeight by animateDpAsState(
-            targetValue = if (expanded) 280.dp else 170.dp,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
-            ),
-            label = "cardHeight"
-        )
-
-        val contentTopPadding by animateDpAsState(
-
-            targetValue = if (expanded)
-                BadgeAreaHeight + 8.dp   // expanded
-            else
-                BadgeAreaHeight,         // collapsed
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMedium
-            ),
-            label = "contentTopPadding"
-        )
+        val contentTopPadding = BadgeAreaHeight
 
         val cs = MaterialTheme.colorScheme
         val isDark = isSystemInDarkTheme()
@@ -794,7 +774,12 @@ fun ModuleItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = cardHeight)
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
                 .clip(shape)
         ) {
 
@@ -871,12 +856,6 @@ fun ModuleItem(
                         } else this
                     }
                     .clickable { expanded = !expanded }
-                    .animateContentSize(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    )
             ) {
                 Row(
                     modifier = Modifier
@@ -938,11 +917,6 @@ fun ModuleItem(
                             fontWeight = FontWeight.Medium
                         )
 
-                        val descTop by animateDpAsState(
-                            targetValue = if (expanded) 12.dp else 6.dp,
-                            label = "descTop"
-                        )
-
                         val descMaxLines by animateIntAsState(
                             targetValue = if (expanded) 10 else 2,
                             label = "descMaxLines"
@@ -955,7 +929,7 @@ fun ModuleItem(
                         }
 
                         Text(
-                            modifier = Modifier.padding(top = descTop),
+                            modifier = Modifier.padding(top = 6.dp),
                             text = descText,
                             color = cs.onSurface.copy(alpha = 0.80f),
                             fontSize = MaterialTheme.typography.bodySmall.fontSize,
@@ -977,17 +951,12 @@ fun ModuleItem(
                     )
                 }
 
-            AnimatedVisibility(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
-                    .zIndex(2f),
-                visible = expanded,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
+            if (expanded) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
+                        .zIndex(2f),
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
