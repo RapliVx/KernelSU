@@ -704,7 +704,17 @@ fun ModuleItem(
 
         var expanded by rememberSaveable(module.id) { mutableStateOf(false) }
 
-        val contentTopPadding = BadgeAreaHeight
+        val contentTopPadding by animateDpAsState(
+            targetValue = if (expanded)
+                BadgeAreaHeight + 8.dp   // expanded
+            else
+                BadgeAreaHeight,         // collapsed
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "contentTopPadding"
+        )
 
         val cs = MaterialTheme.colorScheme
         val isDark = isSystemInDarkTheme()
@@ -774,12 +784,7 @@ fun ModuleItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                )
+                .heightIn(min = 170.dp)
                 .clip(shape)
         ) {
 
@@ -860,6 +865,12 @@ fun ModuleItem(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .animateContentSize(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        )
                         .padding(
                             start = 22.dp,
                             top = contentTopPadding,
@@ -951,12 +962,29 @@ fun ModuleItem(
                     )
                 }
 
-            if (expanded) {
+            AnimatedVisibility(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
+                    .zIndex(2f),
+                visible = expanded,
+                enter = fadeIn() + expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    expandFrom = Alignment.Top
+                ),
+                exit = fadeOut() + shrinkVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    ),
+                    shrinkTowards = Alignment.Top
+                )
+            ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
-                        .zIndex(2f),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
