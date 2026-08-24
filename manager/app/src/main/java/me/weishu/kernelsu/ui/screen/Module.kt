@@ -889,97 +889,97 @@ fun ModuleItem(
                         )
                 ) {
 
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(end = 64.dp)
-                ) {
-                    val defaultTitleSize = MaterialTheme.typography.titleMedium.fontSize
-                    val defaultLineHeight = MaterialTheme.typography.titleMedium.lineHeight
-                    var titleFontSize by remember { mutableStateOf(defaultTitleSize) }
-                    var titleLineHeight by remember { mutableStateOf(defaultLineHeight) }
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(end = 64.dp)
+                    ) {
+                        val defaultTitleSize = MaterialTheme.typography.titleMedium.fontSize
+                        val defaultLineHeight = MaterialTheme.typography.titleMedium.lineHeight
+                        var titleFontSize by remember { mutableStateOf(defaultTitleSize) }
+                        var titleLineHeight by remember { mutableStateOf(defaultLineHeight) }
 
-                    Text(
-                        text = module.name,
-                        color = cs.onSurface,
-                        fontSize = titleFontSize,
-                        lineHeight = titleLineHeight,
-                        fontWeight = FontWeight.SemiBold,
-                        textDecoration = textDecoration,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        onTextLayout = { textLayoutResult ->
-                            if (textLayoutResult.hasVisualOverflow) {
-                                if (titleFontSize > 12.sp) {
-                                    titleFontSize *= 0.9f
-                                    titleLineHeight *= 0.9f
+                        Text(
+                            text = module.name,
+                            color = cs.onSurface,
+                            fontSize = titleFontSize,
+                            lineHeight = titleLineHeight,
+                            fontWeight = FontWeight.SemiBold,
+                            textDecoration = textDecoration,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            onTextLayout = { textLayoutResult ->
+                                if (textLayoutResult.hasVisualOverflow) {
+                                    if (titleFontSize > 12.sp) {
+                                        titleFontSize *= 0.9f
+                                        titleLineHeight *= 0.9f
+                                    }
                                 }
                             }
+                        )
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        Text(
+                            text = "$moduleVersion: ${module.version}",
+                            color = cs.onSurface.copy(alpha = 0.78f),
+                            textDecoration = textDecoration,
+                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Text(
+                            text = "$moduleAuthor: ${module.author}",
+                            color = cs.onSurface.copy(alpha = 0.78f),
+                            textDecoration = textDecoration,
+                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        val descTop by animateDpAsState(
+                            targetValue = if (expanded) 12.dp else 6.dp,
+                            label = "descTop"
+                        )
+
+                        val descMaxLines by animateIntAsState(
+                            targetValue = if (expanded) 10 else 2,
+                            label = "descMaxLines"
+                        )
+
+                        val descText = remember(module.description) {
+                            if (module.description.length > 300)
+                                module.description.take(300) + "…"
+                            else module.description
                         }
-                    )
 
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    Text(
-                        text = "$moduleVersion: ${module.version}",
-                        color = cs.onSurface.copy(alpha = 0.78f),
-                        textDecoration = textDecoration,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        fontWeight = FontWeight.Medium
-                    )
-
-                    Text(
-                        text = "$moduleAuthor: ${module.author}",
-                        color = cs.onSurface.copy(alpha = 0.78f),
-                        textDecoration = textDecoration,
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        fontWeight = FontWeight.Medium
-                    )
-
-                    val descTop by animateDpAsState(
-                        targetValue = if (expanded) 12.dp else 6.dp,
-                        label = "descTop"
-                    )
-
-                    val descMaxLines by animateIntAsState(
-                        targetValue = if (expanded) 10 else 2,
-                        label = "descMaxLines"
-                    )
-
-                    val descText = remember(module.description) {
-                        if (module.description.length > 300)
-                            module.description.take(300) + "…"
-                        else module.description
+                        Text(
+                            modifier = Modifier.padding(top = descTop),
+                            text = descText,
+                            color = cs.onSurface.copy(alpha = 0.80f),
+                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                            maxLines = descMaxLines,
+                            overflow = TextOverflow.Ellipsis,
+                            textDecoration = textDecoration,
+                            lineHeight = 16.sp
+                        )
                     }
-
-                    Text(
-                        modifier = Modifier.padding(top = descTop),
-                        text = descText,
-                        color = cs.onSurface.copy(alpha = 0.80f),
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                        maxLines = descMaxLines,
-                        overflow = TextOverflow.Ellipsis,
-                        textDecoration = textDecoration,
-                        lineHeight = 16.sp
-                    )
                 }
+
+                Switch(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 6.dp, end = 6.dp)
+                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp),
+                    enabled = !module.update,
+                    checked = module.enabled,
+                    onCheckedChange = onCheckChanged,
+                    interactionSource = if (!module.hasWebUi) interactionSource else null
+                )
             }
-
-            Switch(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 6.dp, end = 6.dp)
-                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp),
-                enabled = !module.update,
-                checked = module.enabled,
-                onCheckedChange = onCheckChanged,
-                interactionSource = if (!module.hasWebUi) interactionSource else null
-            )
-                }
 
             AnimatedVisibility(
                 modifier = Modifier
-                    .align(Alignment.End)
+                    .fillMaxWidth()
                     .padding(start = 12.dp, top = 0.dp, end = 12.dp, bottom = 12.dp)
                     .zIndex(2f),
                 visible = expanded,
@@ -987,7 +987,8 @@ fun ModuleItem(
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val hasUpdate by remember(updateUrl) {
