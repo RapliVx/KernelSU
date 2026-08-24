@@ -230,4 +230,10 @@
     <string name="profile_flags_desc_no_new_privs">Prevent further privilege escalation via KernelSU from within the context of this root profile.</string>
     <string name="hook_mode">Hook Mode</string>
     <string name="app_profile_template_export_success">Template exported successfully</string>
+    <string name="settings_adb_root" translatable="false">ADB Root</string>
+    <string name="settings_adb_root_summary">Run adbd daemon with root privileges</string>
+    <string name="settings_selinux_hide">Hide SELinux modification</string>
+    <string name="settings_selinux_hide_summary">Prevent applications from detecting SELinux modifications via selinuxfs</string>
+    <string name="settings_selinux_hide_reboot_required">Reboot to take effect</string>
+    <string name="settings_selinux_hide_failed">Error: %d</string>
 </resources>
