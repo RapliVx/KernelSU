@@ -12,6 +12,8 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -126,20 +128,7 @@ fun SuperUserScreen(
         scope.launch { viewModel.loadAppList() }
     }
 
-    val filteredApps = remember(viewModel.appList, viewModel.search.text, viewModel.showSystemApps) {
-        val search = viewModel.search.text.lowercase()
-        SuperUserViewModel.apps.filter { app ->
-            val matchesSearch = app.label.lowercase().contains(search) || app.packageName.lowercase().contains(search)
-            val matchesSystem = viewModel.showSystemApps || !app.isSystemApp
-            matchesSearch && matchesSystem && app.packageName != ksuApp.packageName
-        }
-    }
-
-    val allGroups = remember(filteredApps) { buildGroups(filteredApps) }
-    val visibleUids = remember(viewModel.appList) { viewModel.appList.map { it.uid }.toSet() }
-    val visibleGroups = remember(allGroups, visibleUids) {
-        allGroups.filter { it.uid in visibleUids }
-    }
+    val visibleGroups = remember(viewModel.appList) { buildGroups(viewModel.appList) }
 
     CompositionLocalProvider(LocalDensity provides customDensity) {
         Scaffold(
@@ -228,8 +217,8 @@ fun SuperUserScreen(
                         }
                         AnimatedVisibility(
                             visible = expanded && group.apps.size > 1,
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
+                            enter = expandVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+                            exit = shrinkVertically(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut()
                         ) {
                             Column {
                                 group.apps.filter { it in viewModel.appList }.forEach { app ->

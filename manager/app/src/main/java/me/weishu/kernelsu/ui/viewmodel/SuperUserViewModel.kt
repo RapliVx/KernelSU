@@ -30,6 +30,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
+import kotlinx.parcelize.IgnoredOnParcel
 import me.weishu.kernelsu.IKsuInterface
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.ksuApp
@@ -62,6 +63,11 @@ class SuperUserViewModel : ViewModel() {
         val packageInfo: PackageInfo,
         val profile: Natives.Profile?,
     ) : Parcelable {
+
+        @IgnoredOnParcel
+        val pinyinLabel: String by lazy(LazyThreadSafetyMode.NONE) {
+            HanziToPinyin.getInstance().toPinyinString(label)
+        }
 
         val isSystemApp: Boolean
             get() = (packageInfo.applicationInfo!!.flags and ApplicationInfo.FLAG_SYSTEM) != 0
@@ -112,7 +118,7 @@ class SuperUserViewModel : ViewModel() {
         val search = search.text
         sortedList.filter {
             search.isEmpty() || it.label.contains(search, true) || it.packageName.contains(search, true)
-                    || HanziToPinyin.getInstance().toPinyinString(it.label).contains(search, true)
+                    || it.pinyinLabel.contains(search, true)
         }.filter {
             it.uid == 2000
                     || showSystemApps
