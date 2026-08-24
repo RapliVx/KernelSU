@@ -878,7 +878,7 @@ fun ModuleItem(
                         )
                     )
             ) {
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
@@ -886,13 +886,15 @@ fun ModuleItem(
                             top = contentTopPadding,
                             end = 22.dp,
                             bottom = if (expanded) 0.dp else 12.dp
-                        )
+                        ),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
                 ) {
 
                     Column(
                         modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(end = 64.dp)
+                            .weight(1f)
+                            .padding(end = 16.dp)
                     ) {
                         val defaultTitleSize = MaterialTheme.typography.titleMedium.fontSize
                         val defaultLineHeight = MaterialTheme.typography.titleMedium.lineHeight
@@ -963,19 +965,17 @@ fun ModuleItem(
                             lineHeight = 16.sp
                         )
                     }
-                }
 
-                Switch(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 6.dp, end = 6.dp)
-                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp),
-                    enabled = !module.update,
-                    checked = module.enabled,
-                    onCheckedChange = onCheckChanged,
-                    interactionSource = if (!module.hasWebUi) interactionSource else null
-                )
-            }
+                    Switch(
+                        modifier = Modifier
+                            .padding(top = 6.dp, end = 6.dp)
+                            .sizeIn(minWidth = 48.dp, minHeight = 48.dp),
+                        enabled = !module.update,
+                        checked = module.enabled,
+                        onCheckedChange = onCheckChanged,
+                        interactionSource = if (!module.hasWebUi) interactionSource else null
+                    )
+                }
 
             AnimatedVisibility(
                 modifier = Modifier
@@ -1078,6 +1078,7 @@ fun ModuleItem(
             }
         }
     }
+}
 }
 
 fun calculateModuleSizeMB(moduleId: String): Float {
