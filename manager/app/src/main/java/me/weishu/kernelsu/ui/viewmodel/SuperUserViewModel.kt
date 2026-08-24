@@ -120,11 +120,13 @@ class SuperUserViewModel : ViewModel() {
             search.isEmpty() || it.label.contains(search, true) || it.packageName.contains(search, true)
                     || it.pinyinLabel.contains(search, true)
         }.filter {
-            it.uid == 2000
-                    || showSystemApps
-                    || it.allowSu
-                    || it.hasCustomProfile
-                    || !it.isSystemApp
+            it.packageName != ksuApp.packageName && (
+                it.uid == 2000
+                        || showSystemApps
+                        || it.allowSu
+                        || it.hasCustomProfile
+                        || !it.isSystemApp
+            )
         }
     }
 
