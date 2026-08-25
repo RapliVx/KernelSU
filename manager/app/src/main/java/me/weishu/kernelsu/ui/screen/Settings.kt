@@ -91,7 +91,7 @@ import com.maxkeppeler.sheets.list.models.ListSelection
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.AppProfileTemplateScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.ColorPaletteScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.ThemeSettingsScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.QuickShellScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -282,7 +282,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     content = listOf {
                         ExpressiveListItem(
-                            onClick = { navigator.navigate(ColorPaletteScreenDestination) },
+                            onClick = { navigator.navigate(ThemeSettingsScreenDestination) },
                             headlineContent = { Text(theme) },
                             supportingContent = { Text(themeSummary) },
                             leadingContent = { Icon(Icons.Filled.Palette, theme) },

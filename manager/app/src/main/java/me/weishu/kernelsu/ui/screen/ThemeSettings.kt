@@ -152,7 +152,7 @@ private fun SettingsGroupCard(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Destination<RootGraph>
 @Composable
-fun ColorPaletteScreen(resultNavigator: ResultBackNavigator<Boolean>) {
+fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
 
