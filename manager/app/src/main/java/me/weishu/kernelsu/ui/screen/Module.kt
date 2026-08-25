@@ -937,8 +937,6 @@ fun ModuleItem(
                             fontWeight = FontWeight.Medium
                         )
 
-                        val descMaxLines = if (expanded) 10 else 2
-
                         val descText = remember(module.description) {
                             if (module.description.length > 300)
                                 module.description.take(300) + "…"
@@ -946,11 +944,18 @@ fun ModuleItem(
                         }
 
                         Text(
-                            modifier = Modifier.padding(top = 6.dp),
+                            modifier = Modifier
+                                .padding(top = 6.dp)
+                                .animateContentSize(
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
+                                ),
                             text = descText,
                             color = cs.onSurface.copy(alpha = 0.80f),
                             fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                            maxLines = descMaxLines,
+                            maxLines = if (expanded) 10 else 2,
                             overflow = TextOverflow.Ellipsis,
                             textDecoration = textDecoration,
                             lineHeight = 16.sp
