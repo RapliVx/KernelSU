@@ -943,8 +943,8 @@ fun ModuleItem(
                                 .padding(top = 6.dp)
                                 .animateContentSize(
                                     animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMedium
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
                                     )
                                 ),
                             text = descText,
