@@ -25,6 +25,8 @@ import androidx.lifecycle.viewModelScope
 import com.topjohnwu.superuser.Shell
 import com.topjohnwu.superuser.ipc.RootService
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -184,16 +186,19 @@ class SuperUserViewModel : ViewModel() {
                 }
 
                 val packages = slice.list
-                val newApps = packages.map {
-                    val appInfo = it.applicationInfo
-                    val uid = appInfo!!.uid
-                    val profile = Natives.getAppProfile(it.packageName, uid)
-                    AppInfo(
-                        label = appInfo.loadLabel(pm).toString(),
-                        packageInfo = it,
-                        profile = profile,
-                    )
-                }.filter {
+                val deferredApps = packages.map {
+                    async {
+                        val appInfo = it.applicationInfo
+                        val uid = appInfo!!.uid
+                        val profile = Natives.getAppProfile(it.packageName, uid)
+                        AppInfo(
+                            label = appInfo.loadLabel(pm).toString(),
+                            packageInfo = it,
+                            profile = profile,
+                        )
+                    }
+                }
+                val newApps = deferredApps.awaitAll().filter {
                         val ai = it.packageInfo.applicationInfo!!
                         if (Build.VERSION.SDK_INT >= 29) !ai.isResourceOverlay else true
                     }

@@ -377,22 +377,14 @@ private data class GroupedApps(
 )
 
 private fun buildGroups(apps: List<SuperUserViewModel.AppInfo>): List<GroupedApps> {
-    val comparator = compareBy<SuperUserViewModel.AppInfo> {
-        when {
-            it.allowSu -> 0
-            it.hasCustomProfile -> 1
-            else -> 2
-        }
-    }.thenBy { it.label.lowercase() }
     val groups = apps.groupBy { it.uid }.map { (uid, list) ->
-        val sorted = list.sortedWith(comparator)
-        val primary = pickPrimary(sorted)
+        val primary = pickPrimary(list)
         GroupedApps(
             uid = uid,
-            apps = sorted,
+            apps = list,
             primary = primary,
-            anyAllowSu = sorted.any { it.allowSu },
-            anyCustom = sorted.any { it.hasCustomProfile },
+            anyAllowSu = list.any { it.allowSu },
+            anyCustom = list.any { it.hasCustomProfile },
         )
     }
     return groups.sortedWith(Comparator { a, b ->
@@ -407,7 +399,7 @@ private fun buildGroups(apps: List<SuperUserViewModel.AppInfo>): List<GroupedApp
         val ra = rank(a)
         val rb = rank(b)
         if (ra != rb) return@Comparator ra - rb
-        return@Comparator a.primary.label.lowercase().compareTo(b.primary.label.lowercase())
+        return@Comparator a.primary.label.compareTo(b.primary.label, ignoreCase = true)
     })
 }
 
