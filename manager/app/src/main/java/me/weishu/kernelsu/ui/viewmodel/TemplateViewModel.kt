@@ -99,7 +99,7 @@ class TemplateViewModel : ViewModel() {
                     val json = JSONObject(templates)
                     JSONArray().apply { put(json) }
                 }.getOrElse {
-                    onFailure("invalid templates: $templates")
+                    withContext(Dispatchers.Main) { onFailure("invalid templates: $templates") }
                     return@withContext
                 }
             }.let {
@@ -113,7 +113,7 @@ class TemplateViewModel : ViewModel() {
                         Log.e(TAG, "ignore invalid template: $it", e)
                     }
                 }
-                onSuccess()
+                withContext(Dispatchers.Main) { onSuccess() }
             }
         }
     }
@@ -124,12 +124,13 @@ class TemplateViewModel : ViewModel() {
                 it.local
             }
             templates.ifEmpty {
-                onTemplateEmpty()
+                withContext(Dispatchers.Main) { onTemplateEmpty() }
                 return@withContext
             }
-            JSONArray(templates.map {
+            val result = JSONArray(templates.map {
                 it.toJSON()
-            }).toString().let(callback)
+            }).toString()
+            withContext(Dispatchers.Main) { callback(result) }
         }
     }
 }
