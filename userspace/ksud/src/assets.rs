@@ -45,10 +45,15 @@ struct Asset;
 #[folder = "bin/x86_64"]
 struct Asset;
 
-// IF NOT x86_64 or arm ANDROID, ie. macos, linux, windows, always use aarch64
-#[cfg(all(not(all(target_arch = "x86_64", target_os = "android")), not(target_arch = "arm")))]
+#[cfg(all(target_arch = "aarch64", target_os = "android"))]
 #[derive(RustEmbed)]
 #[folder = "bin/aarch64"]
+struct Asset;
+
+// If not Android, ie. macos, linux, windows, include both
+#[cfg(not(target_os = "android"))]
+#[derive(RustEmbed)]
+#[folder = "bin"]
 struct Asset;
 
 #[allow(unused)]
