@@ -62,7 +62,6 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
     val snackBarHost = LocalSnackbarHost.current
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-    var actionResult: Boolean
 
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
@@ -88,10 +87,7 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
                     logContent.append(it).append("\n")
                 }
             ).let {
-                actionResult = it
-            }
         }
-        if (actionResult) navigator.popBackStack()
     }
 
     val systemDensity = LocalDensity.current
