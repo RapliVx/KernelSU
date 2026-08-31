@@ -773,6 +773,53 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     )
                 }
 
+                
+                val autoJailbreakTitle = stringResource(id = R.string.settings_auto_jailbreak)
+                val autoJailbreakSummary = stringResource(id = R.string.settings_auto_jailbreak_summary)
+                ExpressiveList(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    content = listOf {
+                        var autoJailbreak by rememberSaveable { mutableStateOf(prefs.getBoolean("auto_jailbreak", false)) }
+                        ExpressiveSwitchItem(
+                            icon = Icons.Filled.Security,
+                            title = autoJailbreakTitle,
+                            summary = autoJailbreakSummary,
+                            checked = autoJailbreak,
+                            onCheckedChange = {
+                                autoJailbreak = it
+                                prefs.edit().putBoolean("auto_jailbreak", it).apply()
+                                try {
+                                    val component = android.content.ComponentName(context, me.weishu.kernelsu.magica.BootCompletedReceiver::class.java)
+                                    val state = if (it) android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED else android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+                                    context.packageManager.setComponentEnabledSetting(component, state, android.content.pm.PackageManager.DONT_KILL_APP)
+                                } catch (e: Exception) {
+                                    android.util.Log.e("Settings", "Failed to toggle Auto Jailbreak", e)
+                                }
+                            }
+                        )
+                    }
+                )
+
+                
+                val softRebootTitle = stringResource(id = R.string.settings_soft_reboot)
+                val softRebootSummary = stringResource(id = R.string.settings_soft_reboot_summary)
+                ExpressiveList(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    content = listOf {
+                        var useSoftReboot by rememberSaveable { mutableStateOf(prefs.getBoolean("use_soft_reboot", false)) }
+                        ExpressiveSwitchItem(
+                            icon = Icons.Filled.Refresh,
+                            title = softRebootTitle,
+                            summary = softRebootSummary,
+                            checked = useSoftReboot,
+                            onCheckedChange = {
+                                useSoftReboot = it
+                                prefs.edit().putBoolean("use_soft_reboot", it).apply()
+                            }
+                        )
+                    }
+                )
+
                 var showBottomsheet by remember { mutableStateOf(false) }
                 val sendLogTitle = stringResource(id = R.string.send_log)
                 val aboutTitle = stringResource(id = R.string.about)

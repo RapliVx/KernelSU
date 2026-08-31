@@ -8,6 +8,9 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.fadeIn
@@ -17,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -174,6 +178,7 @@ private val BadgeAreaHeight = 37.dp
 @SuppressLint("StringFormatInvalid")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Destination<RootGraph>
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ModuleScreen(navigator: DestinationsNavigator) {
     val viewModel = viewModel<ModuleViewModel>()
@@ -236,6 +241,10 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
         viewModel.syncModuleUpdateInfo(modules)
     }
 
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = {}
+    )
     val webUILauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { viewModel.fetchModuleList() }
@@ -375,7 +384,10 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                             data.data?.let { uris.add(it) }
                         }
 
-                        navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(uris), skipConfirmation = uris.size == 1))
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                            navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(uris), skipConfirmation = uris.size == 1))
                         viewModel.markNeedRefresh()
                     }
 
@@ -421,6 +433,9 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                         boxModifier = Modifier.padding(innerPadding),
                         floatingPadding = floatingPadding,
                         onInstallModule = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
                             navigator.navigate(FlashScreenDestination(flashIt = FlashIt.FlashModules(listOf(it)), skipConfirmation = true))
                             viewModel.markNeedRefresh()
                         },
@@ -1002,40 +1017,56 @@ fun ModuleItem(
                     val actionButtonsEnabled = !module.remove && module.enabled
 
                     if (actionButtonsEnabled && module.hasActionScript) {
-                        FilledTonalButton(
-                            modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            ),
-                            onClick = {
-                                navigator.navigate(
-                                    ExecuteModuleActionScreenDestination(module.id)
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .defaultMinSize(52.dp, 32.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(MaterialTheme.colorScheme.secondaryContainer)
+                                .androidx.compose.foundation.combinedClickable(
+                                    onClick = {
+                                        navigator.navigate(ExecuteModuleActionScreenDestination(module.id))
+                                        viewModel.markNeedRefresh()
+                                    },
+                                    onLongClick = {
+                                        me.weishu.kernelsu.ui.util.module.Shortcut.createModuleActionShortcut(
+                                            context, module.id, module.name, module.actionIconPath ?: ""
+                                        )
+                                    }
                                 )
-                                viewModel.markNeedRefresh()
-                            },
-                            contentPadding = ButtonDefaults.TextButtonContentPadding
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
                         ) {
                             Icon(
                                 modifier = Modifier.size(20.dp),
                                 imageVector = Icons.Outlined.PlayArrow,
-                                contentDescription = null
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                     }
 
                     if (actionButtonsEnabled && module.hasWebUi) {
-                        FilledTonalButton(
-                            modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            ),
-                            onClick = { onClick(module) },
-                            contentPadding = ButtonDefaults.TextButtonContentPadding
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier
+                                .defaultMinSize(52.dp, 32.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(MaterialTheme.colorScheme.secondaryContainer)
+                                .androidx.compose.foundation.combinedClickable(
+                                    onClick = { onClick(module) },
+                                    onLongClick = {
+                                        me.weishu.kernelsu.ui.util.module.Shortcut.createModuleWebUiShortcut(
+                                            context, module.id, module.name, module.webUiIconPath ?: ""
+                                        )
+                                    }
+                                )
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
                         ) {
                             Icon(
                                 modifier = Modifier.size(20.dp),
                                 imageVector = Icons.Outlined.Code,
-                                contentDescription = null
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                     }

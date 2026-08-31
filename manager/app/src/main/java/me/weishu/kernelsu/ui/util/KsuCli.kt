@@ -406,10 +406,14 @@ fun installBoot(
 }
 
 fun reboot(reason: String = "") {
-    if (reason == "soft_reboot") {
+    val prefs = me.weishu.kernelsu.ksuApp.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+    val actualReason = if (reason.isEmpty() && prefs.getBoolean("use_soft_reboot", false)) "soft_reboot" else reason
+    if (actualReason == "soft_reboot") {
         execKsud("soft-reboot", true)
         return
     }
+    if (reason == "soft_reboot") { return } // Handle original branch properly
+
     val shell = getRootShell()
     if (reason == "recovery") {
         // KEYCODE_POWER = 26, hide incorrect "Factory data reset" message

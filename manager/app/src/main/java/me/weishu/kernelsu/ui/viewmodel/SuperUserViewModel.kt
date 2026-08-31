@@ -92,12 +92,19 @@ class SuperUserViewModel : ViewModel() {
     var search by mutableStateOf(TextFieldValue(""))
     private val prefs = ksuApp.getSharedPreferences("settings", Context.MODE_PRIVATE)!!
     var showSystemApps by mutableStateOf(prefs.getBoolean("show_system_apps", false))
+    var showOnlyPrimaryUserApps by mutableStateOf(prefs.getBoolean("show_only_primary", false))
+
     var isRefreshing by mutableStateOf(false)
         private set
 
     fun updateShowSystemApps(newValue: Boolean) {
         showSystemApps = newValue
         prefs.edit { putBoolean("show_system_apps", newValue) }
+    }
+
+    fun updateShowOnlyPrimaryUserApps(newValue: Boolean) {
+        showOnlyPrimaryUserApps = newValue
+        prefs.edit { putBoolean("show_only_primary", newValue) }
     }
 
     val isAppListEmpty: Boolean
@@ -123,11 +130,11 @@ class SuperUserViewModel : ViewModel() {
                     || it.pinyinLabel.contains(search, true)
         }.filter {
             it.packageName != ksuApp.packageName && (
-                it.uid == 2000
+                (!showOnlyPrimaryUserApps || it.uid / 100000 == 0) && (it.uid == 2000
                         || showSystemApps
                         || it.allowSu
                         || it.hasCustomProfile
-                        || !it.isSystemApp
+                        || !it.isSystemApp)
             )
         }
     }

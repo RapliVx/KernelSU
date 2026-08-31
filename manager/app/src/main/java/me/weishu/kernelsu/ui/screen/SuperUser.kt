@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.DropdownMenu
@@ -68,6 +69,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.SulogScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.AppProfileScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.result.ResultRecipient
@@ -148,6 +150,14 @@ fun SuperUserScreen(
                     searchText = viewModel.search,
                     onSearchTextChange = { viewModel.search = it },
                     onClearClick = { viewModel.search = TextFieldValue("") },
+                    navigationIcon = {
+                        IconButton(onClick = { navigator.navigate(SulogScreenDestination) }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Article,
+                                contentDescription = stringResource(R.string.settings_sulog)
+                            )
+                        }
+                    },
                     dropdownContent = {
                         var showDropdown by remember { mutableStateOf(false) }
 
@@ -178,6 +188,17 @@ fun SuperUserScreen(
                                     viewModel.updateShowSystemApps(!viewModel.showSystemApps)
                                     showDropdown = false
                                 })
+                            DropdownMenuItem(text = {
+                                Text(stringResource(R.string.show_only_primary_user_apps))
+                            }, onClick = {
+                                viewModel.updateShowOnlyPrimaryUserApps(!viewModel.showOnlyPrimaryUserApps)
+                                showDropdown = false
+                            }, leadingIcon = {
+                                androidx.compose.material3.Checkbox(
+                                    checked = viewModel.showOnlyPrimaryUserApps,
+                                    onCheckedChange = null
+                                )
+                            })
                             }
                         }
                     },
@@ -190,12 +211,72 @@ fun SuperUserScreen(
                 val expandedSearchUids = remember { mutableStateOf(setOf<Int>()) }
                 val isSearching = viewModel.search.text.isNotEmpty()
 
-                ExpressiveLazyList(
+                
+                val recentlyInstalled = remember(visibleGroups, isSearching) {
+                    if (isSearching) emptyList()
+                    else visibleGroups.filter { System.currentTimeMillis() - it.primary.packageInfo.firstInstallTime < 3 * 24 * 60 * 60 * 1000L }
+                }
+
+                androidx.compose.foundation.lazy.LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .nestedScroll(scrollBehavior.nestedScrollConnection),
-                    items = visibleGroups,
-                ) { group ->
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(all = 16.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp)
+                ) {
+                    if (recentlyInstalled.isNotEmpty()) {
+                        item {
+                            androidx.compose.material3.Text(
+                                text = stringResource(R.string.recently_installed),
+                                style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+                            )
+                        }
+                        itemsIndexed(recentlyInstalled, key = { _, g -> "recent_" }) { index, group ->
+                            val expanded = isSearching || expandedSearchUids.value.contains(group.uid)
+                            val onToggleExpand = {
+                                if (group.apps.size > 1) {
+                                    expandedSearchUids.value = if (expandedSearchUids.value.contains(group.uid)) {
+                                        expandedSearchUids.value - group.uid
+                                    } else {
+                                        expandedSearchUids.value + group.uid
+                                    }
+                                }
+                            }
+                            Column {
+                                GroupItem(
+                                    group = group,
+                                    onToggleExpand = onToggleExpand,
+                                ) {
+                                    navigator.navigate(AppProfileScreenDestination(group.primary)) {
+                                        launchSingleTop = true
+                                    }
+                                }
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = expanded && group.apps.size > 1,
+                                    enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                                    exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                                ) {
+                                    Column {
+                                        for (app in group.apps) {
+                                            if (app == group.primary) continue
+                                            SimpleAppItem(app) {
+                                                navigator.navigate(AppProfileScreenDestination(app)) {
+                                                        launchSingleTop = true
+                                                    }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        item {
+                            androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+                    }
+
+                    itemsIndexed(visibleGroups, key = { _, g -> g.uid }) { index, group ->
                     val expanded = isSearching || expandedSearchUids.value.contains(group.uid)
                     val onToggleExpand = {
                         if (group.apps.size > 1) {

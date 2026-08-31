@@ -178,6 +178,23 @@ class MainActivity : ComponentActivity() {
                     LocalDensity provides customDensity
                 ) {
                     val navController = rememberNavController()
+                    LaunchedEffect(intent) {
+                        val uri = intent.data
+                        if (uri?.scheme == "ksu") {
+                            val moduleId = uri.getQueryParameter("id")
+                            if (moduleId != null) {
+                                if (uri.host == "action") {
+                                    navController.navigate(com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination(moduleId).route)
+                                } else if (uri.host == "webui") {
+                                    val webUiIntent = android.content.Intent(this@MainActivity, me.weishu.kernelsu.ui.webui.WebUIActivity::class.java).apply {
+                                        data = uri
+                                        putExtra("id", moduleId)
+                                    }
+                                    startActivity(webUiIntent)
+                                }
+                            }
+                        }
+                    }
                     val snackBarHostState = remember { SnackbarHostState() }
 
                     val bottomBarRoutes = remember {
