@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import me.weishu.kernelsu.data.repository.SettingsRepository
-import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ui.util.SulogEntry
 import me.weishu.kernelsu.ui.util.SulogEventFilter
 import me.weishu.kernelsu.ui.util.SulogFile
@@ -41,9 +39,7 @@ data class SulogUiState(
     val errorMessage: String? = null,
 )
 
-class SulogViewModel(
-    private val repo: SettingsRepository = SettingsRepositoryImpl(),
-) : ViewModel() {
+class SulogViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(SulogUiState())
     val uiState: StateFlow<SulogUiState> = _uiState.asStateFlow()
     private val entriesFlow = MutableStateFlow<List<SulogEntry>>(emptyList())
@@ -53,7 +49,7 @@ class SulogViewModel(
     private var refreshJob: Job? = null
 
     init {
-        val savedFilters = repo.suLogFilters
+        val savedFilters = me.weishu.kernelsu.ksuApp.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE).getStringSet("sulog_filters", null)
             ?.mapNotNull { raw -> SulogEventFilter.entries.firstOrNull { it.name == raw } }
             ?.toSet()
             ?.ifEmpty { defaultSulogEventFilters() }
@@ -75,8 +71,8 @@ class SulogViewModel(
         refreshJob = viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching {
-                val sulogStatus = repo.getSulogStatus()
-                val isSulogEnabled = repo.getSulogPersistValue() == 1L
+                val sulogStatus = me.weishu.kernelsu.ui.util.getFeatureStatus("sulog")
+                val isSulogEnabled = me.weishu.kernelsu.ui.util.getFeaturePersistValue("sulog") == 1L
                 val files = listSulogFiles()
                 currentCoroutineContext().ensureActive()
                 val selectedFile = when {
@@ -125,7 +121,7 @@ class SulogViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             if (repo.setSulogEnabled(true)) {
-                repo.execKsudFeatureSave()
+                me.weishu.kernelsu.ui.util.execKsud("feature save", true)
             }
             refresh(preferredFilePath)
         }

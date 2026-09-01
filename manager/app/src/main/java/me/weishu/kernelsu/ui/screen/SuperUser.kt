@@ -29,11 +29,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import com.ramcosta.composedestinations.generated.destinations.SulogScreenDestination
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Article
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -69,7 +73,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.generated.destinations.SulogScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.AppProfileScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.result.ResultRecipient
@@ -150,7 +153,7 @@ fun SuperUserScreen(
                     searchText = viewModel.search,
                     onSearchTextChange = { viewModel.search = it },
                     onClearClick = { viewModel.search = TextFieldValue("") },
-                    navigationIcon = {
+                    actionsContent = {
                         IconButton(onClick = { navigator.navigate(SulogScreenDestination) }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.Article,
@@ -211,72 +214,12 @@ fun SuperUserScreen(
                 val expandedSearchUids = remember { mutableStateOf(setOf<Int>()) }
                 val isSearching = viewModel.search.text.isNotEmpty()
 
-                
-                val recentlyInstalled = remember(visibleGroups, isSearching) {
-                    if (isSearching) emptyList()
-                    else visibleGroups.filter { System.currentTimeMillis() - it.primary.packageInfo.firstInstallTime < 3 * 24 * 60 * 60 * 1000L }
-                }
-
-                androidx.compose.foundation.lazy.LazyColumn(
+                ExpressiveLazyList(
                     modifier = Modifier
                         .fillMaxSize()
                         .nestedScroll(scrollBehavior.nestedScrollConnection),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(all = 16.dp),
-                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp)
-                ) {
-                    if (recentlyInstalled.isNotEmpty()) {
-                        item {
-                            androidx.compose.material3.Text(
-                                text = stringResource(R.string.recently_installed),
-                                style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
-                                color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
-                            )
-                        }
-                        itemsIndexed(recentlyInstalled, key = { _, g -> "recent_" }) { index, group ->
-                            val expanded = isSearching || expandedSearchUids.value.contains(group.uid)
-                            val onToggleExpand = {
-                                if (group.apps.size > 1) {
-                                    expandedSearchUids.value = if (expandedSearchUids.value.contains(group.uid)) {
-                                        expandedSearchUids.value - group.uid
-                                    } else {
-                                        expandedSearchUids.value + group.uid
-                                    }
-                                }
-                            }
-                            Column {
-                                GroupItem(
-                                    group = group,
-                                    onToggleExpand = onToggleExpand,
-                                ) {
-                                    navigator.navigate(AppProfileScreenDestination(group.primary)) {
-                                        launchSingleTop = true
-                                    }
-                                }
-                                androidx.compose.animation.AnimatedVisibility(
-                                    visible = expanded && group.apps.size > 1,
-                                    enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
-                                    exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
-                                ) {
-                                    Column {
-                                        for (app in group.apps) {
-                                            if (app == group.primary) continue
-                                            SimpleAppItem(app) {
-                                                navigator.navigate(AppProfileScreenDestination(app)) {
-                                                        launchSingleTop = true
-                                                    }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        item {
-                            androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        }
-                    }
-
-                    itemsIndexed(visibleGroups, key = { _, g -> g.uid }) { index, group ->
+                    items = visibleGroups,
+                ) { group ->
                     val expanded = isSearching || expandedSearchUids.value.contains(group.uid)
                     val onToggleExpand = {
                         if (group.apps.size > 1) {

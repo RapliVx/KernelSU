@@ -79,8 +79,10 @@ import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.util.SulogEntry
 import me.weishu.kernelsu.ui.util.SulogEventFilter
 
+@androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
-fun SulogScreenMaterial(
+fun SulogScreenContent(
     state: SulogScreenState,
     actions: SulogActions,
 ) {
@@ -287,11 +289,8 @@ private fun LazyListScope.sulogEntriesSection(
         else -> {
             itemsIndexed(entries, key = { index, entry -> "$index-${entry.key}" }) { index, entry ->
                 
-                    androidx.compose.material3.ListItem(
-                        modifier = if (index < entries.lastIndex) {
-                            Modifier.padding(bottom = 2.dp) else {
-                            Modifier
-                        },
+                    me.weishu.kernelsu.ui.component.ExpressiveListItem(
+                        modifier = if (index < entries.lastIndex) Modifier.padding(bottom = 2.dp) else Modifier,
                         onClick = { onEntryClick(entry) },
                         headlineContent = { Text(sulogEntryTitle(entry)) },
                         supportingContent = {

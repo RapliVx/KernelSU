@@ -21,13 +21,9 @@ import androidx.core.net.toUri
 import com.topjohnwu.superuser.io.SuFile
 import com.topjohnwu.superuser.io.SuFileInputStream
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ui.MainActivity
 import me.weishu.kernelsu.ui.screen.module.ShortcutType
 import me.weishu.kernelsu.ui.util.getRootShell
-import me.weishu.kernelsu.ui.util.isColorOS
-import me.weishu.kernelsu.ui.util.isHyperOS
-import me.weishu.kernelsu.ui.util.isMiui
 
 object Shortcut {
 
@@ -45,8 +41,7 @@ object Shortcut {
             .scheme(SCHEME_KSU)
             .authority(host)
             .appendQueryParameter("id", moduleId)
-            .appendQueryParameter("token", SettingsRepositoryImpl().intentToken)
-            .build()
+                        .build()
     }
 
     fun createModuleActionShortcut(
@@ -448,3 +443,23 @@ object Shortcut {
         }
     }
 }
+
+
+// OS Polyfills
+val isMiui: Boolean
+    get() {
+        val miuiVersion = android.os.SystemProperties.get("ro.miui.ui.version.name")
+        return miuiVersion != null && miuiVersion.isNotEmpty()
+    }
+
+val isHyperOS: Boolean
+    get() {
+        val miuiVersion = android.os.SystemProperties.get("ro.miui.ui.version.name")
+        return miuiVersion == "V816" || miuiVersion == "V816.0"
+    }
+
+val isColorOS: Boolean
+    get() {
+        val colorOsVersion = android.os.SystemProperties.get("ro.build.version.oplusrom")
+        return colorOsVersion != null && colorOsVersion.isNotEmpty()
+    }

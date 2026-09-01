@@ -1,11 +1,18 @@
 package me.weishu.kernelsu.ui.component.statustag
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import me.weishu.kernelsu.ui.LocalUiMode
-import me.weishu.kernelsu.ui.UiMode
+import androidx.compose.ui.unit.dp
 
+@androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+@androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
 fun StatusTag(
     label: String,
@@ -13,8 +20,19 @@ fun StatusTag(
     backgroundColor: Color,
     contentColor: Color
 ) {
-    when (LocalUiMode.current) {
-        UiMode.Miuix -> StatusTagMiuix(label, modifier, backgroundColor, contentColor)
-        UiMode.Material -> StatusTagMaterial(label, modifier, backgroundColor, contentColor)
+    Box(
+        modifier = modifier
+            .padding(end = 4.dp)
+            .background(
+                color = backgroundColor,
+                shape = RoundedCornerShape(4.dp)
+            )
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(vertical = 2.dp, horizontal = 4.dp),
+            style = MaterialTheme.typography.labelSmallEmphasized,
+            color = contentColor,
+        )
     }
 }

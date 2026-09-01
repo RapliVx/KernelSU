@@ -1,5 +1,8 @@
 package me.weishu.kernelsu.ui.screen.sulog
 
+import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -12,9 +15,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.ui.LocalUiMode
-import me.weishu.kernelsu.ui.UiMode
-import me.weishu.kernelsu.ui.navigation3.LocalNavigator
 import me.weishu.kernelsu.ui.util.SulogEntry
 import me.weishu.kernelsu.ui.util.SulogEventFilter
 import me.weishu.kernelsu.ui.util.SulogEventType
@@ -22,10 +22,11 @@ import me.weishu.kernelsu.ui.util.SulogFile
 import me.weishu.kernelsu.ui.util.toSulogDisplayName
 import me.weishu.kernelsu.ui.viewmodel.SulogViewModel
 
+@androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+@androidx.compose.material3.ExperimentalMaterial3Api
+@Destination<RootGraph>
 @Composable
-fun SulogScreen() {
-    val navigator = LocalNavigator.current
-    val uiMode = LocalUiMode.current
+fun SulogScreen(navigator: DestinationsNavigator) {
     val viewModel = viewModel<SulogViewModel>()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -56,7 +57,7 @@ fun SulogScreen() {
         onSelectFile = viewModel::refresh,
     )
 
-    SulogScreenMaterial(state, actions)
+    SulogScreenContent(state, actions)
 }
 
 @Composable
@@ -140,4 +141,3 @@ fun buildSulogFileSelector(
     )
 }
 
-data class SulogFileSelector(val items: List<String>, val selectedIndex: Int)

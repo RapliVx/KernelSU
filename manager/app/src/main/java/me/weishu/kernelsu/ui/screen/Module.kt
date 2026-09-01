@@ -10,7 +10,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.Manifest
 import android.os.Build
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.fadeIn
@@ -178,7 +179,6 @@ private val BadgeAreaHeight = 37.dp
 @SuppressLint("StringFormatInvalid")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Destination<RootGraph>
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ModuleScreen(navigator: DestinationsNavigator) {
     val viewModel = viewModel<ModuleViewModel>()
@@ -1020,8 +1020,8 @@ fun ModuleItem(
                         FilledTonalButton(
                             modifier = Modifier
                                 .defaultMinSize(52.dp, 32.dp)
-                                .androidx.compose.ui.input.pointer.pointerInput(Unit) {
-                                    androidx.compose.foundation.gestures.detectTapGestures(
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
                                         onLongPress = {
                                             me.weishu.kernelsu.ui.util.module.Shortcut.createModuleActionShortcut(
                                                 context, module.id, module.name, module.actionIconPath ?: ""
@@ -1052,8 +1052,8 @@ fun ModuleItem(
                         FilledTonalButton(
                             modifier = Modifier
                                 .defaultMinSize(52.dp, 32.dp)
-                                .androidx.compose.ui.input.pointer.pointerInput(Unit) {
-                                    androidx.compose.foundation.gestures.detectTapGestures(
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
                                         onLongPress = {
                                             me.weishu.kernelsu.ui.util.module.Shortcut.createModuleWebUiShortcut(
                                                 context, module.id, module.name, module.webUiIconPath ?: ""
