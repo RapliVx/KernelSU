@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.material.ExperimentalMaterialApi::class, androidx.compose.animation.ExperimentalAnimationApi::class, androidx.foundation.ExperimentalFoundationApi::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.material.ExperimentalMaterialApi::class, androidx.compose.animation.ExperimentalAnimationApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 package me.weishu.kernelsu.ui.screen.sulog
 
 import androidx.compose.foundation.layout.Arrangement
@@ -200,8 +200,7 @@ fun SulogScreenContent(
 
                 item {
                     Box(modifier = Modifier.padding(bottom = 16.dp)) {
-                        Column(
-                            content = listOf {
+                        Column {
                                 me.weishu.kernelsu.ui.component.ExpressiveDropdownItem(
                                     icon = androidx.compose.material.icons.Icons.Filled.Description,
                                     title = stringResource(R.string.sulog_log_files),
@@ -214,8 +213,7 @@ fun SulogScreenContent(
                                         }
                                     }
                                 )
-                            },
-                        )
+                        }
                     }
                 }
 

@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.material.ExperimentalMaterialApi::class, androidx.compose.animation.ExperimentalAnimationApi::class, androidx.foundation.ExperimentalFoundationApi::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.material.ExperimentalMaterialApi::class, androidx.compose.animation.ExperimentalAnimationApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 package me.weishu.kernelsu.ui.component
 
 import android.content.Context
