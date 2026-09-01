@@ -262,32 +262,34 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                                 }
                             },
                             {
-                                var showLkmMenu by remember { mutableStateOf(false) }
-                                Box {
-                                    ExpressiveListItem(
-                                        leadingContent = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, null) },
-                                        headlineContent = { Text(stringResource(id = R.string.install_upload_lkm_file)) },
-                                        supportingContent = {
-                                            val text = when {
-                                                lkmVariant == 0 -> stringResource(id = R.string.lkm_variant_standard)
-                                                lkmVariant == 1 -> stringResource(id = R.string.lkm_variant_xxksu)
-                                                lkmVariant == 2 && lkmSelection is LkmSelection.LkmUri -> {
-                                                    val uriStr = (lkmSelection as LkmSelection.LkmUri).uri.lastPathSegment ?: "(file)"
-                                                    stringResource(id = R.string.selected_lkm, uriStr)
-                                                }
-                                                else -> stringResource(id = R.string.lkm_variant_none)
-                                            }
-                                            Text(text)
-                                        },
-                                        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)},
-                                        onClick = { showLkmMenu = true }
-                                    )
-                                    androidx.compose.material3.DropdownMenu(expanded = showLkmMenu, onDismissRequest = { showLkmMenu = false }) {
-                                        androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(id = R.string.lkm_variant_standard)) }, onClick = { lkmVariant = 0; lkmSelection = LkmSelection.KmiNone; showLkmMenu = false })
-                                        androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(id = R.string.lkm_variant_xxksu)) }, onClick = { lkmVariant = 1; lkmSelection = LkmSelection.KmiNone; showLkmMenu = false })
-                                        androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(id = R.string.lkm_variant_custom)) }, onClick = { lkmVariant = 2; onLkmUpload(); showLkmMenu = false })
+                                val itemsList = listOf(
+                                    stringResource(id = R.string.lkm_variant_standard),
+                                    stringResource(id = R.string.lkm_variant_xxksu),
+                                    stringResource(id = R.string.lkm_variant_custom)
+                                )
+                                ExpressiveDropdownItem(
+                                    icon = Icons.AutoMirrored.Filled.DriveFileMove,
+                                    title = stringResource(id = R.string.install_upload_lkm_file),
+                                    summary = when {
+                                        lkmVariant == 0 -> stringResource(id = R.string.lkm_variant_standard)
+                                        lkmVariant == 1 -> stringResource(id = R.string.lkm_variant_xxksu)
+                                        lkmVariant == 2 && lkmSelection is LkmSelection.LkmUri -> {
+                                            val uriStr = (lkmSelection as LkmSelection.LkmUri).uri.lastPathSegment ?: "(file)"
+                                            stringResource(id = R.string.selected_lkm, uriStr)
+                                        }
+                                        else -> stringResource(id = R.string.lkm_variant_none)
+                                    },
+                                    items = itemsList,
+                                    selectedIndex = lkmVariant,
+                                    onItemSelected = { index ->
+                                        lkmVariant = index
+                                        if (index == 2) {
+                                            onLkmUpload()
+                                        } else {
+                                            lkmSelection = LkmSelection.KmiNone
+                                        }
                                     }
-                                }
+                                )
                             },
                             {
                                 ExpressiveCheckboxItem(
