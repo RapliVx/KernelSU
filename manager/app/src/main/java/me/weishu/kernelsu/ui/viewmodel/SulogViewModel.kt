@@ -120,7 +120,7 @@ class SulogViewModel : ViewModel() {
         val preferredFilePath = _uiState.value.selectedFilePath
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            if (repo.setSulogEnabled(true)) {
+            if (me.weishu.kernelsu.ui.util.execKsud("feature set sulog 1", true)) {
                 me.weishu.kernelsu.ui.util.execKsud("feature save", true)
             }
             refresh(preferredFilePath)
@@ -155,7 +155,7 @@ class SulogViewModel : ViewModel() {
                 if (!add(filter)) remove(filter)
             }
             selectedFiltersFlow.value = selectedFilters
-            repo.suLogFilters = selectedFilters.map { it.name }.toSet()
+            me.weishu.kernelsu.ksuApp.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE).edit().putStringSet("sulog_filters", selectedFilters.map { it.name }.toSet()).apply()
             currentState.copy(
                 selectedFilters = selectedFilters,
             )

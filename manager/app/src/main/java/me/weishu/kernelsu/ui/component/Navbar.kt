@@ -1,4 +1,7 @@
-package me.weishu.kernelsu.ui.component
+package me.weishu.kernelsu.ui
+
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+.component
 
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility

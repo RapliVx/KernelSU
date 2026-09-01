@@ -48,7 +48,7 @@ fun SulogScreen(navigator: DestinationsNavigator) {
         errorMessage = uiState.errorMessage,
     )
     val actions = SulogActions(
-        onBack = dropUnlessResumed { navigator.pop() },
+        onBack = dropUnlessResumed { navigator.popBackStack() },
         onRefresh = viewModel::refreshLatest,
         onEnableSulog = viewModel::enableSulog,
         onCleanFile = viewModel::cleanFile,

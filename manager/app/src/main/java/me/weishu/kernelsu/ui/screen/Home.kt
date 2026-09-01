@@ -1,4 +1,7 @@
-package me.weishu.kernelsu.ui.screen
+package me.weishu.kernelsu.ui
+
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+.screen
 
 import android.content.Context
 import android.os.Build
@@ -130,7 +133,7 @@ import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.rootAvailable
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Destination<RootGraph>(start = true)
 @Composable
 fun HomeScreen(navigator: DestinationsNavigator) {
@@ -291,7 +294,7 @@ fun UpdateCard() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 private fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior? = null

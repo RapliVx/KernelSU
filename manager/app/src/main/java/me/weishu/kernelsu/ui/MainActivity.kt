@@ -1,5 +1,8 @@
 package me.weishu.kernelsu.ui
 
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+
+
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.net.Uri

@@ -114,85 +114,46 @@ fun SulogScreenContent(
     Scaffold(
         topBar = {
             SearchAppBar(
-                snackbarHostState = snackbarHostState,
                 title = { Text(stringResource(R.string.settings_sulog)) },
                 searchText = localSearchText,
                 onSearchTextChange = {
                     localSearchText = it
-                    actions.onSearchTextChange(it)
+                    actions.onSearchTextChange(it.text)
                 },
                 onClearClick = {
-                    localSearchText = ""
+                    localSearchText = androidx.compose.ui.text.input.TextFieldValue("")
                     actions.onSearchTextChange("")
                 },
-                navigationIcon = {
-                    TopBarBackButton(onClick = actions.onBack)
-                },
-                actions = {
-                    IconButton(onClick = actions.onCleanFile) {
-                        Icon(
-                            imageVector = Icons.Filled.DeleteSweep,
+                onBackClick = actions.onBack,
+                actionsContent = {
+                    androidx.compose.material3.IconButton(onClick = actions.onCleanFile) {
+                        androidx.compose.material3.Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Filled.DeleteSweep,
                             contentDescription = stringResource(R.string.sulog_clean_title),
                         )
                     }
-                    IconButton(onClick = { showFilterMenu = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.FilterList,
+                    androidx.compose.material3.IconButton(onClick = { showFilterMenu = true }) {
+                        androidx.compose.material3.Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Filled.FilterList,
                             contentDescription = stringResource(R.string.sulog_filter_title),
                         )
                     }
-                    DropdownMenuPopup(
-                        expanded = showFilterMenu,
-                        onDismissRequest = { showFilterMenu = false },
-                    ) {
-                        val filters = SulogEventFilter.entries
-                        DropdownMenuGroup(shapes = MenuDefaults.groupShapes()) {
-                            filters.forEachIndexed { index, filter ->
-                                DropdownMenuItem(
-                                    text = { Text(sulogFilterLabel(filter)) },
+                },
+                dropdownContent = {
+                    SulogEventFilter.entries.forEach { filter ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(sulogFilterLabel(filter)) },
+                            onClick = { actions.onToggleFilter(filter) },
+                            trailingIcon = {
+                                androidx.compose.material3.Checkbox(
                                     checked = filter in state.selectedFilters,
-                                    checkedLeadingIcon = {
-                                        Icon(
-                                            Icons.Filled.Check,
-                                            modifier = Modifier.size(MenuDefaults.LeadingIconSize),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onCheckedChange = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
-                                        actions.onToggleFilter(filter)
-                                    },
-                                    shapes = MenuDefaults.itemShape(index = index, count = filters.size),
+                                    onCheckedChange = null
                                 )
                             }
-                        }
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-                searchContent = { bottomPadding, _ ->
-                    val latestVisibleEntries = rememberUpdatedState(state.visibleEntries)
-                    ScrollToTopOnChange(
-                        searchListState,
-                        state.searchText,
-                    ) { latestVisibleEntries.value }
-                    LazyColumn(
-                        state = searchListState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection),
-                        contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            bottom = 16.dp + bottomPadding,
-                        ),
-                    ) {
-                        sulogEntriesSection(
-                            entries = state.visibleEntries,
-                            errorMessage = state.errorMessage,
-                            onEntryClick = { selectedEntry = it },
                         )
                     }
                 },
+                scrollBehavior = scrollBehavior
             )
         },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
