@@ -139,4 +139,22 @@
     <string name="module_sort_action_first">Sırala (Action önce)</string>
     <string name="module_sort_enabled_first">Sırala (Etkin olanlar önce)</string>
     <string name="settings_disable_su">Su uyumluluğunu devre dışı bırak</string>
+    <string name="jailbreak_mode">Jailbreak modu</string>
+    <string name="home_jailbreak">Jailbreak</string>
+    <string name="jailbreak_timeout">Jailbreak işlemi başarısız olmuş olabilir, lütfen günlükleri kontrol edin</string>
+    <string name="jailbreak_flash_warning">Şu anda **Jailbreak modundasınız**. **Kilitli önyükleyicili** bir cihazda bir bölümü yeniden yazmak, AVB’yi (Android Verified Boot) bozacak ve cihazın **açılmamasına** neden olabilir.\n\nDevam etmeden önce önyükleyicinizin kilidinin açık olduğundan emin olun!</string>
+    <string name="jailbreak_flash_warning_countdown">Devam et (%1$d)</string>
+    <string name="module_shortcut_title">Kısayol oluştur</string>
+    <string name="module_shortcut_name_label">Kısayol adı</string>
+    <string name="module_shortcut_icon_pick">Özel simge seç</string>
+    <string name="module_shortcut_not_supported">Başlatıcı, masaüstü kısayollarını desteklemiyor.</string>
+    <string name="module_shortcut_created">Masaüstünde kısayol oluşturuldu.</string>
+    <string name="module_shortcut_updated">Kısayol güncellendi.</string>
+    <string name="module_shortcut_delete">Kısayolu sil</string>
+    <string name="module_shortcut_permission_tip_xiaomi">Lütfen Xiaomi ayarlarından bu uygulama için \"Ana ekran kısayolları\" iznini etkinleştirin.</string>
+    <string name="module_shortcut_permission_tip_oppo">Lütfen OPPO ayarlarından bu uygulama için \"Ana ekran kısayolları oluştur\" iznini etkinleştirin.</string>
+    <string name="module_shortcut_permission_tip_default">Kısayol oluşturma işlemi başarısız olursa, lütfen sistem ayarlarından bu uygulama için masaüstü kısayolu iznini etkinleştirin.</string>
+    <string name="show_only_primary_user_apps">Yalnızca birincil kullanıcı uygulamalarını göster</string>
+    <string name="settings_auto_jailbreak">Otomatik jailbreak</string>
+    <string name="settings_auto_jailbreak_summary">Önyükleme sırasında Permissive SELinux algılandığında, ayrıcalıkları yükseltmek için otomatik olarak Magica kullanılır. Bunun için bu uygulamaya otomatik başlatma izni verilmesi gerekir.</string>
 </resources>

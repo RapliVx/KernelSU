@@ -181,4 +181,22 @@
     <string name="feature_status_unsupported_summary">Le noyau ne prend pas en charge cette fonctionnalité.</string>
     <string name="feature_status_managed_summary">Cette fonctionnalité est gérée par un module.</string>
     <string name="module_repos">Dépôt de modules</string>
+    <string name="module_shortcut_title">Créer un raccourci</string>
+    <string name="module_shortcut_name_label">Nom du raccourci</string>
+    <string name="module_shortcut_icon_pick">Choisir une icône personnalisée</string>
+    <string name="module_shortcut_not_supported">Le lanceur d\'application ne prend pas en charge les raccourcis.</string>
+    <string name="module_shortcut_created">Raccourci créé sur le bureau.</string>
+    <string name="module_shortcut_updated">Raccourci mis à jour.</string>
+    <string name="module_shortcut_delete">Supprimer le raccourci</string>
+    <string name="module_shortcut_permission_tip_xiaomi">Activez pour cette application l\'autorisation \"Raccourcis d\'écran d\'accueil\" dans les paramètres Xiaomi.</string>
+    <string name="module_shortcut_permission_tip_oppo">Activez pour cette application l\'autorisation \"Créer des raccourcis d\'écran d\'accueil\" dans les paramètres OPPO.</string>
+    <string name="module_shortcut_permission_tip_default">Si la création du raccourci échoue, veuillez activer pour cette application l\'autorisation relative aux raccourcis de bureau dans les paramètres du système.</string>
+    <string name="jailbreak_mode">Mode Jailbreak</string>
+    <string name="home_jailbreak">Jailbreak</string>
+    <string name="jailbreak_timeout">Le jailbreak a peut-être échoué, consultez les journaux</string>
+    <string name="jailbreak_flash_warning">Vous êtes en **mode Jailbreak**. En flashant une partition sur un appareil dont le **bootloader est verrouillé** entraînera l\'échec d\'Android Verified Boot (AVB) et pourrait **empêcher le démarrage de l\'appareil**.\n\nAssurez-vous que votre bootloader est bien déverrouillé avant de continuer !</string>
+    <string name="jailbreak_flash_warning_countdown">Continuer (%1$d)</string>
+    <string name="show_only_primary_user_apps">Afficher seulement les applis de l\'utilisateur principal</string>
+    <string name="settings_auto_jailbreak">Jailbreak automatique</string>
+    <string name="settings_auto_jailbreak_summary">Utilisez automatiquement Magica pour l\'élévation de privilèges lorsque SELinux permissif est détecté au démarrage de l\'appareil. L\'autorisation de démarrage automatique devra être accordé à cette application.</string>
 </resources>

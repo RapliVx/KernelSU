@@ -153,4 +153,14 @@
     <string name="refresh_release">リリースしてリフレッシュ</string>
     <string name="refresh_refresh">爽やか…</string>
     <string name="refresh_complete">更新に成功しました</string>
+    <string name="module_shortcut_title">ショートカットを作成</string>
+    <string name="module_shortcut_name_label">ショートカット名</string>
+    <string name="module_shortcut_icon_pick">カスタムアイコンを選択</string>
+    <string name="module_shortcut_not_supported">ランチャーはホーム画面ショートカットをサポートしていません。</string>
+    <string name="module_shortcut_created">ホーム画面にショートカットを作成しました。</string>
+    <string name="module_shortcut_updated">ショートカットが更新されました。</string>
+    <string name="module_shortcut_delete">ショートカットを削除</string>
+    <string name="module_shortcut_permission_tip_xiaomi">Xiaomi の設定で、このアプリに対して「ホーム画面ショートカット」権限を有効にしてください。</string>
+    <string name="module_shortcut_permission_tip_oppo">OPPO の設定で、このアプリに対して「ホーム画面ショートカット」権限を有効にしてください。</string>
+    <string name="module_shortcut_permission_tip_default">ショートカットの作成に失敗した場合は、システム設定でこのアプリに対してホーム画面ショートカットの権限を有効にしてください。</string>
 </resources>

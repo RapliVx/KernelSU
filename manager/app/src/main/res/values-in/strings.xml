@@ -185,4 +185,55 @@
     <string name="settings_selinux_hide_summary">Mencegah aplikasi mendeteksi modifikasi SELinux melalui selinuxfs</string>
     <string name="settings_selinux_hide_reboot_required">Mulai ulang agar berlaku</string>
     <string name="settings_selinux_hide_failed">Kesalahan: %d</string>
+
+    <string name="sulog_log_files">File log</string>
+    <string name="sulog_failed_to_load">Gagal memuat log SU</string>
+    <string name="sulog_disabled_title">Log SU tidak aktif</string>
+    <string name="sulog_unsupported_title">Log SU tidak didukung</string>
+    <string name="sulog_enable_action">Aktifkan</string>
+    <string name="sulog_filter_title">Saring jenis</string>
+    <string name="sulog_clean_title">Bersihkan log</string>
+    <string name="sulog_filter_root_execve">Eksekusi Root</string>
+    <string name="sulog_filter_sucompat">SU Klasik</string>
+    <string name="sulog_filter_ioctl_grant_root">Berikan Root</string>
+    <string name="sulog_filter_daemon_restart">Daemon restart</string>
+    <string name="sulog_entry_unknown_event">Aktivitas tidak dikenal</string>
+    <string name="sulog_entry_description_sucompat">Mencegat permintaan /system/bin/su</string>
+    <string name="sulog_entry_title_root_grant_request">Permintaan akses root</string>
+    <string name="sulog_entry_description_ioctl_grant_root">Akses root diberikan via ioctl KernelSU</string>
+    <string name="sulog_entry_title_daemon_restarted">Daemon dimulai ulang</string>
+    <string name="sulog_entry_title_dropped_events">Aktivitas yang dibuang</string>
+    <string name="jailbreak_mode">Mode Jailbreak</string>
+    <string name="home_jailbreak">Jailbreak</string>
+    <string name="jailbreak_timeout">Jailbreak mungkin gagal, silakan periksa log</string>
+    <string name="jailbreak_reboot_warning">Anda berada di mode Jailbreak. Jika di-reboot, akses root akan hilang dan Anda harus melakukan Jailbreak lagi setelah HP menyala. Tetap reboot?</string>
+    <string name="jailbreak_flash_warning">Anda berada di **mode Jailbreak**. Jika Anda melakukan flash partisi saat **bootloader masih terkunci**, AVB (Android Verified Boot) akan rusak dan HP **mungkin tidak bisa menyala (bootloop)**.\n\nPastikan bootloader Anda sudah di-unlock sebelum melanjutkan!</string>
+    <string name="jailbreak_flash_warning_countdown">Lanjutkan (%1$d)</string>
+    <string name="settings_sulog">Log SU</string>
+    <string name="settings_sulog_summary">Catat aktivitas terkait Root ke dalam file log KernelSU</string>
+    <string name="module_shortcut_title">Buat pintasan</string>
+    <string name="module_shortcut_name_label">Nama pintasan</string>
+    <string name="module_shortcut_icon_pick">Pilih ikon khusus</string>
+    <string name="module_shortcut_not_supported">Peluncur tidak mendukung pintasan layar utama</string>
+    <string name="module_shortcut_created">Pintasan berhasil dibuat</string>
+    <string name="module_shortcut_updated">Pintasan diperbarui</string>
+    <string name="module_shortcut_delete">Hapus pintasan</string>
+    <string name="module_shortcut_permission_tip_xiaomi">Harap izinkan hak akses "Pintasan layar utama" untuk aplikasi ini di setelan Xiaomi.</string>
+    <string name="module_shortcut_permission_tip_oppo">Harap izinkan hak akses "Buat pintasan layar utama" untuk aplikasi ini di setelan OPPO.</string>
+    <string name="module_shortcut_permission_tip_default">Jika gagal, harap aktifkan hak akses pintasan layar utama untuk aplikasi ini di setelan sistem.</string>
+    <string name="show_only_primary_user_apps">Hanya tampilkan aplikasi utama</string>
+    <string name="settings_auto_jailbreak">Jailbreak otomatis</string>
+    <string name="settings_auto_jailbreak_summary">Otomatis gunakan Magica untuk eskalasi hak akses saat terdeteksi SELinux Permissive. Perlu izin autostart untuk aplikasi ini.</string>
+    <string name="settings_soft_reboot">Soft reboot</string>
+    <string name="settings_soft_reboot_summary">Gunakan restart lunak alih-alih restart penuh saat menginstal, memperbarui, atau menghidupkan modul.</string>
+    <string name="module_shortcut_copy_scheme">Salin skema URL</string>
+    <string name="module_shortcut_scheme_copied">Skema URL disalin</string>
+    <string name="recently_installed">Baru saja diinstal</string>
+
+    <string name="lkm_variant_standard">Standar (MamboSU)</string>
+    <string name="lkm_variant_xxksu">XXKSU</string>
+    <string name="lkm_variant_custom">File Kustom</string>
+    <string name="lkm_variant_none">Tidak ada</string>
 </resources>
+
+

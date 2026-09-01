@@ -144,4 +144,23 @@
     <string name="refresh_release">鬆開刷新</string>
     <string name="refresh_refresh">正在刷新…</string>
     <string name="refresh_complete">刷新成功</string>
+    <string name="module_shortcut_title">建立捷徑</string>
+    <string name="module_shortcut_name_label">捷徑名稱</string>
+    <string name="module_shortcut_icon_pick">選擇自訂圖示</string>
+    <string name="module_shortcut_not_supported">啟動器不支援桌面捷徑。</string>
+    <string name="module_shortcut_created">已在桌面建立捷徑。</string>
+    <string name="module_shortcut_updated">捷徑已更新。</string>
+    <string name="module_shortcut_delete">刪除捷徑</string>
+    <string name="module_shortcut_permission_tip_xiaomi">請在 Xiaomi 設定中為此應用啟用「建立桌面捷徑」權限。</string>
+    <string name="module_shortcut_permission_tip_oppo">請在 OPPO 設定中為此應用啟用「桌面捷徑」權限。</string>
+    <string name="module_shortcut_permission_tip_default">若建立捷徑失敗，請在系統設定中為此應用啟用桌面捷徑權限。</string>
+    <string name="lkm_variant_xxksu">XXKSU</string>
+    <string name="lkm_variant_standard">標準版 (MamboSU)</string>
+    <string name="lkm_variant_custom">自訂檔案</string>
+    <string name="lkm_variant_none">無</string>
+    <string name="settings_auto_jailbreak">自動越獄</string>
+    <string name="settings_auto_jailbreak_summary">啟動時若檢測到 SELinux 寬容模式，則自動使用 Magica 提權。需要授予此應用自啟動權限。</string>
+    <string name="settings_soft_reboot">軟重啟</string>
+    <string name="settings_soft_reboot_summary">在安裝、更新或切換模組時使用軟重啟而不是完全重啟。</string>
+    <string name="recently_installed">最近安裝</string>
 </resources>
