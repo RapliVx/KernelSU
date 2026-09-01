@@ -185,7 +185,6 @@
     <string name="settings_selinux_hide_summary">Mencegah aplikasi mendeteksi modifikasi SELinux melalui selinuxfs</string>
     <string name="settings_selinux_hide_reboot_required">Mulai ulang agar berlaku</string>
     <string name="settings_selinux_hide_failed">Kesalahan: %d</string>
-
     <string name="sulog_log_files">File log</string>
     <string name="sulog_failed_to_load">Gagal memuat log SU</string>
     <string name="sulog_disabled_title">Log SU tidak aktif</string>
@@ -229,11 +228,8 @@
     <string name="module_shortcut_copy_scheme">Salin skema URL</string>
     <string name="module_shortcut_scheme_copied">Skema URL disalin</string>
     <string name="recently_installed">Baru saja diinstal</string>
-
     <string name="lkm_variant_standard">Standar (MamboSU)</string>
     <string name="lkm_variant_xxksu">XXKSU</string>
     <string name="lkm_variant_custom">File Kustom</string>
     <string name="lkm_variant_none">Tidak ada</string>
 </resources>
-
-
