@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.material.ExperimentalMaterialApi::class, androidx.compose.animation.ExperimentalAnimationApi::class, androidx.foundation.ExperimentalFoundationApi::class)
 package me.weishu.kernelsu.ui.screen.sulog
 
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -201,6 +203,7 @@ fun SulogScreenContent(
                         Column(
                             content = listOf {
                                 me.weishu.kernelsu.ui.component.ExpressiveDropdownItem(
+                                    icon = androidx.compose.material.icons.Icons.Filled.Description,
                                     title = stringResource(R.string.sulog_log_files),
                                     items = fileSelector.items,
                                     enabled = fileSelector.items.isNotEmpty(),
@@ -295,7 +298,6 @@ private fun LazyListScope.sulogEntriesSection(
             }
         }
     }
-}
 
 @Composable
 private fun SulogStatusSection(
@@ -364,7 +366,7 @@ private fun WarningCard(
 ) {
     androidx.compose.material3.ElevatedCard(
         modifier = Modifier.padding(bottom = 16.dp),
-        colors = androidx.compose.material3.CardDefaults.elevatedCardColors(containerColor = androidx.compose.material3.MaterialTheme.androidx.compose.material3.MaterialTheme.colorScheme.errorContainer)
+        colors = androidx.compose.material3.CardDefaults.elevatedCardColors(containerColor = androidx.compose.material3.MaterialTheme.colorScheme.errorContainer)
     ) {
         Row(
             modifier = Modifier
