@@ -269,13 +269,13 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                                         headlineContent = { Text(stringResource(id = R.string.install_upload_lkm_file)) },
                                         supportingContent = {
                                             val text = when {
-                                                lkmVariant == 0 -> "Standard (MamboSU)"
-                                                lkmVariant == 1 -> "XXKSU"
+                                                lkmVariant == 0 -> stringResource(id = R.string.lkm_variant_standard)
+                                                lkmVariant == 1 -> stringResource(id = R.string.lkm_variant_xxksu)
                                                 lkmVariant == 2 && lkmSelection is LkmSelection.LkmUri -> {
                                                     val uriStr = (lkmSelection as LkmSelection.LkmUri).uri.lastPathSegment ?: "(file)"
                                                     stringResource(id = R.string.selected_lkm, uriStr)
                                                 }
-                                                else -> "None"
+                                                else -> stringResource(id = R.string.lkm_variant_none)
                                             }
                                             Text(text)
                                         },
@@ -283,9 +283,9 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                                         onClick = { showLkmMenu = true }
                                     )
                                     androidx.compose.material3.DropdownMenu(expanded = showLkmMenu, onDismissRequest = { showLkmMenu = false }) {
-                                        androidx.compose.material3.DropdownMenuItem(text = { Text("Standard (MamboSU)") }, onClick = { lkmVariant = 0; lkmSelection = LkmSelection.KmiNone; showLkmMenu = false })
-                                        androidx.compose.material3.DropdownMenuItem(text = { Text("XXKSU") }, onClick = { lkmVariant = 1; lkmSelection = LkmSelection.KmiNone; showLkmMenu = false })
-                                        androidx.compose.material3.DropdownMenuItem(text = { Text("Custom File") }, onClick = { lkmVariant = 2; onLkmUpload(); showLkmMenu = false })
+                                        androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(id = R.string.lkm_variant_standard)) }, onClick = { lkmVariant = 0; lkmSelection = LkmSelection.KmiNone; showLkmMenu = false })
+                                        androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(id = R.string.lkm_variant_xxksu)) }, onClick = { lkmVariant = 1; lkmSelection = LkmSelection.KmiNone; showLkmMenu = false })
+                                        androidx.compose.material3.DropdownMenuItem(text = { Text(stringResource(id = R.string.lkm_variant_custom)) }, onClick = { lkmVariant = 2; onLkmUpload(); showLkmMenu = false })
                                     }
                                 }
                             },
