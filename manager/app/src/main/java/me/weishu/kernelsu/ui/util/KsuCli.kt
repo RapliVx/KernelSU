@@ -310,6 +310,9 @@ sealed class LkmSelection : Parcelable {
     data class KmiString(val value: String) : LkmSelection()
 
     @Parcelize
+    data class KmiStringXX(val value: String) : LkmSelection()
+
+    @Parcelize
     data object KmiNone : LkmSelection()
 }
 
@@ -373,6 +376,9 @@ fun installBoot(
 
         is LkmSelection.KmiString -> {
             cmd += " --kmi ${lkm.value}"
+        }
+        is LkmSelection.KmiStringXX -> {
+            cmd += " --kmi xx-"
         }
 
         LkmSelection.KmiNone -> {

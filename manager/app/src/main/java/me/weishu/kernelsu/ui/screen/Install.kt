@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -101,6 +102,7 @@ fun InstallScreen(navigator: DestinationsNavigator) {
     var lkmSelection by remember {
         mutableStateOf<LkmSelection>(LkmSelection.KmiNone)
     }
+    var lkmVariant by remember { mutableIntStateOf(0) }
 
     var partitionSelectionIndex by remember { mutableIntStateOf(0) }
     var partitionsState by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -138,7 +140,7 @@ fun InstallScreen(navigator: DestinationsNavigator) {
 
     val selectKmiDialog = rememberSelectKmiDialog { kmi ->
         kmi?.let {
-            lkmSelection = LkmSelection.KmiString(it)
+            lkmSelection = if (lkmVariant == 1) LkmSelection.KmiStringXX(it) else LkmSelection.KmiString(it)
             onInstall()
         }
     }
@@ -154,6 +156,9 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                     // no lkm file selected and cannot get current kmi
                     selectKmiDialog.show()
                 } else {
+                    if (lkmSelection == LkmSelection.KmiNone && currentKmi.isNotBlank()) {
+                        lkmSelection = if (lkmVariant == 1) LkmSelection.KmiStringXX(currentKmi) else LkmSelection.KmiString(currentKmi)
+                    }
                     onInstall()
                 }
             }
@@ -257,17 +262,32 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                                 }
                             },
                             {
-                                ExpressiveListItem(
-                                    leadingContent = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, null) },
-                                    headlineContent = { Text(stringResource(id = R.string.install_upload_lkm_file)) },
-                                    supportingContent = {
-                                        (lkmSelection as? LkmSelection.LkmUri)?.let {
-                                            Text(stringResource(id = R.string.selected_lkm, it.uri.lastPathSegment ?: "(file)"))
-                                        }
-                                    },
-                                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)},
-                                    onClick = { onLkmUpload() }
-                                )
+                                var showLkmMenu by remember { mutableStateOf(false) }
+                                Box {
+                                    ExpressiveListItem(
+                                        leadingContent = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, null) },
+                                        headlineContent = { Text(stringResource(id = R.string.install_upload_lkm_file)) },
+                                        supportingContent = {
+                                            val text = when {
+                                                lkmVariant == 0 -> "Standard (MamboSU)"
+                                                lkmVariant == 1 -> "XXKSU"
+                                                lkmVariant == 2 && lkmSelection is LkmSelection.LkmUri -> {
+                                                    val uriStr = (lkmSelection as LkmSelection.LkmUri).uri.lastPathSegment ?: "(file)"
+                                                    stringResource(id = R.string.selected_lkm, uriStr)
+                                                }
+                                                else -> "None"
+                                            }
+                                            Text(text)
+                                        },
+                                        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)},
+                                        onClick = { showLkmMenu = true }
+                                    )
+                                    androidx.compose.material3.DropdownMenu(expanded = showLkmMenu, onDismissRequest = { showLkmMenu = false }) {
+                                        androidx.compose.material3.DropdownMenuItem(text = { Text("Standard (MamboSU)") }, onClick = { lkmVariant = 0; lkmSelection = LkmSelection.KmiNone; showLkmMenu = false })
+                                        androidx.compose.material3.DropdownMenuItem(text = { Text("XXKSU") }, onClick = { lkmVariant = 1; lkmSelection = LkmSelection.KmiNone; showLkmMenu = false })
+                                        androidx.compose.material3.DropdownMenuItem(text = { Text("Custom File") }, onClick = { lkmVariant = 2; onLkmUpload(); showLkmMenu = false })
+                                    }
+                                }
                             },
                             {
                                 ExpressiveCheckboxItem(
