@@ -12,11 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import android.content.Context
-import me.weishu.kernelsu.ksuApp
-import me.weishu.kernelsu.ui.util.execKsud
-import me.weishu.kernelsu.ui.util.getFeaturePersistValue
-import me.weishu.kernelsu.ui.util.getFeatureStatus
+import me.weishu.kernelsu.data.repository.SettingsRepository
+import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ui.util.SulogEntry
 import me.weishu.kernelsu.ui.util.SulogEventFilter
 import me.weishu.kernelsu.ui.util.SulogFile
@@ -44,7 +41,9 @@ data class SulogUiState(
     val errorMessage: String? = null,
 )
 
-class SulogViewModel() : ViewModel() {
+class SulogViewModel(
+    private val repo: SettingsRepository = SettingsRepositoryImpl(),
+) : ViewModel() {
     private val _uiState = MutableStateFlow(SulogUiState())
     val uiState: StateFlow<SulogUiState> = _uiState.asStateFlow()
     private val entriesFlow = MutableStateFlow<List<SulogEntry>>(emptyList())
@@ -54,7 +53,7 @@ class SulogViewModel() : ViewModel() {
     private var refreshJob: Job? = null
 
     init {
-        val savedFilters = ksuApp.getSharedPreferences("settings", Context.MODE_PRIVATE).getStringSet("sulog_filters", null)
+        val savedFilters = repo.suLogFilters
             ?.mapNotNull { raw -> SulogEventFilter.entries.firstOrNull { it.name == raw } }
             ?.toSet()
             ?.ifEmpty { defaultSulogEventFilters() }
@@ -76,8 +75,8 @@ class SulogViewModel() : ViewModel() {
         refreshJob = viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             runCatching {
-                val sulogStatus = getFeatureStatus("sulog")
-                val isSulogEnabled = getFeaturePersistValue("sulog") == 1L
+                val sulogStatus = repo.getSulogStatus()
+                val isSulogEnabled = repo.getSulogPersistValue() == 1L
                 val files = listSulogFiles()
                 currentCoroutineContext().ensureActive()
                 val selectedFile = when {
@@ -125,8 +124,8 @@ class SulogViewModel() : ViewModel() {
         val preferredFilePath = _uiState.value.selectedFilePath
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            if (execKsud("feature set sulog 1", true)) {
-                execKsud("feature save", true)
+            if (repo.setSulogEnabled(true)) {
+                repo.execKsudFeatureSave()
             }
             refresh(preferredFilePath)
         }
@@ -160,7 +159,7 @@ class SulogViewModel() : ViewModel() {
                 if (!add(filter)) remove(filter)
             }
             selectedFiltersFlow.value = selectedFilters
-            ksuApp.getSharedPreferences("settings", Context.MODE_PRIVATE).getStringSet("sulog_filters", null) = selectedFilters.map { it.name }.toSet()
+            repo.suLogFilters = selectedFilters.map { it.name }.toSet()
             currentState.copy(
                 selectedFilters = selectedFilters,
             )

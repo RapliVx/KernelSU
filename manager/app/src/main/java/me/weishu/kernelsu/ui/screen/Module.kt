@@ -1017,56 +1017,60 @@ fun ModuleItem(
                     val actionButtonsEnabled = !module.remove && module.enabled
 
                     if (actionButtonsEnabled && module.hasActionScript) {
-                        androidx.compose.foundation.layout.Box(
+                        FilledTonalButton(
                             modifier = Modifier
                                 .defaultMinSize(52.dp, 32.dp)
-                                .clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
-                                .androidx.compose.foundation.combinedClickable(
-                                    onClick = {
-                                        navigator.navigate(ExecuteModuleActionScreenDestination(module.id))
-                                        viewModel.markNeedRefresh()
-                                    },
-                                    onLongClick = {
-                                        me.weishu.kernelsu.ui.util.module.Shortcut.createModuleActionShortcut(
-                                            context, module.id, module.name, module.actionIconPath ?: ""
-                                        )
-                                    }
+                                .androidx.compose.ui.input.pointer.pointerInput(Unit) {
+                                    androidx.compose.foundation.gestures.detectTapGestures(
+                                        onLongPress = {
+                                            me.weishu.kernelsu.ui.util.module.Shortcut.createModuleActionShortcut(
+                                                context, module.id, module.name, module.actionIconPath ?: ""
+                                            )
+                                        }
+                                    )
+                                },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            ),
+                            onClick = {
+                                navigator.navigate(
+                                    ExecuteModuleActionScreenDestination(module.id)
                                 )
-                                .padding(horizontal = 16.dp),
-                            contentAlignment = androidx.compose.ui.Alignment.Center
+                                viewModel.markNeedRefresh()
+                            },
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
                         ) {
                             Icon(
                                 modifier = Modifier.size(20.dp),
                                 imageVector = Icons.Outlined.PlayArrow,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                contentDescription = null
                             )
                         }
                     }
 
                     if (actionButtonsEnabled && module.hasWebUi) {
-                        androidx.compose.foundation.layout.Box(
+                        FilledTonalButton(
                             modifier = Modifier
                                 .defaultMinSize(52.dp, 32.dp)
-                                .clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
-                                .androidx.compose.foundation.combinedClickable(
-                                    onClick = { onClick(module) },
-                                    onLongClick = {
-                                        me.weishu.kernelsu.ui.util.module.Shortcut.createModuleWebUiShortcut(
-                                            context, module.id, module.name, module.webUiIconPath ?: ""
-                                        )
-                                    }
-                                )
-                                .padding(horizontal = 16.dp),
-                            contentAlignment = androidx.compose.ui.Alignment.Center
+                                .androidx.compose.ui.input.pointer.pointerInput(Unit) {
+                                    androidx.compose.foundation.gestures.detectTapGestures(
+                                        onLongPress = {
+                                            me.weishu.kernelsu.ui.util.module.Shortcut.createModuleWebUiShortcut(
+                                                context, module.id, module.name, module.webUiIconPath ?: ""
+                                            )
+                                        }
+                                    )
+                                },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            ),
+                            onClick = { onClick(module) },
+                            contentPadding = ButtonDefaults.TextButtonContentPadding
                         ) {
                             Icon(
                                 modifier = Modifier.size(20.dp),
                                 imageVector = Icons.Outlined.Code,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                contentDescription = null
                             )
                         }
                     }
@@ -1166,7 +1170,7 @@ fun ModuleItemPreview() {
         hasWebUi = false,
         hasActionScript = false,
         metamodule = true,
-        banner = null
+        banner = null, actionIconPath = null, webUiIconPath = null
     )
     ModuleItem(EmptyDestinationsNavigator, module, "", {}, {}, {}, {})
 }

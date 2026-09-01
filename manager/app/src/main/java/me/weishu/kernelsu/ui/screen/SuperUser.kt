@@ -472,9 +472,10 @@ private fun buildGroups(apps: List<SuperUserViewModel.AppInfo>): List<GroupedApp
         fun rank(g: GroupedApps): Int = when {
             g.anyAllowSu -> 0
             g.anyCustom -> 1
-            g.apps.size > 1 -> 2
-            Natives.uidShouldUmount(g.uid) -> 4
-            else -> 3
+            System.currentTimeMillis() - g.primary.packageInfo.firstInstallTime < 3 * 24 * 60 * 60 * 1000L -> 2
+            g.apps.size > 1 -> 3
+            Natives.uidShouldUmount(g.uid) -> 5
+            else -> 4
         }
 
         val ra = rank(a)

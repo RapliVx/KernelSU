@@ -1,4 +1,4 @@
-package me.weishu.kernelsu.ui.screen
+package me.weishu.kernelsu.ui.screen.sulog
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,53 +64,40 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.dropUnlessResumed
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.ScrollToTopOnChange
 import androidx.compose.material3.Scaffold
 import me.weishu.kernelsu.ui.component.SearchAppBar
-import me.weishu.kernelsu.ui.component.ExpressiveList
-import me.weishu.kernelsu.ui.component.ExpressiveListItem
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.text.input.TextFieldValue
+
+
+
+
+
+
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.util.SulogEntry
 import me.weishu.kernelsu.ui.util.SulogEventFilter
-import me.weishu.kernelsu.ui.util.SulogFile
-import me.weishu.kernelsu.ui.util.toSulogDisplayName
-import me.weishu.kernelsu.ui.viewmodel.SulogViewModel
-
-data class SulogFileSelector(
-    val items: List<String>,
-    val selectedIndex: Int,
-)
 
 @Composable
-@Destination<RootGraph>
-fun SulogScreen(navigator: DestinationsNavigator) {
-    val viewModel = viewModel<SulogViewModel>()
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    
-    LaunchedEffect(Unit) {
-        viewModel.refreshLatest()
-    }
-
+fun SulogScreenMaterial(
+    state: SulogScreenState,
+    actions: SulogActions,
+) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val pullToRefreshState = rememberPullToRefreshState()
     val listState = rememberLazyListState()
     val searchListState = rememberLazyListState()
     val haptic = LocalHapticFeedback.current
-    val fileSelector = buildSulogFileSelector(uiState.files, uiState.selectedFilePath)
+    val fileSelector = buildSulogFileSelector(state.files, state.selectedFilePath)
     var selectedEntry by remember { mutableStateOf<SulogEntry?>(null) }
     var showFilterMenu by remember { mutableStateOf(false) }
-    var localSearchText by remember { mutableStateOf(uiState.searchText) }
+    var localSearchText by remember { mutableStateOf(TextFieldValue(state.searchText)) }
 
-    LaunchedEffect(uiState.searchText) {
-        localSearchText = uiState.searchText
+    LaunchedEffect(state.searchText) {
+        if (localSearchText.text != state.searchText) {
+            localSearchText = TextFieldValue(state.searchText)
+        }
     }
 
     if (selectedEntry != null) {
@@ -130,17 +117,17 @@ fun SulogScreen(navigator: DestinationsNavigator) {
                 searchText = localSearchText,
                 onSearchTextChange = {
                     localSearchText = it
-                    viewModel.setSearchText(it)
+                    actions.onSearchTextChange(it)
                 },
                 onClearClick = {
                     localSearchText = ""
-                    viewModel.setSearchText("")
+                    actions.onSearchTextChange("")
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navigator.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") }
+                    TopBarBackButton(onClick = actions.onBack)
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.cleanFile() }) {
+                    IconButton(onClick = actions.onCleanFile) {
                         Icon(
                             imageVector = Icons.Filled.DeleteSweep,
                             contentDescription = stringResource(R.string.sulog_clean_title),
@@ -161,7 +148,7 @@ fun SulogScreen(navigator: DestinationsNavigator) {
                             filters.forEachIndexed { index, filter ->
                                 DropdownMenuItem(
                                     text = { Text(sulogFilterLabel(filter)) },
-                                    checked = filter in uiState.selectedFilters,
+                                    checked = filter in state.selectedFilters,
                                     checkedLeadingIcon = {
                                         Icon(
                                             Icons.Filled.Check,
@@ -171,7 +158,7 @@ fun SulogScreen(navigator: DestinationsNavigator) {
                                     },
                                     onCheckedChange = {
                                         haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
-                                        viewModel.toggleFilter(filter)
+                                        actions.onToggleFilter(filter)
                                     },
                                     shapes = MenuDefaults.itemShape(index = index, count = filters.size),
                                 )
@@ -181,10 +168,10 @@ fun SulogScreen(navigator: DestinationsNavigator) {
                 },
                 scrollBehavior = scrollBehavior,
                 searchContent = { bottomPadding, _ ->
-                    val latestVisibleEntries = rememberUpdatedState(uiState.visibleEntries)
+                    val latestVisibleEntries = rememberUpdatedState(state.visibleEntries)
                     ScrollToTopOnChange(
                         searchListState,
-                        uiState.searchText,
+                        state.searchText,
                     ) { latestVisibleEntries.value }
                     LazyColumn(
                         state = searchListState,
@@ -198,8 +185,8 @@ fun SulogScreen(navigator: DestinationsNavigator) {
                         ),
                     ) {
                         sulogEntriesSection(
-                            entries = uiState.visibleEntries,
-                            errorMessage = uiState.errorMessage,
+                            entries = state.visibleEntries,
+                            errorMessage = state.errorMessage,
                             onEntryClick = { selectedEntry = it },
                         )
                     }
@@ -212,25 +199,25 @@ fun SulogScreen(navigator: DestinationsNavigator) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            isRefreshing = uiState.isLoading || uiState.isRefreshing,
+            isRefreshing = state.isLoading || state.isRefreshing,
             onRefresh = {
                 haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
-                viewModel.refreshLatest()
+                actions.onRefresh()
             },
             state = pullToRefreshState,
             indicator = {
                 PullToRefreshDefaults.LoadingIndicator(
                     modifier = Modifier.align(Alignment.TopCenter),
-                    isRefreshing = uiState.isLoading || uiState.isRefreshing,
+                    isRefreshing = state.isLoading || state.isRefreshing,
                     state = pullToRefreshState,
                 )
             },
         ) {
-            val latestEntries = rememberUpdatedState(uiState.visibleEntries)
+            val latestEntries = rememberUpdatedState(state.visibleEntries)
             ScrollToTopOnChange(
                 listState,
-                uiState.selectedFilters,
-                uiState.selectedFilePath,
+                state.selectedFilters,
+                state.selectedFilePath,
             ) { latestEntries.value }
             LazyColumn(
                 state = listState,
@@ -245,16 +232,16 @@ fun SulogScreen(navigator: DestinationsNavigator) {
 
                 item {
                     Box(modifier = Modifier.padding(bottom = 16.dp)) {
-                        ExpressiveList(
+                        Column(
                             content = listOf {
-                                DropdownMenuItem(
+                                me.weishu.kernelsu.ui.component.ExpressiveDropdownItem(
                                     title = stringResource(R.string.sulog_log_files),
                                     items = fileSelector.items,
                                     enabled = fileSelector.items.isNotEmpty(),
                                     selectedIndex = fileSelector.selectedIndex,
                                     onItemSelected = { index ->
-                                        uiState.files.getOrNull(index)?.let { file ->
-                                            viewModel.refresh(file.path)
+                                        state.files.getOrNull(index)?.let { file ->
+                                            actions.onSelectFile(file.path)
                                         }
                                     }
                                 )
@@ -264,8 +251,8 @@ fun SulogScreen(navigator: DestinationsNavigator) {
                 }
 
                 sulogEntriesSection(
-                    entries = uiState.visibleEntries,
-                    errorMessage = uiState.errorMessage,
+                    entries = state.visibleEntries,
+                    errorMessage = state.errorMessage,
                     onEntryClick = { selectedEntry = it },
                 )
 
@@ -299,10 +286,10 @@ private fun LazyListScope.sulogEntriesSection(
 
         else -> {
             itemsIndexed(entries, key = { index, entry -> "$index-${entry.key}" }) { index, entry ->
-                    ExpressiveListItem(
+                
+                    androidx.compose.material3.ListItem(
                         modifier = if (index < entries.lastIndex) {
-                            Modifier.padding(bottom = 2.dp)
-                        } else {
+                            Modifier.padding(bottom = 2.dp) else {
                             Modifier
                         },
                         onClick = { onEntryClick(entry) },
@@ -349,10 +336,10 @@ private fun LazyListScope.sulogEntriesSection(
 
 @Composable
 private fun SulogStatusSection(
-    
-    
+    state: SulogScreenState,
+    actions: SulogActions,
 ) {
-    when (uiState.sulogStatus) {
+    when (state.sulogStatus) {
         "unsupported" -> {
             WarningCard(text = stringResource(R.string.sulog_unsupported_title))
         }
@@ -361,12 +348,12 @@ private fun SulogStatusSection(
             WarningCard(text = stringResource(R.string.feature_status_managed_summary))
         }
 
-        "supported" if !uiState.isSulogEnabled -> {
+        "supported" if !state.isSulogEnabled -> {
             WarningCard(
                 text = stringResource(R.string.sulog_disabled_title),
                 action = {
                     Button(
-                        onClick = { viewModel.enableSulog() },
+                        onClick = actions.onEnableSulog,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colorScheme.error,
                             contentColor = colorScheme.onError,
@@ -412,7 +399,7 @@ private fun WarningCard(
     text: String,
     action: (@Composable () -> Unit)? = null,
 ) {
-    androidx.compose.material3.Card(
+    androidx.compose.material3.ElevatedCard(
         modifier = Modifier.padding(bottom = 16.dp),
         containerColor = colorScheme.errorContainer
     ) {
@@ -460,7 +447,3 @@ private fun SulogDetailDialog(
         },
     )
 }
-
-
-
-

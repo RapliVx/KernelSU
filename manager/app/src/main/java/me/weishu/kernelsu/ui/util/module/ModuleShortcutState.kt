@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.weishu.kernelsu.data.model.Module
+import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel.ModuleInfo as Module
 import me.weishu.kernelsu.ui.util.module.Shortcut
 
 @Stable

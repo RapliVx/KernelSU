@@ -21,6 +21,7 @@ import androidx.core.net.toUri
 import com.topjohnwu.superuser.io.SuFile
 import com.topjohnwu.superuser.io.SuFileInputStream
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ui.MainActivity
 import me.weishu.kernelsu.ui.screen.module.ShortcutType
 import me.weishu.kernelsu.ui.util.getRootShell
@@ -44,7 +45,7 @@ object Shortcut {
             .scheme(SCHEME_KSU)
             .authority(host)
             .appendQueryParameter("id", moduleId)
-            
+            .appendQueryParameter("token", SettingsRepositoryImpl().intentToken)
             .build()
     }
 

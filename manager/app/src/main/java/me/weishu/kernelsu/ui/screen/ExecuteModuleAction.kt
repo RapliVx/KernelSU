@@ -85,6 +85,7 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
                 },
                 onStderr = {
                     logContent.append(it).append("\n")
+                }
             )
         }
     }

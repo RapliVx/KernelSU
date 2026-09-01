@@ -52,7 +52,9 @@ class ModuleViewModel : ViewModel() {
         val hasWebUi: Boolean,
         val hasActionScript: Boolean,
         val metamodule: Boolean,
-        val banner: String?   // tambahkan ini
+        val banner: String?,
+        val actionIconPath: String? = null,
+        val webUiIconPath: String? = null
     )
 
     @Immutable
@@ -165,7 +167,9 @@ class ModuleViewModel : ViewModel() {
                                 obj.optBoolean("web"),
                                 obj.optBoolean("action"),
                                 (obj.optInt("metamodule") != 0) or obj.optBoolean("metamodule"),
-                                obj.optString("banner")
+                                obj.optString("banner"),
+                                null,
+                                null
                             )
                         }.toList()
                 }.getOrElse {
