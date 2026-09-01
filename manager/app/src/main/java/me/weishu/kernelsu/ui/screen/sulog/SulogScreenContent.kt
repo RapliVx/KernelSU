@@ -137,20 +137,23 @@ fun SulogScreenContent(
                             imageVector = androidx.compose.material.icons.Icons.Filled.FilterList,
                             contentDescription = stringResource(R.string.sulog_filter_title),
                         )
-                    }
-                },
-                dropdownContent = {
-                    SulogEventFilter.entries.forEach { filter ->
-                        androidx.compose.material3.DropdownMenuItem(
-                            text = { Text(sulogFilterLabel(filter)) },
-                            onClick = { actions.onToggleFilter(filter) },
-                            trailingIcon = {
-                                androidx.compose.material3.Checkbox(
-                                    checked = filter in state.selectedFilters,
-                                    onCheckedChange = null
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = showFilterMenu,
+                            onDismissRequest = { showFilterMenu = false },
+                        ) {
+                            SulogEventFilter.entries.forEach { filter ->
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(sulogFilterLabel(filter)) },
+                                    onClick = { actions.onToggleFilter(filter) },
+                                    trailingIcon = {
+                                        androidx.compose.material3.Checkbox(
+                                            checked = filter in state.selectedFilters,
+                                            onCheckedChange = null
+                                        )
+                                    }
                                 )
                             }
-                        )
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior
@@ -361,7 +364,7 @@ private fun WarningCard(
 ) {
     androidx.compose.material3.ElevatedCard(
         modifier = Modifier.padding(bottom = 16.dp),
-        containerColor = colorScheme.errorContainer
+        colors = androidx.compose.material3.CardDefaults.elevatedCardColors(containerColor = androidx.compose.material3.MaterialTheme.androidx.compose.material3.MaterialTheme.colorScheme.errorContainer)
     ) {
         Row(
             modifier = Modifier

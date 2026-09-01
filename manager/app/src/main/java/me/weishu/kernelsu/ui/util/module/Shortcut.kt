@@ -1,5 +1,7 @@
 package me.weishu.kernelsu.ui.util.module
 
+import me.weishu.kernelsu.ui.util.module.ShortcutType
+
 import android.app.AppOpsManager
 import android.content.ComponentName
 import android.content.Context
@@ -23,8 +25,6 @@ import com.topjohnwu.superuser.io.SuFileInputStream
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.MainActivity
 import me.weishu.kernelsu.ui.util.getRootShell
-
-enum class ShortcutType { Action, WebUI }
 
 object Shortcut {
 
