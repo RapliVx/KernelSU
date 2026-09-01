@@ -229,7 +229,7 @@
     <string name="module_shortcut_scheme_copied">Skema URL disalin</string>
     <string name="recently_installed">Baru saja diinstal</string>
     <string name="lkm_variant_standard">Standar (MamboSU)</string>
-    <string name="lkm_variant_xxksu">XXKSU</string>
+    <string name="lkm_variant_xxksu">\\xx ksu</string>
     <string name="lkm_variant_custom">File Kustom</string>
     <string name="lkm_variant_none">Tidak ada</string>
 </resources>

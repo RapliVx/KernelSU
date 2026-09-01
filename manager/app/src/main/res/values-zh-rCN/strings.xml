@@ -238,7 +238,7 @@
     <string name="sulog_entry_description_ioctl_grant_root">已通过 KernelSU ioctl 授予 Root 权限</string>
     <string name="sulog_entry_title_daemon_restarted">守护进程已重启</string>
     <string name="sulog_entry_title_dropped_events">丢弃的事件</string>
-    <string name="lkm_variant_xxksu">XXKSU</string>
+    <string name="lkm_variant_xxksu">\\xx ksu</string>
     <string name="lkm_variant_standard">标准版 (MamboSU)</string>
     <string name="lkm_variant_custom">自定义文件</string>
     <string name="lkm_variant_none">无</string>

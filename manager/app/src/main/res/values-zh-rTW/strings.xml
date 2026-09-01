@@ -154,7 +154,7 @@
     <string name="module_shortcut_permission_tip_xiaomi">請在 Xiaomi 設定中為此應用啟用「建立桌面捷徑」權限。</string>
     <string name="module_shortcut_permission_tip_oppo">請在 OPPO 設定中為此應用啟用「桌面捷徑」權限。</string>
     <string name="module_shortcut_permission_tip_default">若建立捷徑失敗，請在系統設定中為此應用啟用桌面捷徑權限。</string>
-    <string name="lkm_variant_xxksu">XXKSU</string>
+    <string name="lkm_variant_xxksu">\\xx ksu</string>
     <string name="lkm_variant_standard">標準版 (MamboSU)</string>
     <string name="lkm_variant_custom">自訂檔案</string>
     <string name="lkm_variant_none">無</string>

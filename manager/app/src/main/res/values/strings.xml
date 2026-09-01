@@ -280,7 +280,7 @@
     <string name="module_shortcut_scheme_copied">URL scheme copied</string>
     <string name="recently_installed">Recently installed</string>
     <string name="lkm_variant_standard">Standard (MamboSU)</string>
-    <string name="lkm_variant_xxksu">XXKSU</string>
+    <string name="lkm_variant_xxksu">\\xx ksu</string>
     <string name="lkm_variant_custom">Custom File</string>
     <string name="lkm_variant_none">None</string>
 </resources>
