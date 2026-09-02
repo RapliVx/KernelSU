@@ -197,6 +197,7 @@
     <string name="module_shortcut_permission_tip_oppo">Пожалуйста, включите разрешение «Ярлыки на рабочем столе» для этого приложения в настройках OPPO.</string>
     <string name="module_shortcut_permission_tip_default">Если создание ярлыка не удалось, пожалуйста, включите разрешение на создание ярлыков на рабочем столе для этого приложения в системных настройках.</string>
     <string name="lkm_variant_xxksu">\\xx ksu</string>
+    <string name="lkm_variant_title">Выберите вариант LKM</string>
     <string name="lkm_variant_standard">Стандартный (MamboSU)</string>
     <string name="lkm_variant_custom">Пользовательский файл</string>
     <string name="lkm_variant_none">Нет</string>

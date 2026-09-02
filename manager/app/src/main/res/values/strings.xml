@@ -279,6 +279,7 @@
     <string name="module_shortcut_copy_scheme">Copy URL scheme</string>
     <string name="module_shortcut_scheme_copied">URL scheme copied</string>
     <string name="recently_installed">Recently installed</string>
+    <string name="lkm_variant_title">Select LKM variant</string>
     <string name="lkm_variant_standard">Standard (MamboSU)</string>
     <string name="lkm_variant_xxksu">\\xx ksu</string>
     <string name="lkm_variant_custom">Custom File</string>
