@@ -28,6 +28,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -237,77 +240,120 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                 }
                 val defaultIndex = partitions.indexOf(defaultPartition).takeIf { it >= 0 } ?: 0
                 if (!hasCustomSelected) partitionSelectionIndex = defaultIndex
+                var showLkmDialog by remember { mutableStateOf(false) }
                 val showOptions = installMethod != null && installMethod !is InstallMethod.AnyKernel
                 AnimatedVisibility(
                     visible = showOptions,
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically()
                 ) {
-                    ExpressiveList(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        content = listOf(
-                            {
-                                if (partitions.isNotEmpty()) {
-                                    ExpressiveDropdownItem(
-                                        enabled = installMethod is InstallMethod.DirectInstall || installMethod is InstallMethod.DirectInstallToInactiveSlot,
-                                        items = displayPartitions,
-                                        selectedIndex = partitionSelectionIndex,
-                                        title = "${stringResource(R.string.install_select_partition)} (${suffix})",
-                                        onItemSelected = { index ->
-                                            hasCustomSelected = true
-                                            partitionSelectionIndex = index
-                                        },
-                                        icon = Icons.Filled.Edit
+                    Column {
+                        ExpressiveList(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            content = listOf(
+                                {
+                                    if (partitions.isNotEmpty()) {
+                                        ExpressiveDropdownItem(
+                                            enabled = installMethod is InstallMethod.DirectInstall || installMethod is InstallMethod.DirectInstallToInactiveSlot,
+                                            items = displayPartitions,
+                                            selectedIndex = partitionSelectionIndex,
+                                            title = "${stringResource(R.string.install_select_partition)} (${suffix})",
+                                            onItemSelected = { index ->
+                                                hasCustomSelected = true
+                                                partitionSelectionIndex = index
+                                            },
+                                            icon = Icons.Filled.Edit
+                                        )
+                                    }
+                                },
+                                {
+                                    ExpressiveCheckboxItem(
+                                        title = stringResource(id = R.string.allow_shell),
+                                        summary = stringResource(id = R.string.allow_shell_summary),
+                                        checked = allowShell,
+                                        onCheckedChange = { allowShell = it }
+                                    )
+                                },
+                                {
+                                    ExpressiveCheckboxItem(
+                                        title = stringResource(id = R.string.enable_adb),
+                                        summary = stringResource(id = R.string.enable_adb_summary),
+                                        checked = enableAdb,
+                                        onCheckedChange = { enableAdb = it }
                                     )
                                 }
-                            },
-                            {
-                                val itemsList = listOf(
-                                    stringResource(id = R.string.lkm_variant_standard),
-                                    stringResource(id = R.string.lkm_variant_xxksu),
-                                    stringResource(id = R.string.lkm_variant_custom)
-                                )
-                                ExpressiveDropdownItem(
-                                    icon = Icons.AutoMirrored.Filled.DriveFileMove,
-                                    title = stringResource(id = R.string.install_upload_lkm_file),
-                                    summary = when {
-                                        lkmVariant == 0 -> stringResource(id = R.string.lkm_variant_standard)
-                                        lkmVariant == 1 -> stringResource(id = R.string.lkm_variant_xxksu)
-                                        lkmVariant == 2 && lkmSelection is LkmSelection.LkmUri -> {
-                                            val uriStr = (lkmSelection as LkmSelection.LkmUri).uri.lastPathSegment ?: "(file)"
-                                            stringResource(id = R.string.selected_lkm, uriStr)
+                            )
+                        )
+
+                        ExpressiveList(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            content = listOf {
+                                ExpressiveListItem(
+                                    leadingContent = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, null) },
+                                    headlineContent = { Text(stringResource(id = R.string.lkm_variant_title)) },
+                                    supportingContent = {
+                                        (lkmSelection as? LkmSelection.LkmUri)?.let {
+                                            Text(stringResource(id = R.string.selected_lkm, it.uri.lastPathSegment ?: "(file)"))
                                         }
-                                        else -> stringResource(id = R.string.lkm_variant_none)
                                     },
-                                    items = itemsList,
-                                    selectedIndex = lkmVariant,
-                                    onItemSelected = { index ->
-                                        lkmVariant = index
-                                        if (index == 2) {
-                                            onLkmUpload()
-                                        } else {
-                                            lkmSelection = LkmSelection.KmiNone
+                                    trailingContent = {
+                                        val text = when {
+                                            lkmVariant == 0 -> stringResource(id = R.string.lkm_variant_standard)
+                                            lkmVariant == 1 -> stringResource(id = R.string.lkm_variant_xxksu)
+                                            lkmVariant == 2 -> stringResource(id = R.string.lkm_variant_custom)
+                                            else -> stringResource(id = R.string.lkm_variant_none)
                                         }
-                                    }
-                                )
-                            },
-                            {
-                                ExpressiveCheckboxItem(
-                                    title = stringResource(id = R.string.allow_shell),
-                                    summary = stringResource(id = R.string.allow_shell_summary),
-                                    checked = allowShell,
-                                    onCheckedChange = { allowShell = it }
-                                )
-                            },
-                            {
-                                ExpressiveCheckboxItem(
-                                    title = stringResource(id = R.string.enable_adb),
-                                    summary = stringResource(id = R.string.enable_adb_summary),
-                                    checked = enableAdb,
-                                    onCheckedChange = { enableAdb = it }
+                                        Text(text, color = MaterialTheme.colorScheme.primary)
+                                    },
+                                    onClick = { showLkmDialog = true }
                                 )
                             }
                         )
+                    }
+                }
+
+                if (showLkmDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showLkmDialog = false },
+                        icon = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, null) },
+                        title = { Text(stringResource(id = R.string.lkm_variant_title)) },
+                        text = {
+                            Column {
+                                ExpressiveRadioItem(
+                                    title = stringResource(id = R.string.lkm_variant_standard),
+                                    selected = lkmVariant == 0,
+                                    onClick = {
+                                        lkmVariant = 0
+                                        lkmSelection = LkmSelection.KmiNone
+                                        showLkmDialog = false
+                                    }
+                                )
+                                ExpressiveRadioItem(
+                                    title = stringResource(id = R.string.lkm_variant_xxksu),
+                                    selected = lkmVariant == 1,
+                                    onClick = {
+                                        lkmVariant = 1
+                                        lkmSelection = LkmSelection.KmiNone
+                                        showLkmDialog = false
+                                    }
+                                )
+                                ExpressiveRadioItem(
+                                    title = stringResource(id = R.string.lkm_variant_custom),
+                                    selected = lkmVariant == 2,
+                                    onClick = {
+                                        lkmVariant = 2
+                                        onLkmUpload()
+                                        showLkmDialog = false
+                                    }
+                                )
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { showLkmDialog = false }) {
+                                Text(stringResource(android.R.string.cancel))
+                            }
+                        }
                     )
                 }
                 Button(
