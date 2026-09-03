@@ -155,7 +155,7 @@
     <string name="save_log">Save logs</string>
     <string name="log_saved">Logs saved</string>
     <string name="settings_disable_su">Disable su compatibility</string>
-    <string name="settings_disable_su_summary">Disable the ability of any app to gain root privileges via the ⁠su command (existing root processes won\'t be affected).</string>
+    <string name="settings_disable_su_summary">Disable the ability of any app to gain root privileges via the \"su\" command (existing root processes won\'t be affected).</string>
     <string name="settings_disable_kernel_umount">Disable kernel umount</string>
     <string name="settings_disable_kernel_umount_summary">Disable kernel-level umount behavior controlled by KernelSU.</string>
     <string name="settings_disable_avc_spoof">Disable avc spoofing</string>
@@ -284,4 +284,14 @@
     <string name="lkm_variant_xxksu">\\xx ksu</string>
     <string name="lkm_variant_custom">Custom File</string>
     <string name="lkm_variant_none">None</string>
+    <string name="ui_scale_title">UI Scale (DPI)</string>
+    <string name="app_interface_scale">App Interface Scale</string>
+    <string name="ui_scale_summary">Adjust the size of elements inside the application.</string>
+    <string name="quick_shell_commands">Commands</string>
+    <string name="quick_shell_input_command">Input Command</string>
+    <string name="quick_shell_run">Run</string>
+    <string name="quick_shell_stop_command">Stop Command</string>
+    <string name="quick_shell_clear_logs">Clear Logs</string>
+    <string name="app_profile_mount_profile">Mount Profile</string>
+    <string name="home_show_more">Show more</string>
 </resources>
