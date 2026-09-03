@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+﻿@file:OptIn(ExperimentalMaterial3Api::class)
 
 package me.weishu.kernelsu.ui.screen
 
@@ -38,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -135,7 +136,7 @@ fun QuickShellScreen() {
                 TopAppBar(
                     title = {
                         Text(
-                            text = "QuickShell",
+                            text = stringResource(R.string.quick_shell),
                             fontWeight = FontWeight.Bold
                         )
                     },
@@ -144,10 +145,10 @@ fun QuickShellScreen() {
                             onClick = { cancelCommand() },
                             enabled = isRunning
                         ) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Stop Command")
+                            Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.quick_shell_stop_command))
                         }
                         IconButton(onClick = { logs.clear() }) {
-                            Icon(Icons.Outlined.Delete, contentDescription = "Clear Logs")
+                            Icon(Icons.Outlined.Delete, contentDescription = stringResource(R.string.quick_shell_clear_logs))
                         }
                     }
                 )
@@ -162,7 +163,7 @@ fun QuickShellScreen() {
                 TonalCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Text(
-                            text = "Commands",
+                            text = stringResource(R.string.quick_shell_commands),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -176,13 +177,13 @@ fun QuickShellScreen() {
                             singleLine = false,
                             minLines = 1,
                             maxLines = 6,
-                            placeholder = { Text("Input Command") },
+                            placeholder = { Text(stringResource(R.string.quick_shell_input_command)) },
                             trailingIcon = {
                                 IconButton(
                                     onClick = { runCommand() },
                                     enabled = cmd.isNotBlank() && !isRunning
                                 ) {
-                                    Icon(Icons.Outlined.PlayArrow, contentDescription = "Run")
+                                    Icon(Icons.Outlined.PlayArrow, contentDescription = stringResource(R.string.quick_shell_run))
                                 }
                             }
                         )

@@ -355,7 +355,7 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
             
-            SettingsGroupCard(title = "UI Scale (DPI)") {
+            SettingsGroupCard(title = stringResource(R.string.ui_scale_title)) {
                 var dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
 
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -364,34 +364,37 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "App Interface Scale",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.app_interface_scale),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = stringResource(R.string.ui_scale_summary),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Text(
                             text = "${(dpiScale * 100).roundToInt()}%",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 16.dp)
                         )
                     }
                     
                     Slider(
                         value = dpiScale,
                         onValueChange = { newValue -> 
-                            dpiScale = newValue 
+                            dpiScale = (newValue * 20).roundToInt() / 20f
                         },
                         onValueChangeFinished = {
                             prefs.edit { putFloat("app_dpi_scale", dpiScale) }
                         },
-                        valueRange = 0.8f..1.2f,
-                        steps = 3
-                    )
-                    
-                    Text(
-                        text = "Adjust the size of the elements inside the application.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        valueRange = 0.75f..1.25f,
+                        steps = 9,
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
             }
@@ -440,7 +443,7 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
-            SettingsGroupCard(title = "Navigation Bar") {
+            SettingsGroupCard(title = stringResource(R.string.nav_bar_title)) {
                 var enableFloatingNav by rememberSaveable {
                     mutableStateOf(prefs.getBoolean("enable_floating_navbar", false))
                 }
@@ -470,7 +473,7 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
-            SettingsGroupCard(title = "Card Layout") {
+            SettingsGroupCard(title = stringResource(R.string.card_layout_title)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)

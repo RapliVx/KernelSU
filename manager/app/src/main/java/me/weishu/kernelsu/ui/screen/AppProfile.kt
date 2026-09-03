@@ -331,7 +331,7 @@ private fun AppProfileInner(
         }
 
         Crossfade(targetState = isRootGranted, label = "ProfileMode") { currentRootGranted ->
-            ProfileGroupCard(title = "Mount Profile") {
+            ProfileGroupCard(title = stringResource(R.string.app_profile_mount_profile)) {
                 if (currentRootGranted) {
                     val initialMode = if (profile.rootUseDefault) {
                         Mode.Default

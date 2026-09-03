@@ -879,11 +879,11 @@ fun ReleasesPage(
                                                 Icon(
                                                     modifier = Modifier.size(20.dp),
                                                     imageVector = Icons.Outlined.Download,
-                                                    contentDescription = "Install"
+                                                    contentDescription = stringResource(R.string.module_install)
                                                 )
                                                 Text(
                                                     modifier = Modifier.padding(start = 7.dp),
-                                                    text = "Install",
+                                                    text = stringResource(R.string.module_install),
                                                     style = MaterialTheme.typography.labelMedium,
                                                 )
                                             }
@@ -994,7 +994,7 @@ fun InfoPage(
                 )
                 ExpressiveList(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    title = "Source Code",
+                    title = stringResource(R.string.module_repos_source_code),
                     content = sourceCodeItems
                 )
             }

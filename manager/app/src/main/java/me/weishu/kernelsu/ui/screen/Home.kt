@@ -786,7 +786,7 @@ private fun InfoCard() {
                 ) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = "Show more",
+                        contentDescription = stringResource(R.string.home_show_more),
                         modifier = Modifier.rotate(arrowRotation) 
                     )
                 }
