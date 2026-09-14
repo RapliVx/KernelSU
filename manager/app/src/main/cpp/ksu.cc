@@ -119,6 +119,18 @@ bool is_lkm_mode() {
     return (legacy_get_info().second & KSU_GET_INFO_FLAG_LKM) != 0;
 }
 
+bool is_lkm_bundled() {
+    auto info = get_info();
+    return (info.flags & KSU_GET_INFO_FLAG_LKM) != 0 &&
+           (info.flags & KSU_GET_INFO_FLAG_BUNDLED) != 0;
+}
+
+std::string get_lkm_variant() {
+    char variant[16] = {};
+    syscall(SYS_reboot, KSU_INSTALL_MAGIC1, KSU_GET_LKM_VARIANT, 0, variant);
+    return std::string(variant, strnlen(variant, sizeof(variant)));
+}
+
 bool is_late_load_mode() {
     auto info = get_info();
     if (info.version > 0) {
