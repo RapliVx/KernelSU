@@ -1,8 +1,8 @@
 #ifndef __KSU_UAPI_SUPERCALL_H
 #define __KSU_UAPI_SUPERCALL_H
 
-// 2: allowlist v4 root profile flags
-#define KERNEL_SU_UAPI_VERSION 2
+// 4: add KSU_GET_INFO_FLAG_BUNDLED
+#define KERNEL_SU_UAPI_VERSION 4
 
 /* Magic numbers for reboot hook to install fd */
 #define KSU_INSTALL_MAGIC1 0xDEADBEEF
@@ -20,6 +20,7 @@ struct ksu_become_daemon_cmd {
 #define KSU_GET_INFO_FLAG_MANAGER (1U << 1)
 #define KSU_GET_INFO_FLAG_LATE_LOAD (1U << 2)
 #define KSU_GET_INFO_FLAG_PR_BUILD (1U << 3)
+#define KSU_GET_INFO_FLAG_BUNDLED (1U << 4)
 
 struct ksu_get_info_cmd {
 	__u32 version; /* Output: KERNEL_SU_VERSION */
@@ -139,10 +140,6 @@ struct ksu_get_sulog_fd_cmd {
 	__u32 flags; /* Input: reserved for future use, must be 0 */
 };
 
-struct ksu_get_hook_mode_cmd {
-	char mode[16]; /* Get Hook mode */
-};
-
 #define KSU_UMOUNT_WIPE 0	// ignore everything and wipe list
 #define KSU_UMOUNT_ADD 1	// add entry (path + flags)
 #define KSU_UMOUNT_DEL 2	// delete entry, strcmp
@@ -174,6 +171,5 @@ struct ksu_get_hook_mode_cmd {
 #define KSU_IOCTL_SET_INIT_PGRP _IO('K', 19)
 #define KSU_IOCTL_GET_SULOG_FD _IOW('K', 20, struct ksu_get_sulog_fd_cmd)
 #define KSU_IOCTL_DISABLE_ESCAPE_TO_ROOT _IO('K', 21)
-#define KSU_IOCTL_GET_HOOK_MODE _IOC(_IOC_READ, 'K', 98, 0)
 
 #endif

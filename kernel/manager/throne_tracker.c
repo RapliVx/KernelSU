@@ -76,7 +76,6 @@ FILLDIR_RETURN_TYPE my_actor(MY_ACTOR_CTX_ARG, const char *name,
 			     unsigned int d_type)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)
-	// then pull it out of the void
 	struct dir_context *ctx = (struct dir_context *)ctx_void;
 #endif
 	struct my_dir_context *my_ctx =
@@ -99,21 +98,17 @@ FILLDIR_RETURN_TYPE my_actor(MY_ACTOR_CTX_ARG, const char *name,
 	if (!strncmp(name, "..", namelen) || !strncmp(name, ".", namelen))
 		return FILLDIR_ACTOR_CONTINUE; // Skip "." and ".."
 
-	if (d_type == DT_DIR && namelen >= 8 && !strncmp(name, "vmdl", 4) &&
-	    !strncmp(name + namelen - 4, ".tmp", 4)) {
+	if (d_type == DT_DIR && namelen >= 8 && !strncmp(name, "vmdl", 4) && !strncmp(name + namelen - 4, ".tmp", 4)) {
 		pr_info("Skipping directory: %.*s\n", namelen, name);
 		return FILLDIR_ACTOR_CONTINUE; // Skip staging package
 	}
 
-	if (snprintf(dirpath, DATA_PATH_LEN, "%s/%.*s", my_ctx->parent_dir,
-		     namelen, name) >= DATA_PATH_LEN) {
-		pr_err("Path too long: %s/%.*s\n", my_ctx->parent_dir, namelen,
-		       name);
+	if (snprintf(dirpath, DATA_PATH_LEN, "%s/%.*s", my_ctx->parent_dir, namelen, name) >= DATA_PATH_LEN) {
+		pr_err("Path too long: %s/%.*s\n", my_ctx->parent_dir, namelen, name);
 		return FILLDIR_ACTOR_CONTINUE;
 	}
 
-	if (d_type == DT_DIR && my_ctx->depth > 0 &&
-	    (my_ctx->stop && !*my_ctx->stop)) {
+	if (d_type == DT_DIR && my_ctx->depth > 0 && (my_ctx->stop && !*my_ctx->stop)) {
 		struct data_path *data = kzalloc(sizeof(struct data_path), GFP_KERNEL);
 
 		if (!data) {
@@ -129,7 +124,7 @@ FILLDIR_RETURN_TYPE my_actor(MY_ACTOR_CTX_ARG, const char *name,
 	}
 
 	// now put this on candidate_path
-	if (d_type == DT_REG && namelen == 8 && !memcmp(name, "base.apk", 8)) {
+	if (d_type == DT_REG && namelen == 8 && !__builtin_memcmp(name, "base.apk", 8)) {
 		snprintf(candidate_path, DATA_PATH_LEN, "%s/%.*s", my_ctx->parent_dir, namelen, name);
 	}
 
@@ -150,17 +145,18 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 	INIT_LIST_HEAD(&data_path_list);
 	unsigned long data_app_magic = 0;
 
-	// First depth
-	struct data_path *data __cleanup(kfree_byref) = kzalloc(sizeof(*data), GFP_KERNEL);
-	if (!data)
+	char *memory __offstack(sizeof(struct data_path) + DATA_PATH_LEN);
+	if (!memory)
 		return;
 
+	// First depth
+	struct data_path *data = (struct data_path *)memory;
 	strscpy(data->dirpath, path, DATA_PATH_LEN);
 	data->depth = depth;
 	list_add_tail(&data->list, &data_path_list);
 
 	// we put the apk path we collected here
-	char candidate_path[DATA_PATH_LEN];
+	char *candidate_path = memory + sizeof(struct data_path);
 
 	for (i = depth; i >= 0; i--) {
 		struct data_path *pos, *n;
@@ -173,8 +169,8 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 						      .depth = pos->depth,
 						      .stop = &stop };
 
-			// make sure to clean buffer on every iteration
-			memset(candidate_path, 0, DATA_PATH_LEN);
+			// destroy buffer on every iteration
+			candidate_path[0] = 0;
 
 			if (stop)
 				goto skip_iterate;
@@ -351,7 +347,7 @@ static int throne_tracker_thread(void *data)
 
 	pr_info("throne_tracker: pid: %d started\n", current->pid);
 
-	mutex_lock(&throne_tracker_mutex);
+	guarded_mutex_lock(&throne_tracker_mutex);
 
 test_tmp:
 	if (!is_file_existing("/data/system/packages.list.tmp"))
@@ -380,8 +376,6 @@ start_tt:
 	escape_to_root_forced();
 	throne_tracker_fn(prune_only);
 
-	mutex_unlock(&throne_tracker_mutex);
-
 	pr_info("throne_tracker: pid: %d exit!\n", current->pid);
 	return 0;
 }
@@ -389,16 +383,17 @@ start_tt:
 void track_throne(bool prune_only)
 {
 #ifndef CONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED
-	static bool throne_tracker_first_run __read_mostly = true;
-	if (unlikely(throne_tracker_first_run)) {
-		mutex_lock(&throne_tracker_mutex);
-		throne_tracker_fn(prune_only);
-		mutex_unlock(&throne_tracker_mutex);
-		throne_tracker_first_run = false;
-		return;
-	}
-#endif
+	static void *label = &&first_run;
+	goto *label;
 
+first_run:
+	if (guarded_mutex_lock(&throne_tracker_mutex))
+		throne_tracker_fn(prune_only);
+	
+	label = &&threaded;
+	return;
+threaded:
+#endif
 	// HACK: force cast prune_only to be a void *
 	kthread_run(throne_tracker_thread, (void *)prune_only, "kthread");
 }

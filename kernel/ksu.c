@@ -1,5 +1,3 @@
-#include "kernel_includes.h"
-
 #ifdef MODULE
 #ifndef CONFIG_ARM64
 #error "LKM is only supported on ARM64!"
@@ -8,12 +6,7 @@
 // for OOT builds like on ddk, just enable everything
 #ifndef CONFIG_KSU_HEURISTIC_IN_TREE_BUILD
 	#define CONFIG_KSU_LSM_SECURITY_HOOKS 1
-	#define CONFIG_KSU_KPROBES_KSUD 1
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
-		#define CONFIG_KSU_HACK_ARM64_BRANCH_LINK 1
-	#else
-		#define CONFIG_KSU_TAMPER_SYSCALL_TABLE 1
-	#endif
+	#define CONFIG_KSU_HACK_ARM64_BRANCH_LINK 1
 	#define CONFIG_KSU_FEATURE_SULOG 1
 	#define CONFIG_KSU_FEATURE_ADBROOT 1
 	#define CONFIG_KSU_THRONE_TRACKER_ALWAYS_THREADED 1
@@ -24,6 +17,8 @@
 #error "LKM requires KALLSYMS_ALL!"
 #endif
 #endif // MODULE
+
+#include "kernel_includes.h"
 
 // uapi
 #include "include/uapi/app_profile.h"
@@ -86,8 +81,16 @@
 #include "downstream/arm64_branch_insn.h"
 #endif
 
+#include "downstream/slow_avc_audit_defs.h"
+#include "downstream/tiny_sulog.h"
+#include "downstream/toolkit.h"
+#include "downstream/vmap_patch.h"
+
+#ifdef CONFIG_KSU_HOSTSREDIRECT
+#include "downstream/ksu_hostsredirect.h"
+#endif
+
 // unity build
-#include "tiny_sulog.c"
 #include "policy/allowlist.c"
 #include "policy/app_profile.c"
 #include "policy/feature.c"
@@ -146,13 +149,9 @@
 #include "hook/branch_link_hook_arm64.c"
 #endif
 
-#if defined(CONFIG_KSU_KPROBES_KSUD) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+#if defined(CONFIG_KSU_KPROBES_KSUD) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE) && !defined(CONFIG_KSU_HACK_ARM64_BRANCH_LINK)
 #include "hook/kp_ksud.c"
 #endif
-
-struct cred* ksu_cred;
-
-extern void ksu_supercalls_init();
 
 // track backports and other quirks here
 // ref: kernel_compat.c, Makefile
@@ -162,7 +161,7 @@ extern void ksu_supercalls_init();
 #else
 	#define FEAT_1 ""
 #endif
-#if defined(CONFIG_KSU_KPROBES_KSUD) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+#if defined(CONFIG_KSU_KPROBES_KSUD) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE) && !defined(CONFIG_KSU_HACK_ARM64_BRANCH_LINK)
 	#define FEAT_2 " +kp_ksud"
 #else
 	#define FEAT_2 ""
@@ -200,9 +199,23 @@ extern void ksu_supercalls_init();
 
 #define EXTRA_FEATURES FEAT_1 FEAT_2 FEAT_3 FEAT_4 FEAT_5 FEAT_6 FEAT_7 FEAT_8
 
-static int __init kernelsu_init(void)
+static inline void ksu_print_build_info(void)
 {
 	pr_info("Initialized on: %s (%s) with ksuver: %s%s\n", UTS_RELEASE, UTS_MACHINE, __stringify(KSU_VERSION), EXTRA_FEATURES);
+
+#if defined(__VERSION__) && defined(__STDC_VERSION__)
+#if defined(__clang_version__)
+	pr_info("Built with: Clang %d.%d.%d w/ stdc: %ld\n", __clang_major__, __clang_minor__, __clang_patchlevel__, __STDC_VERSION__);
+#else
+	pr_info("Built with: GCC %s w/ stdc: %ld\n", __VERSION__, __STDC_VERSION__);
+#endif
+#endif
+
+}
+
+static int __init kernelsu_init(void)
+{
+	ksu_print_build_info();
 
 #ifdef CONFIG_KSU_DEBUG
 	pr_alert("*************************************************************");
@@ -213,6 +226,8 @@ static int __init kernelsu_init(void)
 	pr_alert("**     NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE    **");
 	pr_alert("*************************************************************");
 #endif
+	if (allow_shell)
+		pr_alert("shell is allowed at init!");
 
 	ksu_cred = prepare_creds();
 	if (!ksu_cred) {
@@ -228,6 +243,8 @@ static int __init kernelsu_init(void)
 
 	ksu_kernel_umount_init(); // so the feature is registered
 
+	ksu_selinux_hide_init(); // so the feature is registered
+
 #ifdef CONFIG_KSU_FEATURE_SULOG	
 	ksu_sulog_init(); // so the feature is registered
 #endif
@@ -236,11 +253,9 @@ static int __init kernelsu_init(void)
 	ksu_adb_root_init(); // so the feature is registered
 #endif
 
-	ksu_selinux_hide_init(); // so the feature is registered
-
 	ksu_core_init();
 
-#if defined(CONFIG_KSU_KPROBES_KSUD) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+#if defined(CONFIG_KSU_KPROBES_KSUD) && !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE) && !defined(CONFIG_KSU_HACK_ARM64_BRANCH_LINK)
 	kp_ksud_init();
 #endif
 
@@ -266,10 +281,56 @@ static int __init kernelsu_init(void)
 #if !defined(MODULE)
 device_initcall(kernelsu_init);
 #else
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+char ksu_block_modules[256];
+module_param_string(block_modules, ksu_block_modules, sizeof(ksu_block_modules), 0);
+#include "downstream/module_blacklist.h"
+#else
+#define ksu_extend_module_blacklist() do { } while (0)
+#endif
+
+#ifndef CONFIG_KSU_SHELL_HAS_SU_ALWAYS
+/**
+ * as per tiann/KernelSU ca2799c, lkm is allowed to flip this param post-compile.
+ * however this is also offerred to be overriden by a kconfig. so if kconfig is
+ * enabled, we must compile-out this option.
+ *
+ */
+module_param(allow_shell, bool, 0); 
+#endif
+
 static int __init kernelsu_lkm_init(void)
 {
-	kobject_del(&THIS_MODULE->mkobj.kobj); 	// tiann/KernelSU fefb02e
-	return kernelsu_init();
+	kernelsu_init();
+
+	ksu_extend_module_blacklist();
+	kobject_del(&THIS_MODULE->mkobj.kobj); // tiann/KernelSU fefb02e
+
+	if (current->pid == 1)
+		return 0;
+
+	// pid not 1, late load
+	
+	escape_to_root_forced();
+
+	// turn off vfs_read hook
+	stop_vfs_read_hook();
+
+	apply_kernelsu_rules();
+	cache_sid();
+	setup_ksu_cred();
+
+	on_post_fs_data();
+	on_boot_completed();
+	
+	if (!!getenforce())
+		return 0;
+	
+	pr_info("Permissive SELinux, enforcing\n");
+	setenforce(true);
+
+	return 0;
 }
 
 static void __exit kernelsu_lkm_exit(void)

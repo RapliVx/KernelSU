@@ -1,6 +1,9 @@
 #ifndef __KSU_H_KERNEL_UMOUNT
 #define __KSU_H_KERNEL_UMOUNT
 
+void ksu_kernel_umount_init(void);
+void ksu_kernel_umount_exit(void);
+
 // for the umount list
 struct mount_entry {
     char *umountable;

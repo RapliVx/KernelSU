@@ -13,7 +13,7 @@
 // k4.2 ~ 6.7, LSM Hijacking, pure function pointer edition.
 extern struct security_hook_heads security_hook_heads;
 
-static int (*task_fix_setuid_fn)(struct cred *new, const struct cred *old, int flags) __read_mostly = NULL;
+static int (*task_fix_setuid_fn)(struct cred *new, const struct cred *old, int flags) __read_mostly = nullptr;
 static __nocfi int ksu_task_fix_setuid(struct cred *new, const struct cred *old, int flags)
 {
 	// see sys_setresuid
@@ -23,14 +23,14 @@ static __nocfi int ksu_task_fix_setuid(struct cred *new, const struct cred *old,
 	return task_fix_setuid_fn(new, old, flags);
 }
 
-static int (*inode_rename_fn)(struct inode *old_inode, struct dentry *old_dentry, struct inode *new_inode, struct dentry *new_dentry) __read_mostly = NULL;
+static int (*inode_rename_fn)(struct inode *old_inode, struct dentry *old_dentry, struct inode *new_inode, struct dentry *new_dentry) __read_mostly = nullptr;
 static __nocfi int ksu_inode_rename(struct inode *old_inode, struct dentry *old_dentry, struct inode *new_inode, struct dentry *new_dentry)
 {
 	ksu_rename_observer(old_dentry, new_dentry);
 	return inode_rename_fn(old_inode, old_dentry, new_inode, new_dentry);
 }
 
-static void (*bprm_committing_creds_fn)(struct linux_binprm *bprm) __read_mostly = NULL;
+static void (*bprm_committing_creds_fn)(struct linux_binprm *bprm) __read_mostly = nullptr;
 static __nocfi void ksu_bprm_committing_creds(struct linux_binprm *bprm)
 {
 #ifdef CONFIG_KSU_FEATURE_SULOG
@@ -39,7 +39,7 @@ static __nocfi void ksu_bprm_committing_creds(struct linux_binprm *bprm)
 	bprm_committing_creds_fn(bprm); // NOTE: void LSM hook
 }
 
-static int (*file_permission_fn)(struct file *file, int mask) __read_mostly = NULL;
+static int (*file_permission_fn)(struct file *file, int mask) __read_mostly = nullptr;
 static __nocfi int ksu_file_permission(struct file *file, int mask)
 {
 	if (unlikely(ksu_vfs_read_hook))
@@ -49,7 +49,7 @@ static __nocfi int ksu_file_permission(struct file *file, int mask)
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
-static int (*bprm_set_creds_fn)(struct linux_binprm *bprm) __read_mostly = NULL;
+static int (*bprm_set_creds_fn)(struct linux_binprm *bprm) __read_mostly = nullptr;
 static __nocfi int ksu_bprm_set_creds(struct linux_binprm *bprm)
 {
 	if (likely(ksu_boot_completed))
@@ -73,7 +73,7 @@ capability_fn:
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0) || defined(KSU_COMPAT_SECURITY_ADD_HOOKS_V2)
-static int (*setprocattr_fn)(const char *name, void *value, size_t size) __read_mostly = NULL;
+static int (*setprocattr_fn)(const char *name, void *value, size_t size) __read_mostly = nullptr;
 static __nocfi int ksu_setprocattr(const char *name, void *value, size_t size)
 {
 	ksu_hide_setprocattr_inline(name, value, size);
@@ -81,56 +81,13 @@ static __nocfi int ksu_setprocattr(const char *name, void *value, size_t size)
 
 }
 #else
-static int (*setprocattr_fn)(struct task_struct *p, char *name, void *value, size_t size) __read_mostly = NULL;
+static int (*setprocattr_fn)(struct task_struct *p, char *name, void *value, size_t size) __read_mostly = nullptr;
 static __nocfi int ksu_setprocattr(struct task_struct *p, char *name, void *value, size_t size)
 {
 	ksu_hide_setprocattr_inline(name, value, size);
 	return setprocattr_fn(p, name, value, size);
 }
 #endif
-
-struct lsm_patch_param {
-	void **target_slot;	// pptr to writable vmapped lsm slot
-	void *fn_ptr;		// fn_ptr to write on that slot
-};
-
-static int patch_lsm_slot_stop_machine(void *data)
-{
-	struct lsm_patch_param *param = (struct lsm_patch_param *)data;
-
-	// write on the actual lsm slot
-	*(param->target_slot) = param->fn_ptr;
-
-	return 0;
-}
-
-static inline int ksu_write_to_readonly_slot(uintptr_t slot_ptr, uintptr_t new_ptr)
-{
-	uintptr_t addr = (uintptr_t)slot_ptr;
-	uintptr_t base = addr & PAGE_MASK;
-	uintptr_t offset = addr & ~PAGE_MASK;
-
-	struct page *page = phys_to_page(__pa(base));
-	if (!page)
-		return -EFAULT;
-
-	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		return -ENOMEM;
-
-	void **target_slot = (void **)((unsigned long)writable_addr + offset);
-
-	struct lsm_patch_param param;
-	param.target_slot = target_slot;
-	param.fn_ptr = new_ptr;
-
-	stop_machine(patch_lsm_slot_stop_machine, (void *)&param, NULL);
-
-	vunmap(writable_addr);
-	smp_mb();
-
-	return 0;
-}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0) || defined(KSU_COMPAT_SECURITY_DELETE_HOOKS_HLIST)
 static void ksu_hack_lsm_slot(struct hlist_head *hook_head, uintptr_t *old_ptr, uintptr_t new_ptr)
@@ -253,7 +210,7 @@ static __init void ksu_lsm_hook_init(void)
 	LSM_HACK_INIT(bprm_committing_creds, ksu_bprm_committing_creds);
 #endif
 
-#if !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+#if !defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE) && !defined(CONFIG_KSU_HACK_ARM64_BRANCH_LINK)
 	LSM_HACK_INIT(file_permission, ksu_file_permission);
 	kthread_run(ksu_restore_file_permission, NULL, "kthread");
 #endif
