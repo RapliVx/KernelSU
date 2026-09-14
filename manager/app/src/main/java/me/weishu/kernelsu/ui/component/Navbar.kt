@@ -66,7 +66,7 @@ fun BottomBar(navController: NavHostController) {
 
     val navigator = navController.rememberDestinationsNavigator()
     val isManager = Natives.isManager
-    val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
+    val fullFeatured = Natives.isFullFeatured()
     val bottomBarRoutes = remember {
         BottomBarDestination.entries.map { it.direction.route }.toSet()
     }

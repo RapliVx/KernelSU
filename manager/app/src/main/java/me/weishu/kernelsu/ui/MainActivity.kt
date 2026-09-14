@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val isManager = Natives.isManager
-        if (isManager && !Natives.requireNewKernel()) install()
+        if (isManager && Natives.kernelUAPIVersion == Natives.managerUAPIVersion) install()
 
         val isAnyKernel = intent.component?.className?.endsWith("FlashAnyKernel") == true
 
@@ -389,7 +389,7 @@ class MainActivity : ComponentActivity() {
 private fun SideBar(navController: NavHostController, modifier: Modifier = Modifier) {
     val navigator = navController.rememberDestinationsNavigator()
     val isManager = Natives.isManager
-    val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
+    val fullFeatured = Natives.isFullFeatured()
     val bottomBarRoutes = remember {
         BottomBarDestination.entries.map { it.direction.route }.toSet()
     }

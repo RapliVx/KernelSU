@@ -175,10 +175,10 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 val lkmMode = remember(ksuVersion) {
                     ksuVersion?.let { if (kernelVersion.isGKI()) Natives.isLkmMode else null }
                 }
-                val requireNewKernel = remember { Natives.requireNewKernel() }
+                val requireNewKernel = remember { Natives.managerUAPIVersion > Natives.kernelUAPIVersion }
                 val isRootAvailable = remember { rootAvailable() }
                 val fullFeatured = remember(isManager, requireNewKernel, isRootAvailable) {
-                    isManager && !requireNewKernel && isRootAvailable
+                    Natives.isFullFeatured()
                 }
 
                 StatusCard(
