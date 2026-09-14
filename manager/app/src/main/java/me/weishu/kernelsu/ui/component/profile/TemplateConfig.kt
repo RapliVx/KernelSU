@@ -51,8 +51,12 @@ fun TemplateConfig(
     val profileTemplates = listAppProfileTemplates()
     val noTemplates = profileTemplates.isEmpty()
 
-    ListItem(
-        headlineContent = {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = it },
@@ -117,17 +121,18 @@ fun TemplateConfig(
                     }
                 }
             }
-        },
-        supportingContent = {
+        }
+        
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
             Button(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 onClick = { onViewTemplate(template) },
                 enabled = template.isNotEmpty()
             ) {
                 Text(stringResource(R.string.app_profile_template_view))
             }
         }
-    )
+    }
 }

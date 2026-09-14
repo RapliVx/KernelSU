@@ -65,32 +65,41 @@ fun RootProfileConfig(
     onProfileChange: (Natives.Profile) -> Unit,
 ) {
     Column(modifier = modifier) {
-        if (!fixedName) {
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                label = { Text(stringResource(R.string.profile_name)) },
-                value = profile.name,
-                onValueChange = { onProfileChange(profile.copy(name = it)) }
-            )
+        androidx.compose.material3.OutlinedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = androidx.compose.material3.CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+        ) {
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                if (!fixedName) {
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        label = { Text(stringResource(R.string.profile_name)) },
+                        value = profile.name,
+                        onValueChange = { onProfileChange(profile.copy(name = it)) }
+                    )
+                }
+
+                UidPanel(uid = profile.uid, label = "uid", onUidChange = {
+                    onProfileChange(
+                        profile.copy(
+                            uid = it,
+                            rootUseDefault = false
+                        )
+                    )
+                })
+
+                UidPanel(uid = profile.gid, label = "gid", onUidChange = {
+                    onProfileChange(
+                        profile.copy(
+                            gid = it,
+                            rootUseDefault = false
+                        )
+                    )
+                })
+            }
         }
-
-        UidPanel(uid = profile.uid, label = "uid", onUidChange = {
-            onProfileChange(
-                profile.copy(
-                    uid = it,
-                    rootUseDefault = false
-                )
-            )
-        })
-
-        UidPanel(uid = profile.gid, label = "gid", onUidChange = {
-            onProfileChange(
-                profile.copy(
-                    gid = it,
-                    rootUseDefault = false
-                )
-            )
-        })
 
         val selectedGroups = profile.groups.ifEmpty { listOf(0) }.let { e ->
             e.mapNotNull { g ->
@@ -119,24 +128,33 @@ fun RootProfileConfig(
             )
         }
 
-        MountNameSpacePanel(profile = profile) {
-            onProfileChange(
-                profile.copy(
-                    namespace = it,
-                    rootUseDefault = false
-                )
-            )
-        }
+        androidx.compose.material3.OutlinedCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = androidx.compose.material3.CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+        ) {
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                MountNameSpacePanel(profile = profile) {
+                    onProfileChange(
+                        profile.copy(
+                            namespace = it,
+                            rootUseDefault = false
+                        )
+                    )
+                }
 
-        SELinuxPanel(profile = profile, onSELinuxChange = { domain, rules ->
-            onProfileChange(
-                profile.copy(
-                    context = domain,
-                    rules = rules,
-                    rootUseDefault = false
-                )
-            )
-        })
+                SELinuxPanel(profile = profile, onSELinuxChange = { domain, rules ->
+                    onProfileChange(
+                        profile.copy(
+                            context = domain,
+                            rules = rules,
+                            rootUseDefault = false
+                        )
+                    )
+                })
+            }
+        }
 
     }
 }

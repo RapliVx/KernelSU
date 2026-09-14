@@ -138,35 +138,44 @@ fun TemplateEditorScreen(
                     .verticalScroll(rememberScrollState())
                     .pointerInteropFilter { readOnly }
             ) {
-                if (isCreation) {
-                    var errorHint by remember { mutableStateOf("") }
-                    val idConflictError = stringResource(id = R.string.app_profile_template_id_exist)
-                    val idInvalidError = stringResource(id = R.string.app_profile_template_id_invalid)
-                    
-                    TextEdit(
-                        label = stringResource(id = R.string.app_profile_template_id),
-                        text = template.id,
-                        errorHint = errorHint,
-                        isError = errorHint.isNotEmpty()
-                    ) { value ->
-                        errorHint = if (isTemplateExist(value)) idConflictError
-                        else if (!isValidTemplateId(value)) idInvalidError
-                        else ""
-                        template = template.copy(id = value)
-                    }
-                }
+                androidx.compose.material3.OutlinedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = androidx.compose.material3.CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        if (isCreation) {
+                            var errorHint by remember { mutableStateOf("") }
+                            val idConflictError = stringResource(id = R.string.app_profile_template_id_exist)
+                            val idInvalidError = stringResource(id = R.string.app_profile_template_id_invalid)
+                            
+                            TextEdit(
+                                label = stringResource(id = R.string.app_profile_template_id),
+                                text = template.id,
+                                errorHint = errorHint,
+                                isError = errorHint.isNotEmpty()
+                            ) { value ->
+                                errorHint = if (isTemplateExist(value)) idConflictError
+                                else if (!isValidTemplateId(value)) idInvalidError
+                                else ""
+                                template = template.copy(id = value)
+                            }
+                        }
 
-                TextEdit(label = stringResource(id = R.string.app_profile_template_name), text = template.name) { value ->
-                    template.copy(name = value).run {
-                        if (autoSave && saveTemplate(this)) template = this
-                        else if (!autoSave) template = this
-                    }
-                }
-                
-                TextEdit(label = stringResource(id = R.string.app_profile_template_description), text = template.description) { value ->
-                    template.copy(description = value).run {
-                        if (autoSave && saveTemplate(this)) template = this
-                        else if (!autoSave) template = this
+                        TextEdit(label = stringResource(id = R.string.app_profile_template_name), text = template.name) { value ->
+                            template.copy(name = value).run {
+                                if (autoSave && saveTemplate(this)) template = this
+                                else if (!autoSave) template = this
+                            }
+                        }
+                        
+                        TextEdit(label = stringResource(id = R.string.app_profile_template_description), text = template.description) { value ->
+                            template.copy(description = value).run {
+                                if (autoSave && saveTemplate(this)) template = this
+                                else if (!autoSave) template = this
+                            }
+                        }
                     }
                 }
 
