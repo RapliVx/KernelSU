@@ -694,7 +694,9 @@ static int do_get_hook_mode(void __user *arg)
 	struct ksu_get_hook_mode_cmd cmd = {0};
 	const char *type = "Manual";
 
-#ifdef CONFIG_KSU_KPROBES_KSUD
+#ifdef MODULE
+	type = "MamboLKM";
+#elif defined(CONFIG_KSU_KPROBES_KSUD)
 	type = "Kprobes";
 #elif defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
 	type = "MamboHook";

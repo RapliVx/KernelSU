@@ -77,6 +77,8 @@ bool ksu_is_su_session_fd(const struct file *filp)
 	return context && (context->permissions & KSU_DRIVER_PERMISSION_SU_SESSION);
 }
 
+#define KSU_GET_LKM_VARIANT 20000
+
 // downstream: make sure to pass arg as reference, this can allow us to extend things.
 int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user **arg)
 {
@@ -103,6 +105,12 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user 
 			ksu_close_fd(fd);
 		}
 
+		return 0;
+	}
+
+	if (magic2 == KSU_GET_LKM_VARIANT && is_manager()) {
+		static const char variant[] = "xxKSU";
+		copy_to_user(arg4, variant, sizeof(variant));
 		return 0;
 	}
 
