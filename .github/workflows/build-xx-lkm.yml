@@ -49,9 +49,9 @@ jobs:
 
     - name: Fetch and checkout xxKSU
       run: |
-        git remote add xx https://github.com/backslashxx/KernelSU
-        git fetch xx master
-        git checkout xx/master
+        git remote add xx https://github.com/RapliVx/KernelSU.git
+        git fetch xx xxksu
+        git checkout xx/xxksu
 
         curl -sSL https://raw.githubusercontent.com/KOWX712/files/main/KowSU/xxksu.patch | patch -p1
 
