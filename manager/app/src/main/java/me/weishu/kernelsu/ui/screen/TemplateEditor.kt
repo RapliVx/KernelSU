@@ -281,7 +281,7 @@ private fun TextEdit(
     isError: Boolean = false,
     onValueChange: (String) -> Unit = {}
 ) {
-    ListItem(headlineContent = {
+    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         val keyboardController = LocalSoftwareKeyboardController.current
         OutlinedTextField(
             value = text,
@@ -305,7 +305,7 @@ private fun TextEdit(
             }),
             onValueChange = onValueChange
         )
-    })
+    }
 }
 
 private fun isValidTemplateId(id: String): Boolean {

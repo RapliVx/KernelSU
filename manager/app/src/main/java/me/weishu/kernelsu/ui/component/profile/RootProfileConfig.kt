@@ -67,6 +67,7 @@ fun RootProfileConfig(
     Column(modifier = modifier) {
         if (!fixedName) {
             OutlinedTextField(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 label = { Text(stringResource(R.string.profile_name)) },
                 value = profile.name,
                 onValueChange = { onProfileChange(profile.copy(name = it)) }
@@ -193,7 +194,8 @@ fun GroupsPanel(selected: List<Groups>, closeSelection: (selection: Set<Groups>)
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = androidx.compose.material3.CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
     ) {
 
         Column(
@@ -229,42 +231,40 @@ fun MountNameSpacePanel(profile: Natives.Profile, onMntNamespaceChange: (namespa
         stringResource(id = R.string.profile_namespace_individual),
     )
     val selectedIndex = profile.namespace
-    ListItem(
-        headlineContent = {
-            ExposedDropdownMenuBox(
+    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+        ) {
+            OutlinedTextField(
+                modifier = Modifier
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                    .fillMaxWidth(),
+                readOnly = true,
+                label = { Text(stringResource(R.string.profile_namespace)) },
+                value = items.getOrElse(selectedIndex) { "" },
+                onValueChange = {},
+                trailingIcon = {
+                    if (expanded) Icon(Icons.Filled.ArrowDropUp, null)
+                    else Icon(Icons.Filled.ArrowDropDown, null)
+                },
+            )
+            ExposedDropdownMenu(
                 expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
+                onDismissRequest = { expanded = false }
             ) {
-                OutlinedTextField(
-                    modifier = Modifier
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                        .fillMaxWidth(),
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.profile_namespace)) },
-                    value = items.getOrElse(selectedIndex) { "" },
-                    onValueChange = {},
-                    trailingIcon = {
-                        if (expanded) Icon(Icons.Filled.ArrowDropUp, null)
-                        else Icon(Icons.Filled.ArrowDropDown, null)
-                    },
-                )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    items.forEachIndexed { index, text ->
-                        DropdownMenuItem(
-                            text = { Text(text) },
-                            onClick = {
-                                onMntNamespaceChange(index)
-                                expanded = false
-                            }
-                        )
-                    }
+                items.forEachIndexed { index, text ->
+                    DropdownMenuItem(
+                        text = { Text(text) },
+                        onClick = {
+                            onMntNamespaceChange(index)
+                            expanded = false
+                        }
+                    )
                 }
             }
         }
-    )
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
@@ -313,7 +313,8 @@ fun CapsPanel(
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = androidx.compose.material3.CardDefaults.outlinedCardColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
     ) {
 
         Column(
@@ -341,7 +342,7 @@ fun CapsPanel(
 @Composable
 private fun UidPanel(uid: Int, label: String, onUidChange: (Int) -> Unit) {
 
-    ListItem(headlineContent = {
+    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         var isError by remember {
             mutableStateOf(false)
         }
@@ -379,7 +380,7 @@ private fun UidPanel(uid: Int, label: String, onUidChange: (Int) -> Unit) {
                 isError = !valid
             }
         )
-    })
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -454,7 +455,7 @@ private fun SELinuxPanel(
         )
     }
 
-    ListItem(headlineContent = {
+    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         OutlinedTextField(
             modifier = Modifier
                 .fillMaxWidth()
@@ -472,7 +473,7 @@ private fun SELinuxPanel(
             value = profile.context,
             onValueChange = { }
         )
-    })
+    }
 }
 
 @Preview
