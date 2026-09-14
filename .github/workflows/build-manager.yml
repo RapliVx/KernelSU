@@ -17,7 +17,6 @@ on:
       - 'userspace/**'
       - 'Cargo.lock'
       - 'Cargo.toml'
-      - 'scripts/ksubot.py'
   pull_request:
     branches: [ "main", "dev" ]
     paths:
@@ -191,7 +190,7 @@ jobs:
           } >> gradle.properties
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
@@ -338,14 +337,6 @@ jobs:
         with:
           name: manager
           path: dist/*.apk
-
-      - name: Bot session cache
-        if: github.event_name != 'pull_request' && steps.need_upload.outputs.UPLOAD == 'true'
-        id: bot_session_cache
-        uses: actions/cache@v6
-        with:
-          path: scripts/ksubot.session
-          key: ${{ runner.os }}-bot-session
 
       - name: Upload to telegram
         if: github.event_name != 'pull_request' && steps.need_upload.outputs.UPLOAD == 'true'

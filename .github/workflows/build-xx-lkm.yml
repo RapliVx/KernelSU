@@ -53,6 +53,8 @@ jobs:
         git fetch xx master
         git checkout xx/master
 
+        curl -sSL https://raw.githubusercontent.com/KOWX712/files/main/KowSU/xxksu.patch | patch -p1
+
         sed -i "s/CFLAGS_ksu.o += -DKSU_VERSION=.*/CFLAGS_ksu.o += -DKSU_VERSION=${{ steps.version.outputs.KSU_VERSION }}/" kernel/Makefile
 
     - name: Build kernelsu.ko
