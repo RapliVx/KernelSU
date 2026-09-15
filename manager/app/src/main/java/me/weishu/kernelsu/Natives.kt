@@ -13,6 +13,10 @@ import me.weishu.kernelsu.ui.util.rootAvailable
  * @date 2022/12/8.
  */
 object Natives {
+    var superKey: String = "su"
+    val isAPatchInstalled: Boolean
+        get() = me.weishu.kernelsu.apatch.APatchNatives.nativeReady(superKey)
+
     // minimal supported kernel version
     // 10915: allowlist breaking change, add app profile
     // 10931: app profile struct add 'version' field
@@ -35,8 +39,14 @@ object Natives {
         System.loadLibrary("kernelsu")
     }
 
+    private external fun nativeGetVersion(): Int
     val version: Int
-        external get
+        get() {
+            if (isAPatchInstalled) {
+                return me.weishu.kernelsu.apatch.APatchNatives.kernelPatchVersion().toInt()
+            }
+            return nativeGetVersion()
+        }
 
     val isSafeMode: Boolean
         external get
@@ -53,8 +63,12 @@ object Natives {
     val isLateLoadMode: Boolean
         external get
 
+    private external fun nativeIsManager(): Boolean
     val isManager: Boolean
-        external get
+        get() {
+            if (isAPatchInstalled) return true
+            return nativeIsManager()
+        }
         
     val hookMode: String
         external get
@@ -69,8 +83,34 @@ object Natives {
      * @param key usually the package name
      * @return return null if failed.
      */
-    external fun getAppProfile(key: String?, uid: Int): Profile
-    external fun setAppProfile(profile: Profile?): Boolean
+    private external fun nativeGetAppProfile(key: String?, uid: Int): Profile
+    fun getAppProfile(key: String?, uid: Int): Profile {
+        if (isAPatchInstalled) {
+            val isSu = me.weishu.kernelsu.apatch.APatchNatives.suUids().contains(uid)
+            val apProfile = if (isSu) me.weishu.kernelsu.apatch.APatchNatives.suProfile(uid) else null
+            return Profile(
+                name = key ?: "",
+                currentUid = uid,
+                allowSu = isSu,
+                context = apProfile?.scontext ?: KERNEL_SU_DOMAIN
+            )
+        }
+        return nativeGetAppProfile(key, uid)
+    }
+
+    private external fun nativeSetAppProfile(profile: Profile?): Boolean
+    fun setAppProfile(profile: Profile?): Boolean {
+        if (isAPatchInstalled && profile != null) {
+            if (profile.allowSu) {
+                me.weishu.kernelsu.apatch.APatchNatives.grantSu(profile.currentUid, 0, profile.context)
+                return true
+            } else {
+                me.weishu.kernelsu.apatch.APatchNatives.revokeSu(profile.currentUid)
+                return true
+            }
+        }
+        return nativeSetAppProfile(profile)
+    }
 
     /**
      * `su` compat mode can be disabled temporarily.
@@ -78,8 +118,17 @@ object Natives {
      * 1: enabled
      * negative : error
      */
-    external fun isSuEnabled(): Boolean
-    external fun setSuEnabled(enabled: Boolean): Boolean
+    private external fun nativeIsSuEnabled(): Boolean
+    fun isSuEnabled(): Boolean {
+        if (isAPatchInstalled) return true // APatch SU is always enabled if ready
+        return nativeIsSuEnabled()
+    }
+
+    private external fun nativeSetSuEnabled(enabled: Boolean): Boolean
+    fun setSuEnabled(enabled: Boolean): Boolean {
+        if (isAPatchInstalled) return true
+        return nativeSetSuEnabled(enabled)
+    }
 
     /**
      * Kernel module umount can be disabled temporarily.
@@ -87,8 +136,17 @@ object Natives {
      * 1: enabled
      * negative : error
      */
-    external fun isKernelUmountEnabled(): Boolean
-    external fun setKernelUmountEnabled(enabled: Boolean): Boolean
+    private external fun nativeIsKernelUmountEnabled(): Boolean
+    fun isKernelUmountEnabled(): Boolean {
+        if (isAPatchInstalled) return false // APatch uses magisk-like umount
+        return nativeIsKernelUmountEnabled()
+    }
+
+    private external fun nativeSetKernelUmountEnabled(enabled: Boolean): Boolean
+    fun setKernelUmountEnabled(enabled: Boolean): Boolean {
+        if (isAPatchInstalled) return false
+        return nativeSetKernelUmountEnabled(enabled)
+    }
 
     /**
      * SELinux hide can be disabled temporarily.
@@ -96,10 +154,17 @@ object Natives {
      * 1: enabled
      * negative : error
      */
-    @JvmStatic
-    external fun isSelinuxHideEnabled(): Boolean?
-    @JvmStatic
-    external fun setSelinuxHideEnabled(enabled: Boolean): Int
+    private external fun nativeIsSelinuxHideEnabled(): Boolean?
+    fun isSelinuxHideEnabled(): Boolean? {
+        if (isAPatchInstalled) return false // Fallback
+        return nativeIsSelinuxHideEnabled()
+    }
+
+    private external fun nativeSetSelinuxHideEnabled(enabled: Boolean): Int
+    fun setSelinuxHideEnabled(enabled: Boolean): Int {
+        if (isAPatchInstalled) return -1
+        return nativeSetSelinuxHideEnabled(enabled)
+    }
 
     /**
      * Avc spoof can be enabled/disabled.
@@ -107,21 +172,46 @@ object Natives {
      * 1: enabled
      * negative : error
      */
-    external fun isAvcSpoofEnabled(): Boolean
     @JvmStatic
-    external fun setAvcSpoofEnabled(enabled: Boolean): Boolean
+    private external fun nativeIsAvcSpoofEnabled(): Boolean
+    fun isAvcSpoofEnabled(): Boolean {
+        if (isAPatchInstalled) return false
+        return nativeIsAvcSpoofEnabled()
+    }
 
     @JvmStatic
-    external fun isAdbRootEnabled(): Boolean?
+    private external fun nativeSetAvcSpoofEnabled(enabled: Boolean): Boolean
+    fun setAvcSpoofEnabled(enabled: Boolean): Boolean {
+        if (isAPatchInstalled) return false
+        return nativeSetAvcSpoofEnabled(enabled)
+    }
+
     @JvmStatic
-    external fun setAdbRootEnabled(enabled: Boolean): Boolean
+    private external fun nativeIsAdbRootEnabled(): Boolean?
+    fun isAdbRootEnabled(): Boolean? {
+        if (isAPatchInstalled) return false
+        return nativeIsAdbRootEnabled()
+    }
+
+    @JvmStatic
+    private external fun nativeSetAdbRootEnabled(enabled: Boolean): Boolean
+    fun setAdbRootEnabled(enabled: Boolean): Boolean {
+        if (isAPatchInstalled) return false
+        return nativeSetAdbRootEnabled(enabled)
+    }
 
     /**
      * Get the user name for the uid.
      */
     external fun getUserName(uid: Int): String?
 
-    external fun getSuperuserCount(): Int
+    private external fun nativeGetSuperuserCount(): Int
+    fun getSuperuserCount(): Int {
+        if (isAPatchInstalled) {
+            return me.weishu.kernelsu.apatch.APatchNatives.suUids().size
+        }
+        return nativeGetSuperuserCount()
+    }
 
     private const val NON_ROOT_DEFAULT_PROFILE_KEY = "$"
     private const val NOBODY_UID = 9999
@@ -143,11 +233,19 @@ object Natives {
         }
     }
 
+    private external fun nativeGetKernelUAPIVersion(): Int
     val kernelUAPIVersion: Int
-        external get
+        get() {
+            if (isAPatchInstalled) return 1
+            return nativeGetKernelUAPIVersion()
+        }
 
+    private external fun nativeGetManagerUAPIVersion(): Int
     val managerUAPIVersion: Int
-        external get
+        get() {
+            if (isAPatchInstalled) return 1
+            return nativeGetManagerUAPIVersion()
+        }
 
     fun isFullFeatured(): Boolean {
         return isManager && kernelUAPIVersion == managerUAPIVersion && rootAvailable()

@@ -24,3 +24,4 @@ target_link_libraries(kernelsu ${log-lib})
 
 add_library(adbroot SHARED adbroot.cc)
 target_link_libraries(adbroot ${log-lib})
+add_subdirectory(apatch)

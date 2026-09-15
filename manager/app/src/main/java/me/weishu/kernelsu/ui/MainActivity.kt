@@ -106,7 +106,9 @@ class MainActivity : ComponentActivity() {
         }
 
         super.onCreate(savedInstanceState)
-
+        
+        val settingsPrefs = getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+        me.weishu.kernelsu.Natives.superKey = settingsPrefs.getString("superKey", "su") ?: "su"
         val isManager = Natives.isManager
         if (isManager && Natives.kernelUAPIVersion == Natives.managerUAPIVersion) install()
 

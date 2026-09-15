@@ -52,6 +52,7 @@ class ModuleViewModel : ViewModel() {
         val hasWebUi: Boolean,
         val hasActionScript: Boolean,
         val metamodule: Boolean,
+        val isKpm: Boolean,
         val banner: String?,
         val actionIconPath: String? = null,
         val webUiIconPath: String? = null
@@ -167,11 +168,53 @@ class ModuleViewModel : ViewModel() {
                                 obj.optBoolean("web"),
                                 obj.optBoolean("action"),
                                 (obj.optInt("metamodule") != 0) or obj.optBoolean("metamodule"),
+                                (obj.optInt("kpm") != 0) or obj.optBoolean("kpm"),
                                 obj.optString("banner"),
                                 null,
                                 null
                             )
-                        }.toList()
+                        }.toMutableList()
+                    
+                    if (Natives.isAPatchInstalled) {
+                        val kpmList = me.weishu.kernelsu.apatch.APatchNatives.kernelPatchModuleList()
+                        if (kpmList.isNotBlank()) {
+                            for (kernelName in kpmList.split('\n')) {
+                                if (kernelName.isNotBlank()) {
+                                    val lines = me.weishu.kernelsu.apatch.APatchNatives.kernelPatchModuleInfo(kernelName).split('\n')
+                                    val id = kernelName
+                                    val name = lines.firstOrNull { it.startsWith("name=") }?.removePrefix("name=") ?: kernelName
+                                    val version = lines.firstOrNull { it.startsWith("version=") }?.removePrefix("version=") ?: ""
+                                    val author = lines.firstOrNull { it.startsWith("author=") }?.removePrefix("author=") ?: ""
+                                    val description = lines.firstOrNull { it.startsWith("description=") }?.removePrefix("description=") ?: ""
+                                    // Check if disabled by checking /data/adb/ap/kpm/$id/disable
+                                    val disabled = com.topjohnwu.superuser.ShellUtils.fastCmdResult(me.weishu.kernelsu.ui.util.KsuCli.SHELL, "[ -e '/data/adb/ap/kpm/$id/disable' ] && echo 1 || echo 0").trim() == "1"
+                                    
+                                    list.add(
+                                        ModuleInfo(
+                                            id = id,
+                                            name = name,
+                                            author = author,
+                                            version = version,
+                                            versionCode = 0,
+                                            description = description,
+                                            enabled = !disabled,
+                                            update = false,
+                                            remove = false,
+                                            updateJson = "",
+                                            hasWebUi = false,
+                                            hasActionScript = false,
+                                            metamodule = false,
+                                            isKpm = true,
+                                            banner = null,
+                                            actionIconPath = null,
+                                            webUiIconPath = null
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    list
                 }.getOrElse {
                     Log.e(TAG, "fetchModuleList: ", it)
                     emptyList()

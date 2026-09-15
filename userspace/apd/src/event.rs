@@ -1,0 +1,599 @@
+use crate::sepolicy::{apply_folkpatch_extra_rules, get_policy_main};
+use anyhow::{Context, Result};
+use libc::SIGPWR;
+use log::{info, warn};
+use notify::{
+    Config, Event, EventKind, INotifyWatcher, RecursiveMode, Watcher,
+    event::{ModifyKind, RenameMode},
+};
+use signal_hook::{consts::signal::*, iterator::Signals};
+use std::process::Stdio;
+use std::{
+    env, ffi::CStr, fs,
+    os::unix::{fs::PermissionsExt, process::CommandExt},
+    path::{Path, PathBuf},
+    process::Command,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
+
+use crate::{
+    assets, defs, lua, metamodule, module, restorecon, supercall,
+    supercall::{init_load_su_path, refresh_ap_package_list},
+    utils::{self, switch_cgroups},
+};
+
+pub fn report_kernel(superkey: Option<String>, event: &str, state: &str) {
+    let rc = supercall::report_kernel_event(&superkey, event, state);
+    if rc == 0 {
+        return;
+    }
+    warn!("direct kernel event {event}/{state} failed: {rc}; falling back to SUPERCMD");
+
+    let args = [
+        superkey.unwrap_or("su".to_string()),
+        "event".to_string(),
+        event.to_string(),
+        state.to_string(),
+    ];
+    let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    // Best-effort notification to the kernel; a failed report must not abort
+    // boot stages such as post-fs-data.
+    if let Err(e) = utils::run_command("truncate", &args_ref, None)
+        .and_then(|mut child| child.wait().map_err(anyhow::Error::from))
+    {
+        warn!("report kernel event {event}/{state} failed: {e}");
+    }
+}
+
+fn setup_fp_directories() -> Result<()> {
+    utils::ensure_dir_with_perms(
+        Path::new("/data/adb/fp/bin"),
+        Path::new("/data/adb/fp"),
+        0o755,
+    )?;
+    Ok(())
+}
+
+fn setup_logging() -> Result<()> {
+    let log_dir = Path::new(defs::APATCH_LOG_FOLDER);
+    if !log_dir.exists() {
+        fs::create_dir(log_dir).expect("Failed to create log folder");
+        let permissions = fs::Permissions::from_mode(0o700);
+        fs::set_permissions(log_dir, permissions).expect("Failed to set permissions");
+    }
+
+    let command_string = format!(
+        "cd {}; rm -f *.last; [ -f dmesg.log ] && mv dmesg.log dmesg.last; [ -f logcat.log ] && mv logcat.log logcat.last; [ -f locat.log ] && mv locat.log logcat.last; rm -f *.log *.old.log",
+        defs::APATCH_LOG_FOLDER
+    );
+    let result = utils::run_command("sh", &["-c", &command_string], None)?.wait()?;
+    if result.success() {
+        info!("Successfully rotated logs.");
+    } else {
+        info!("Failed to rotate logs.");
+    }
+
+    let logcat_path = format!("{}logcat.log", defs::APATCH_LOG_FOLDER);
+    let dmesg_path = format!("{}dmesg.log", defs::APATCH_LOG_FOLDER);
+    let bootlog = fs::File::create(&dmesg_path)?;
+
+    let _ = unsafe {
+        Command::new("timeout")
+            .process_group(0)
+            .pre_exec(|| {
+                switch_cgroups();
+                Ok(())
+            })
+            .args(vec![
+                "-s",
+                "9",
+                "45s",
+                "logcat",
+                "-b",
+                "main,system,crash",
+                "DrmLibFs:S",
+                "-f",
+                &logcat_path,
+                "logcatcher-bootlog:S",
+
+            ])
+            .spawn()
+    };
+    let _ = unsafe {
+        Command::new("timeout")
+            .process_group(0)
+            .pre_exec(|| {
+                switch_cgroups();
+                Ok(())
+            })
+            .args(["-s", "9", "120s", "dmesg", "-w"])
+            .stdout(Stdio::from(bootlog))
+            .spawn()
+    };
+
+    Ok(())
+}
+
+fn disable_all_modules_safe() {
+    if let Err(e) = module::disable_all_modules() {
+        warn!("disable all modules failed: {e}");
+    }
+}
+
+fn exec_fpd_hide() {
+    if !Path::new(defs::HIDE_SERVICE_FILE).exists() {
+        info!("Hide Service disabled");
+        return;
+    }
+    info!("Hide Service enabled, executing fpd -hide...");
+    if !Path::new(defs::HIDE_BINARY_PATH).exists() {
+        warn!("fpd binary not found at {}, please copy it manually", defs::HIDE_BINARY_PATH);
+        return;
+    }
+    let result = Command::new(defs::HIDE_BINARY_PATH).arg("-hide").status();
+    match result {
+        Ok(status) => {
+            if status.success() {
+                info!("fpd -hide executed successfully");
+            } else {
+                warn!("fpd -hide exited with status: {:?}", status.code());
+            }
+        }
+        Err(e) => {
+            warn!("Failed to execute fpd -hide: {}", e);
+        }
+    }
+}
+
+fn exec_fpd_umount() {
+    if !Path::new(defs::UMOUNT_SERVICE_FILE).exists() {
+        info!("Umount Service disabled");
+        return;
+    }
+    info!("Umount Service enabled, executing fpd -umount...");
+    if !Path::new(defs::UMOUNT_BINARY_PATH).exists() {
+        warn!("fpd binary not found at {}, please copy it manually", defs::UMOUNT_BINARY_PATH);
+        return;
+    }
+    let result = unsafe {
+        Command::new(defs::UMOUNT_BINARY_PATH)
+            .arg("-umount")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .pre_exec(|| {
+                let _ = utils::switch_mnt_ns(1);
+                Ok(())
+            })
+            .output()
+    };
+    match result {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if output.status.success() {
+                info!("fpd -umount executed successfully");
+            } else {
+                warn!("fpd -umount exited with status: {:?}", output.status.code());
+            }
+            if !stdout.trim().is_empty() {
+                info!("fpd -umount stdout: {}", stdout.trim());
+            }
+            if !stderr.trim().is_empty() {
+                info!("fpd -umount stderr: {}", stderr.trim());
+            }
+        }
+        Err(e) => {
+            warn!("Failed to execute fpd -umount: {}", e);
+        }
+    }
+}
+
+pub fn on_post_data_fs(superkey: Option<String>) -> Result<()> {
+    let key_len = superkey.as_ref().map(|s| s.len()).unwrap_or(0);
+    let key_preview = superkey.as_ref().map(|s| {
+        if s.len() > 4 { &s[..2] } else { s }
+    }).unwrap_or("<None>");
+    info!("[diag:post_fs_data] ENTER superkey_present={} key_len={} preview='{}..'", superkey.is_some(), key_len, key_preview);
+
+    utils::umask(0);
+    report_kernel(superkey.clone(), "post-fs-data", "before");
+
+    if let Err(e) = setup_fp_directories() {
+        warn!("setup_fp_directories failed: {e}");
+    }
+
+    init_load_su_path(&superkey);
+    supercall::apply_sucompat(&superkey);
+
+    let mut sepol = get_policy_main(&["magiskpolicy".to_string(), "--live".to_string()])?;
+    sepol.magisk_rules();
+    apply_folkpatch_extra_rules(&mut sepol);
+    sepol
+        .to_file("/sys/fs/selinux/load")
+        .context("Cannot apply policy")?;
+
+    info!("Re-privilege apd profile after injecting sepolicy");
+    supercall::privilege_apd_profile(&superkey);
+
+    // Apply UTS namespace spoofing if configured
+    supercall::apply_uts_spoof(&superkey);
+
+    // Apply netisolate config if enabled
+    supercall::apply_netisolate(&superkey);
+
+    // Clear all temporary module configs early
+    if let Err(e) = crate::module_config::clear_all_temp_configs() {
+        warn!("clear temp configs failed: {e}");
+    }
+
+    if utils::has_magisk() {
+        warn!("Magisk detected, skip post-fs-data!");
+        report_kernel(superkey.clone(), "post-fs-data", "after");
+        return Ok(());
+    }
+
+    setup_logging()?;
+
+    for key in ["KERNELPATCH_VERSION", "KERNEL_VERSION"] {
+        match env::var(key) {
+            Ok(value) => println!("{key}: {value}"),
+            Err(_) => println!("{key} not found"),
+        }
+    }
+
+    let safe_mode = utils::is_safe_mode(superkey.clone());
+
+    if safe_mode {
+        // we should still mount modules.img to `/data/adb/modules` in safe mode
+        // becuase we may need to operate the module dir in safe mode
+        warn!("safe mode, skip common post-fs-data.d scripts");
+        // Not redundant with the disable below: ensure_binaries /
+        // handle_updated_modules can still fail with `?` before reaching it,
+        // and returning early with modules left enabled risks a bootloop.
+        disable_all_modules_safe();
+    } else {
+        // Then exec common post-fs-data scripts
+        if let Err(e) = module::exec_common_scripts("post-fs-data.d", true) {
+            warn!("exec common post-fs-data scripts failed: {}", e);
+        }
+    }
+    let module_update_dir = defs::MODULE_UPDATE_DIR; //save module place
+    let module_dir = defs::MODULE_DIR; // run modules place
+    let module_update_flag = Path::new(defs::WORKING_DIR).join(defs::UPDATE_FILE_NAME); // if update ,there will be renewed modules file
+    assets::ensure_binaries().with_context(|| "binary missing")?;
+
+    if Path::new(defs::MODULE_UPDATE_DIR).exists() {
+        module::handle_updated_modules()?;
+        fs::remove_dir_all(module_update_dir)?;
+    }
+
+    if safe_mode {
+        warn!("safe mode, skip post-fs-data scripts and disable all modules!");
+        disable_all_modules_safe();
+        return Ok(());
+    }
+
+    if let Err(e) = module::prune_modules() {
+        warn!("prune modules failed: {}", e);
+    }
+
+    if let Err(e) = restorecon::restorecon() {
+        warn!("restorecon failed: {}", e);
+    }
+
+    // load sepolicy.rule
+    if module::load_sepolicy_rule().is_err() {
+        warn!("load sepolicy.rule failed");
+    }
+    let magic_mount_enabled = Path::new(defs::MAGIC_MOUNT_FILE).exists();
+    if magic_mount_enabled {
+        info!("Folk Mount API enabled; deferring mount to post-mount");
+    } else {
+        info!("Magic Mount disabled");
+        if let Err(e) = metamodule::exec_mount_script(module_dir) {
+            warn!("execute metamodule mount failed: {e}");
+        }
+    }
+
+    exec_fpd_hide();
+
+    // exec modules post-fs-data scripts
+    // TODO: Add timeout
+    if let Err(e) = module::exec_stage_script("post-fs-data", true) {
+        warn!("exec post-fs-data scripts failed: {}", e);
+    }
+    if let Err(e) = lua::exec_stage_lua("post-fs-data", true, superkey.as_deref().unwrap_or("")) {
+        warn!("Failed to exec post-fs-data lua: {}", e);
+    }
+    if let Err(e) = lua::exec_plugin_stage("post-fs-data") {
+        warn!("Failed to exec plugin post-fs-data: {}", e);
+    }
+    // load system.prop
+    if let Err(e) = module::load_system_prop() {
+        warn!("load system.prop failed: {}", e);
+    }
+
+    info!("remove update flag");
+    let _ = fs::remove_file(module_update_flag);
+
+    run_stage("post-mount", superkey.clone(), true);
+
+    if magic_mount_enabled
+        && let Err(e) = crate::magic_mount::magic_mount(defs::AP_OVERLAY_SOURCE)
+    {
+        log::error!("Folk Mount failed: {e}");
+    }
+
+    report_kernel(superkey, "post-fs-data", "after");
+
+    env::set_current_dir("/").with_context(|| "failed to chdir to /")?;
+
+    Ok(())
+}
+
+fn run_stage(stage: &str, superkey: Option<String>, block: bool) {
+    utils::umask(0);
+
+    if utils::has_magisk() {
+        warn!("Magisk detected, skip {stage}");
+        return;
+    }
+
+    if utils::is_safe_mode(superkey.clone()) {
+        warn!("safe mode, skip {stage} scripts");
+        disable_all_modules_safe();
+        return;
+    }
+
+    // execute metamodule stage script first (priority)
+    if let Err(e) = metamodule::exec_stage_script(stage, block) {
+        warn!("Failed to exec metamodule {stage} script: {e}");
+    }
+
+    if let Err(e) = module::exec_common_scripts(&format!("{stage}.d"), block) {
+        warn!("Failed to exec common {stage} scripts: {e}");
+    }
+    if let Err(e) = module::exec_stage_script(stage, block) {
+        warn!("Failed to exec {stage} scripts: {e}");
+    }
+    if let Err(e) = lua::exec_stage_lua(stage, block, superkey.as_deref().unwrap_or("")) {
+        warn!("Failed to exec {stage} lua: {e}");
+    }
+    if let Err(e) = lua::exec_plugin_stage(stage) {
+        warn!("Failed to exec plugin {stage}: {e}");
+    }
+}
+
+pub fn on_services(superkey: Option<String>) -> Result<()> {
+    let key_len = superkey.as_ref().map(|s| s.len()).unwrap_or(0);
+    info!("[diag:services] ENTER superkey_present={} key_len={}", superkey.is_some(), key_len);
+
+    supercall::apply_sucompat(&superkey);
+
+    if Path::new(defs::UTS_SPOOF_RETRY_FILE).exists() {
+        info!("Retrying deferred UTS spoof apply from services stage");
+        supercall::apply_uts_spoof(&superkey);
+    }
+
+    run_stage("service", superkey, false);
+
+    Ok(())
+}
+
+fn run_uid_monitor() {
+    info!("Trigger run_uid_monitor!");
+
+    let mut command = &mut Command::new("/data/adb/apd");
+    {
+        command = command.process_group(0);
+        command = unsafe {
+            command.pre_exec(|| {
+                // ignore the error?
+                switch_cgroups();
+                Ok(())
+            })
+        };
+    }
+    command = command.arg("uid-listener");
+
+    command
+        .spawn()
+        .map(|_| ())
+        .expect("[run_uid_monitor] Failed to run uid monitor");
+}
+
+pub fn on_boot_completed(superkey: Option<String>) -> Result<()> {
+    let key_len = superkey.as_ref().map(|s| s.len()).unwrap_or(0);
+    info!("[diag:boot_completed] ENTER superkey_present={} key_len={}", superkey.is_some(), key_len);
+
+    supercall::apply_sucompat(&superkey);
+
+    // Clear UTS spoof boot safety flag — boot completed successfully
+    if Path::new(defs::UTS_SPOOF_BOOT_PENDING).exists() {
+        let _ = std::fs::remove_file(defs::UTS_SPOOF_BOOT_PENDING);
+        info!("UTS spoof boot safety flag cleared");
+    }
+
+    run_stage("boot-completed", superkey.clone(), false);
+
+    if Path::new(defs::PATHHIDE_ENABLE_FILE).exists() {
+        info!("Applying pathhide from boot-completed stage");
+        supercall::apply_pathhide(&superkey);
+    }
+
+    if Path::new(defs::UTS_SPOOF_RETRY_FILE).exists() {
+        info!("Retrying deferred UTS spoof apply from boot-completed stage");
+        supercall::apply_uts_spoof(&superkey);
+    }
+
+    exec_fpd_umount();
+
+    run_uid_monitor();
+    Ok(())
+}
+
+pub fn on_manager_boot_completed(superkey: Option<String>) -> Result<()> {
+    let key_len_before = superkey.as_ref().map(|s| s.len()).unwrap_or(0);
+    info!("[diag:manager_boot] ENTER superkey_present={} key_len_before={}", superkey.is_some(), key_len_before);
+
+    let superkey = superkey.or_else(|| {
+        info!("Manager boot fallback invoked without explicit superkey, defaulting to trusted-manager key 'su'");
+        Some("su".to_string())
+    });
+
+    info!("[diag:manager_boot] superkey_present={} key_len_after={}", superkey.is_some(), superkey.as_ref().map(|s| s.len()).unwrap_or(0));
+
+    supercall::apply_sucompat(&superkey);
+
+    if Path::new(defs::UTS_SPOOF_BOOT_PENDING).exists() {
+        let _ = std::fs::remove_file(defs::UTS_SPOOF_BOOT_PENDING);
+        info!("UTS spoof boot safety flag cleared by manager boot fallback");
+    }
+
+    if Path::new(defs::PATHHIDE_ENABLE_FILE).exists() {
+        info!("Manager boot fallback: applying pathhide");
+        supercall::apply_pathhide(&superkey);
+    }
+
+    if Path::new(defs::UTS_SPOOF_ENABLE_FILE).exists() || Path::new(defs::UTS_SPOOF_RETRY_FILE).exists() {
+        info!("Manager boot fallback: applying UTS spoof");
+        supercall::apply_uts_spoof(&superkey);
+        if Path::new(defs::UTS_SPOOF_BOOT_PENDING).exists() {
+            let _ = std::fs::remove_file(defs::UTS_SPOOF_BOOT_PENDING);
+            info!("UTS spoof boot safety flag cleared after manager boot fallback apply");
+        }
+    }
+
+    if Path::new(defs::NETISOLATE_ENABLE_FILE).exists() {
+        info!("Manager boot fallback: applying netisolate");
+        supercall::apply_netisolate(&superkey);
+    }
+
+    if Path::new(defs::HIDE_SERVICE_FILE).exists() {
+        info!("Manager boot fallback: retrying fpd -hide");
+        exec_fpd_hide();
+    }
+
+    if Path::new(defs::UMOUNT_SERVICE_FILE).exists() {
+        info!("Manager boot fallback: retrying fpd -umount");
+        exec_fpd_umount();
+    }
+
+    Ok(())
+}
+
+pub fn start_uid_listener() -> Result<()> {
+    info!("start_uid_listener triggered!");
+    println!("[start_uid_listener] Registering...");
+
+    // create inotify instance
+    const SYS_PACKAGES_LIST_TMP: &str = "/data/system/packages.list.tmp";
+    let sys_packages_list_tmp = PathBuf::from(&SYS_PACKAGES_LIST_TMP);
+    let dir: PathBuf = sys_packages_list_tmp.parent().unwrap().into();
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let tx_clone = tx.clone();
+    let mutex = Arc::new(Mutex::new(()));
+
+    {
+        let mutex_clone = mutex.clone();
+        thread::spawn(move || {
+            let mut signals = Signals::new([SIGTERM, SIGINT, SIGPWR]).unwrap();
+            if let Some(sig) = signals.forever().next() {
+                log::warn!("[shutdown] Caught signal {sig}, refreshing package list...");
+                let skey = c"su";
+                refresh_ap_package_list(skey, &mutex_clone);
+            }
+        });
+    }
+
+    let mut watcher = INotifyWatcher::new(
+        move |ev: notify::Result<Event>| match ev {
+            Ok(Event {
+                kind: EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
+                paths,
+                ..
+            }) => {
+                if paths.contains(&sys_packages_list_tmp) {
+                    info!("[uid_monitor] System packages list changed, sending to tx...");
+                    tx_clone.send(false).unwrap()
+                }
+            }
+            Err(err) => warn!("inotify error: {err}"),
+            _ => (),
+        },
+        Config::default(),
+    )?;
+
+    watcher.watch(dir.as_ref(), RecursiveMode::NonRecursive)?;
+
+    {
+        let skey = CStr::from_bytes_with_nul(b"su\0")
+            .expect("[start_uid_listener] CStr::from_bytes_with_nul failed");
+        info!("[uid_monitor] Performing initial refresh on startup...");
+        refresh_ap_package_list(&skey, &mutex);
+    }
+
+    let mut debounce = false;
+    while let Ok(delayed) = rx.recv() {
+        if delayed {
+            debounce = false;
+            let skey = c"su";
+            refresh_ap_package_list(skey, &mutex);
+            report_kernel(None, "uid_listener", "package-list-updated");
+        } else if !debounce {
+            thread::sleep(Duration::from_secs(1));
+            debounce = true;
+            tx.send(true)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Emulate a system reboot: restart the Android framework (`stop` / `start`)
+/// and re-apply the service stage. Used by jailbreak mode so that a runtime-loaded
+/// `kernelpatch.ko` stays active (a full reboot would drop it).
+pub fn soft_reboot(superkey: Option<String>) -> Result<()> {
+    use std::process::Command;
+
+    // Detach from the caller (app root shell) first: `stop` tears down the
+    // framework including the app/zygote tree this process was spawned from, so
+    // without daemonizing the `start` below would never be reached.
+    utils::daemonize()?;
+
+    info!("emulating soft reboot!");
+    utils::switch_mnt_ns(1)?;
+    std::env::set_current_dir("/").with_context(|| "failed to chdir to /")?;
+
+    if let Err(e) = crate::resetprop::set_prop("sys.boot_completed", "0") {
+        warn!("reset boot completed failed: {e}");
+    }
+
+    info!("stop");
+    let status = Command::new("stop").status().context("stop failed")?;
+    if !status.success() {
+        warn!("stop exited with status: {status}");
+    }
+
+    info!("post-fs-data");
+    // Never abort the soft reboot here: the framework must always be restarted.
+    // The daemonized stdin (dev null) keeps the supercall/truncate redirects from
+    // blocking, so re-applying the boot stages is safe.
+    if let Err(e) = on_post_data_fs(superkey.clone()) {
+        warn!("post-fs-data failed during soft reboot: {e:#}");
+    }
+
+    info!("start");
+    let status = Command::new("start").status().context("start failed")?;
+    if !status.success() {
+        warn!("start exited with status: {status}");
+    }
+
+    info!("services");
+    on_services(superkey)?;
+
+    Ok(())
+}

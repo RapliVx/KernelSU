@@ -294,4 +294,5 @@
     <string name="quick_shell_clear_logs">Clear Logs</string>
     <string name="app_profile_mount_profile">Mount Profile</string>
     <string name="home_show_more">Show more</string>
+    <string name="patch_apatch">Patch APatch</string>
 </resources>

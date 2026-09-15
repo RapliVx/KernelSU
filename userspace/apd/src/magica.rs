@@ -1,0 +1,241 @@
+//! Magica-style jailbreak escalation: enable adb root via the property service,
+//! then run the actual `late-load` through an adb shell so it has full root.
+//! Ported from KernelSU's `ksud/src/magica.rs` and adapted for APatch.
+
+use adb_client::ADBDeviceExt;
+use adb_client::tcp::ADBTcpDevice;
+use anyhow::{Context, Result, bail};
+use log::{error, info};
+use prop_rs_android::resetprop::ResetProp;
+use prop_rs_android::sys_prop;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::path::PathBuf;
+use std::process::Command;
+
+const fn resetprop() -> ResetProp {
+    ResetProp {
+        skip_svc: true,
+        persistent: false,
+        persist_only: false,
+        verbose: false,
+        show_context: false,
+        rebuild: false,
+    }
+}
+
+fn exec_shell_commands(commands: &[(&str, &[&str])], log_prefix: &str) -> Result<()> {
+    for (cmd, args) in commands {
+        info!("{log_prefix}: {cmd} {}", args.join(" "));
+        let status = Command::new(cmd)
+            .args(*args)
+            .status()
+            .with_context(|| format!("Failed to execute {cmd}"))?;
+        if !status.success() {
+            bail!("{cmd} {} exited with {status}", args.join(" "));
+        }
+    }
+    Ok(())
+}
+
+fn prop_file_paths() -> Result<(String, String, String)> {
+    let debuggable_context = sys_prop::get_context("ro.debuggable")
+        .context("Failed to get context for ro.debuggable")?;
+    info!("ro.debuggable context: {debuggable_context}");
+
+    let adb_secure_context = sys_prop::get_context("ro.adb.secure")
+        .context("Failed to get context for ro.adb.secure")?;
+    info!("ro.adb.secure context: {adb_secure_context}");
+
+    Ok((
+        "/dev/__properties__/properties_serial".to_string(),
+        format!("/dev/__properties__/{debuggable_context}"),
+        format!("/dev/__properties__/{adb_secure_context}"),
+    ))
+}
+
+fn chmod_prop_files(mode: &str, paths: &(String, String, String)) -> Result<()> {
+    exec_shell_commands(
+        &[
+            ("chmod", &[mode, &paths.0]),
+            ("chmod", &[mode, &paths.1]),
+            ("chmod", &[mode, &paths.2]),
+        ],
+        "Executing",
+    )
+}
+
+fn enable_adb_root(port: u16) -> Result<()> {
+    // We are in limited root (uid 0) by the app-zygote bootstrap.
+    anyhow::ensure!(
+        rustix::process::getuid().as_raw() == 0,
+        "must be run as root"
+    );
+
+    sys_prop::init().context("Failed to initialize system property API")?;
+    let rp = resetprop();
+    let paths = prop_file_paths()?;
+    let port_str = port.to_string();
+
+    // chmod property files to writable
+    chmod_prop_files("0644", &paths)?;
+
+    // Set properties via internal API
+    rp.set("ro.debuggable", "1")
+        .context("Failed to set ro.debuggable")?;
+    info!("Executing: resetprop -n ro.debuggable 1");
+    rp.set("ro.adb.secure", "0")
+        .context("Failed to set ro.adb.secure")?;
+    info!("Executing: resetprop -n ro.adb.secure 0");
+
+    // Restore permissions and restart adbd
+    chmod_prop_files("0444", &paths)?;
+    exec_shell_commands(
+        &[
+            ("setprop", &["service.adb.root", "1"]),
+            ("setprop", &["service.adb.tcp.port", &port_str]),
+            ("setprop", &["ctl.restart", "adbd"]),
+        ],
+        "Executing",
+    )?;
+
+    Ok(())
+}
+
+pub fn disable_adb_root() -> Result<()> {
+    // The magica error path calls this with the caller's limited root, where the
+    // property files are 0444; make them writable first (same dance as
+    // enable_adb_root) or the restore silently fails exactly when it matters.
+    sys_prop::init().context("Failed to initialize system property API")?;
+    let rp = resetprop();
+    let paths = prop_file_paths()?;
+
+    chmod_prop_files("0644", &paths)?;
+
+    let result = (|| -> Result<()> {
+        info!("Restoring: resetprop -n ro.debuggable 0");
+        rp.set("ro.debuggable", "0")
+            .context("Failed to set ro.debuggable")?;
+
+        info!("Restoring: resetprop -n ro.adb.secure 1");
+        rp.set("ro.adb.secure", "1")
+            .context("Failed to set ro.adb.secure")?;
+
+        for prop in &[
+            "service.adb.root",
+            "service.adb.tcp.port",
+            "ro.boot.selinux",
+        ] {
+            info!("Restoring: resetprop --delete {prop}");
+            let _ = rp.delete(prop);
+            if let Ok(ctx) = sys_prop::get_context(prop) {
+                let _ = rp.rebuild(&ctx);
+            }
+        }
+        Ok(())
+    })();
+
+    // Restore the file permissions even if a property write failed.
+    let chmod_result = chmod_prop_files("0444", &paths);
+    result.and(chmod_result)?;
+
+    exec_shell_commands(&[("setprop", &["ctl.restart", "adbd"])], "Restoring")?;
+
+    Ok(())
+}
+
+fn connect_to_device(port: u16) -> Result<ADBTcpDevice> {
+    // adb_client resolves the adb key via `std::env::home_dir()`, which is a
+    // no-op on Android, so both ADBTcpDevice::new() and the internal
+    // TcpTransport::new() fail with "Cannot get home directory". Point it at a
+    // fixed path through the ANDROID_USER_HOME env var instead; with
+    // ro.adb.secure=0 adbd answers with a plain CNXN, so the key is never
+    // actually used (a missing key falls back to a random one).
+    //
+    // SAFETY: apd is freshly exec'd and single-threaded here, so setting the env
+    // var cannot race with another thread reading it.
+    unsafe { std::env::set_var("ANDROID_USER_HOME", "/data/adb") };
+
+    const MAX_RETRIES: u32 = 30;
+    for attempt in 1..=MAX_RETRIES {
+        info!("Waiting for adbd to restart... (attempt {attempt}/{MAX_RETRIES})");
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
+        info!("Connecting to ADB device at {addr}");
+        match ADBTcpDevice::new(addr).context("Failed to create ADBTcpDevice") {
+            Ok(device) => return Ok(device),
+            Err(e) => {
+                error!("Failed to connect to ADB device: {e:?}, retry after 1s");
+            }
+        }
+    }
+    bail!("Failed to connect to ADB device after {MAX_RETRIES} attempts")
+}
+
+/// `apd late-load --magica <port> [--module <path>] [--kmi <kmi>] [--package-name <pkg>]`
+///
+/// Runs the whole jailbreak through an adb shell (full root):
+/// 1. enable adb root + tcp on `port`
+/// 2. connect to `localhost:port`
+/// 3. execute `apd late-load --post-magica [--module ...] [--kmi ...] [--package-name ...]` as root
+pub fn run(
+    port: u16,
+    module: &Option<PathBuf>,
+    kmi: &Option<String>,
+    package_name: &Option<String>,
+) -> Result<()> {
+    enable_adb_root(port)?;
+
+    let result = run_via_adb(port, module, kmi, package_name);
+    if result.is_err() {
+        // The remote `late-load --post-magica` that normally disables adb root may
+        // never have run; don't leave an unauthenticated root adb port behind.
+        if let Err(e) = disable_adb_root() {
+            error!("disable adb root failed: {e:#}");
+        }
+    }
+    result
+}
+
+fn run_via_adb(
+    port: u16,
+    module: &Option<PathBuf>,
+    kmi: &Option<String>,
+    package_name: &Option<String>,
+) -> Result<()> {
+    let mut device = connect_to_device(port)?;
+
+    let self_path = std::env::current_exe().context("Failed to get self exe path")?;
+
+    let mut cmd = format!("{} late-load --post-magica", self_path.display());
+    if let Some(m) = module {
+        cmd.push_str(&format!(" --module {}", m.display()));
+    }
+    if let Some(k) = kmi {
+        cmd.push_str(&format!(" --kmi {k}"));
+    }
+    if let Some(p) = package_name {
+        cmd.push_str(&format!(" --package-name {p}"));
+    }
+    info!("Executing '{cmd}' via adb shell...");
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    if let Err(e) = device.shell_command(&cmd, Some(&mut stdout), Some(&mut stderr)) {
+        // Usually expected: the remote's own disable_adb_root restarts adbd and
+        // drops this connection mid-command. But the error also covers the
+        // remote never having run, so belt-and-suspenders: disable adb root
+        // locally as well (idempotent, at worst one extra adbd bounce).
+        info!("adb shell finished with error (may be expected): {e}");
+        if let Err(e) = disable_adb_root() {
+            error!("disable adb root after shell error failed: {e:#}");
+        }
+    }
+    if !stdout.is_empty() {
+        info!("stdout: {}", String::from_utf8_lossy(&stdout));
+    }
+    if !stderr.is_empty() {
+        info!("stderr: {}", String::from_utf8_lossy(&stderr));
+    }
+
+    Ok(())
+}

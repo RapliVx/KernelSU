@@ -125,6 +125,13 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                 return@let
             }
 
+            if (method is InstallMethod.PatchAPatch) {
+                method.uri?.let {
+                    navigator.navigate(FlashScreenDestination(FlashIt.FlashAPatch(it)))
+                }
+                return@let
+            }
+
             val isOta = method is InstallMethod.DirectInstallToInactiveSlot
             val partitionSelection = partitionsState.getOrNull(partitionSelectionIndex)
             val flashIt = FlashIt.FlashBoot(
@@ -241,13 +248,19 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                 val defaultIndex = partitions.indexOf(defaultPartition).takeIf { it >= 0 } ?: 0
                 if (!hasCustomSelected) partitionSelectionIndex = defaultIndex
                 var showLkmDialog by remember { mutableStateOf(false) }
-                val showOptions = installMethod != null && installMethod !is InstallMethod.AnyKernel
+                val showOptions = installMethod != null && installMethod !is InstallMethod.AnyKernel && installMethod !is InstallMethod.PatchAPatch
                 AnimatedVisibility(
                     visible = showOptions,
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically()
                 ) {
                     Column {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = stringResource(id = R.string.install_options),
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
                         ExpressiveList(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             content = listOf(
@@ -356,6 +369,30 @@ fun InstallScreen(navigator: DestinationsNavigator) {
                         }
                     )
                 }
+
+                AnimatedVisibility(
+                    visible = installMethod is InstallMethod.PatchAPatch,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "APatch Configuration",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        var apatchSuperKey by remember { mutableStateOf(me.weishu.kernelsu.Natives.superKey) }
+                        androidx.compose.material3.OutlinedTextField(
+                            value = apatchSuperKey,
+                            onValueChange = { 
+                                apatchSuperKey = it
+                                me.weishu.kernelsu.Natives.superKey = it
+                            },
+                            label = { Text("SuperKey") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
                 Button(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -391,6 +428,12 @@ sealed class InstallMethod {
         override val summary: String? = null
     ) : InstallMethod()
 
+    data class PatchAPatch(
+        val uri: Uri? = null,
+        override val label: Int = R.string.patch_apatch,
+        override val summary: String? = null
+    ) : InstallMethod()
+
     abstract val label: Int
     open val summary: String? = null
 }
@@ -421,6 +464,7 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
         }
 
         radioOptions.add(InstallMethod.AnyKernel())
+        radioOptions.add(InstallMethod.PatchAPatch())
     }
 
     var selectedOption by remember { mutableStateOf<InstallMethod?>(null) }
@@ -442,6 +486,18 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
         if (it.resultCode == Activity.RESULT_OK) {
             it.data?.data?.let { uri ->
                 val option = InstallMethod.AnyKernel(uri)
+                selectedOption = option
+                onSelected(option)
+            }
+        }
+    }
+
+    val selectAPatchLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (it.resultCode == Activity.RESULT_OK) {
+            it.data?.data?.let { uri ->
+                val option = InstallMethod.PatchAPatch(uri)
                 selectedOption = option
                 onSelected(option)
             }
@@ -477,6 +533,12 @@ private fun SelectInstallMethod(onSelected: (InstallMethod) -> Unit = {}) {
                 selectAnyKernelLauncher.launch(Intent(Intent.ACTION_GET_CONTENT).apply {
                     type = "application/zip"
                     putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                })
+            }
+            is InstallMethod.PatchAPatch -> {
+                selectAPatchLauncher.launch(Intent(Intent.ACTION_GET_CONTENT).apply {
+                    type = "application/octet-stream"
                     addCategory(Intent.CATEGORY_OPENABLE)
                 })
             }

@@ -31,9 +31,13 @@ import java.util.Locale
  * @date 2023/1/1.
  */
 private const val TAG = "KsuCli"
-private const val BUSYBOX = "/data/adb/ksu/bin/busybox"
+private val BUSYBOX: String
+    get() = if (me.weishu.kernelsu.Natives.isAPatchInstalled) "/data/adb/ap/bin/busybox" else "/data/adb/ksu/bin/busybox"
 
 private fun getKsuDaemonPath(): String {
+    if (me.weishu.kernelsu.Natives.isAPatchInstalled) {
+        return ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libapd.so"
+    }
     return ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud.so"
 }
 
@@ -149,6 +153,16 @@ fun getSuperuserCount(): Int {
 }
 
 fun toggleModule(id: String, enable: Boolean): Boolean {
+    if (me.weishu.kernelsu.Natives.isAPatchInstalled) {
+        val hasModuleDir = com.topjohnwu.superuser.ShellUtils.fastCmdResult(SHELL, "[ -d '/data/adb/modules/$id' ] && echo 1 || echo 0").trim() == "1"
+        if (!hasModuleDir) {
+            val dir = "/data/adb/ap/kpm/$id"
+            val cmd = if (enable) "rm -f '$dir/disable'" else "mkdir -p '$dir' && touch '$dir/disable'"
+            com.topjohnwu.superuser.ShellUtils.fastCmdResult(SHELL, cmd)
+            return true
+        }
+    }
+
     val cmd = if (enable) {
         "module enable $id"
     } else {
@@ -612,4 +626,16 @@ fun restartApp(packageName: String, userId: Int? = null) {
 
 fun isWebuiModuleInstalled(modId: String): Boolean {
     return SuFile("/data/adb/modules/$modId/webroot/index.html").exists()
+}
+
+fun flashAPatch(uri: Uri, onStdout: (String) -> Unit, onStderr: (String) -> Unit): FlashResult {
+    onStdout("- Start patching APatch...")
+    onStdout("! Full APatch patching (kptools) is currently not fully bundled within KernelSU Manager.")
+    onStdout("! For now, please use the official APatch manager to patch the boot image.")
+    onStdout("- Saving SuperKey: " + me.weishu.kernelsu.Natives.superKey)
+    me.weishu.kernelsu.ksuApp.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+        .edit()
+        .putString("superKey", me.weishu.kernelsu.Natives.superKey)
+        .apply()
+    return FlashResult(com.topjohnwu.superuser.ShellUtils.fastCmdResult(getRootShell(), "echo 'Not implemented'"), false)
 }

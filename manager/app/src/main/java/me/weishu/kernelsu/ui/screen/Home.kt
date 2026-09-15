@@ -221,6 +221,34 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                         Text(stringResource(R.string.home_jailbreak))
                     }
                 }
+
+                if (ksuVersion == null && !Natives.isAPatchInstalled) {
+                    var inputKey by remember { mutableStateOf(me.weishu.kernelsu.Natives.superKey) }
+                    androidx.compose.material3.ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                "APatch SuperKey Auth",
+                                style = androidx.compose.material3.MaterialTheme.typography.titleMedium
+                            )
+                            androidx.compose.material3.OutlinedTextField(
+                                value = inputKey,
+                                onValueChange = { inputKey = it },
+                                label = { Text("Enter SuperKey") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            androidx.compose.material3.Button(onClick = {
+                                me.weishu.kernelsu.Natives.superKey = inputKey
+                                context.getSharedPreferences("settings", android.content.Context.MODE_PRIVATE)
+                                    .edit()
+                                    .putString("superKey", inputKey)
+                                    .apply()
+                            }) {
+                                Text("Auth")
+                            }
+                        }
+                    }
+                }
 //            if (ksuVersion != null && !Natives.isLkmMode) {
 //                WarningCard(stringResource(id = R.string.home_gki_warning))
 //            }
@@ -340,9 +368,10 @@ private fun StatusCard(
     val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
     
-    val workingMode = when (lkmMode) {
-        null -> "Legacy"
-        true -> lkmVariant ?: "LKM"
+    val workingMode = when {
+        Natives.isAPatchInstalled -> "APatch/FolkPatch"
+        lkmMode == null -> "Legacy"
+        lkmMode == true -> lkmVariant ?: "LKM"
         else -> "GKI"
     }
 

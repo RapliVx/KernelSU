@@ -291,6 +291,8 @@ sealed class FlashIt : Parcelable {
 
     data class FlashAnyKernel(val uri: Uri) : FlashIt()
 
+    data class FlashAPatch(val uri: Uri) : FlashIt()
+
     data object FlashRestore : FlashIt()
 
     data object FlashUninstall : FlashIt()
@@ -318,6 +320,12 @@ fun flashIt(
         }
 
         is FlashIt.FlashAnyKernel -> flashAnyKernelZip(
+            flashIt.uri,
+            onStdout,
+            onStderr
+        )
+        
+        is FlashIt.FlashAPatch -> flashAPatch(
             flashIt.uri,
             onStdout,
             onStderr

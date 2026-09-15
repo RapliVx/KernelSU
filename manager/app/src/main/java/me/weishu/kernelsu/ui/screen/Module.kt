@@ -863,6 +863,10 @@ fun ModuleItem(
                     BadgeChip(text = "WEBUI")
                 }
 
+                if (module.isKpm) {
+                    BadgeChip(text = "KPM")
+                }
+
                 if (module.hasActionScript) {
                     BadgeChip(
                         text = stringResource(R.string.action)

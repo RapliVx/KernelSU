@@ -14,7 +14,7 @@
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_me_weishu_kernelsu_Natives_getVersion(JNIEnv *env, jobject) {
+Java_me_weishu_kernelsu_Natives_nativeGetVersion(JNIEnv *env, jobject) {
     int version = get_version();
     if (version > 0) {
         return version;
@@ -25,19 +25,19 @@ Java_me_weishu_kernelsu_Natives_getVersion(JNIEnv *env, jobject) {
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_me_weishu_kernelsu_Natives_getKernelUAPIVersion(JNIEnv *env, jobject) {
+Java_me_weishu_kernelsu_Natives_nativeGetKernelUAPIVersion(JNIEnv *env, jobject) {
     return get_kernel_uapi_version();
 }
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_me_weishu_kernelsu_Natives_getManagerUAPIVersion(JNIEnv *env, jobject) {
+Java_me_weishu_kernelsu_Natives_nativeGetManagerUAPIVersion(JNIEnv *env, jobject) {
     return get_manager_uapi_version();
 }
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_me_weishu_kernelsu_Natives_getSuperuserCount(JNIEnv *env, jobject) {
+Java_me_weishu_kernelsu_Natives_nativeGetSuperuserCount(JNIEnv *env, jobject) {
     struct ksu_new_get_allow_list_cmd cmd = {
         .count = 0
     };
@@ -78,7 +78,7 @@ Java_me_weishu_kernelsu_Natives_isLateLoadMode(JNIEnv *env, jclass clazz) {
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_me_weishu_kernelsu_Natives_isManager(JNIEnv *env, jclass clazz) {
+Java_me_weishu_kernelsu_Natives_nativeIsManager(JNIEnv *env, jclass clazz) {
     return is_manager();
 }
 
@@ -154,7 +154,7 @@ static void fillArrayWithList(JNIEnv *env, jobject list, int *data, int count) {
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_me_weishu_kernelsu_Natives_getAppProfile(JNIEnv *env, jobject, jstring pkg, jint uid) {
+Java_me_weishu_kernelsu_Natives_nativeGetAppProfile(JNIEnv *env, jobject, jstring pkg, jint uid) {
     if (env->GetStringLength(pkg) > KSU_MAX_PACKAGE_NAME) {
         return nullptr;
     }
@@ -252,7 +252,7 @@ Java_me_weishu_kernelsu_Natives_getAppProfile(JNIEnv *env, jobject, jstring pkg,
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_me_weishu_kernelsu_Natives_setAppProfile(JNIEnv *env, jobject clazz, jobject profile) {
+Java_me_weishu_kernelsu_Natives_nativeSetAppProfile(JNIEnv *env, jobject clazz, jobject profile) {
     auto cls = env->FindClass("me/weishu/kernelsu/Natives$Profile");
 
     auto keyField = env->GetFieldID(cls, "name", "Ljava/lang/String;");
@@ -346,30 +346,30 @@ Java_me_weishu_kernelsu_Natives_uidShouldUmount(JNIEnv *env, jobject thiz, jint 
 }
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_me_weishu_kernelsu_Natives_isSuEnabled(JNIEnv *env, jobject thiz) {
+Java_me_weishu_kernelsu_Natives_nativeIsSuEnabled(JNIEnv *env, jobject thiz) {
     return is_su_enabled();
 }
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_me_weishu_kernelsu_Natives_setSuEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+Java_me_weishu_kernelsu_Natives_nativeSetSuEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     return set_su_enabled(enabled);
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_me_weishu_kernelsu_Natives_isKernelUmountEnabled(JNIEnv *env, jobject thiz) {
+Java_me_weishu_kernelsu_Natives_nativeIsKernelUmountEnabled(JNIEnv *env, jobject thiz) {
     return is_kernel_umount_enabled();
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_me_weishu_kernelsu_Natives_setKernelUmountEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+Java_me_weishu_kernelsu_Natives_nativeSetKernelUmountEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     return set_kernel_umount_enabled(enabled);
 }
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_me_weishu_kernelsu_Natives_isSelinuxHideEnabled(JNIEnv *env, jobject thiz) {
+Java_me_weishu_kernelsu_Natives_nativeIsSelinuxHideEnabled(JNIEnv *env, jobject thiz) {
     if (!is_selinux_hide_supported()) {
         return nullptr;
     }
@@ -380,24 +380,24 @@ Java_me_weishu_kernelsu_Natives_isSelinuxHideEnabled(JNIEnv *env, jobject thiz) 
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_me_weishu_kernelsu_Natives_setSelinuxHideEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+Java_me_weishu_kernelsu_Natives_nativeSetSelinuxHideEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     return set_selinux_hide_enabled(enabled);
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_me_weishu_kernelsu_Natives_isAvcSpoofEnabled(JNIEnv *env, jobject thiz) {
+Java_me_weishu_kernelsu_Natives_nativeIsAvcSpoofEnabled(JNIEnv *env, jobject thiz) {
     return is_avc_spoof_enabled();
 }
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_me_weishu_kernelsu_Natives_setAvcSpoofEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+Java_me_weishu_kernelsu_Natives_nativeSetAvcSpoofEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     return set_avc_spoof_enabled(enabled);
 }
 
 extern "C"
 JNIEXPORT jobject JNICALL
-Java_me_weishu_kernelsu_Natives_isAdbRootEnabled(JNIEnv *env, jobject thiz) {
+Java_me_weishu_kernelsu_Natives_nativeIsAdbRootEnabled(JNIEnv *env, jobject thiz) {
     if (!is_adb_root_supported()) {
         return nullptr;
     }
@@ -408,7 +408,7 @@ Java_me_weishu_kernelsu_Natives_isAdbRootEnabled(JNIEnv *env, jobject thiz) {
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_me_weishu_kernelsu_Natives_setAdbRootEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
+Java_me_weishu_kernelsu_Natives_nativeSetAdbRootEnabled(JNIEnv *env, jobject thiz, jboolean enabled) {
     return set_adb_root_enabled(enabled);
 }
 

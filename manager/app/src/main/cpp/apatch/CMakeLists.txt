@@ -1,0 +1,54 @@
+cmake_minimum_required(VERSION 3.28.0)
+project("apjni")
+
+find_program(CCACHE ccache)
+
+if (CCACHE)
+        set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE})
+        set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE})
+endif ()
+
+find_package(cxx REQUIRED CONFIG)
+link_libraries(cxx::cxx)
+
+macro(SET_OPTION option value)
+        set(${option} ${value} CACHE INTERNAL "" FORCE)
+endmacro()
+
+set(CHERISH_POLLY_FLAGS "-mllvm -polly -mllvm -polly-run-dce -mllvm -polly-run-inliner -mllvm -polly-reschedule=1 -mllvm -polly-loopfusion-greedy=1 -mllvm -polly-postopts=1 -mllvm -polly-num-threads=0 -mllvm -polly-omp-backend=LLVM -mllvm -polly-scheduling=dynamic -mllvm -polly-scheduling-chunksize=1 -mllvm -polly-isl-arg=--no-schedule-serialize-sccs -mllvm -polly-ast-use-context -mllvm -polly-detect-keep-going -mllvm -polly-position=before-vectorizer -mllvm -polly-vectorizer=stripmine -mllvm -polly-detect-profitability-min-per-loop-insts=40 -mllvm -polly-invariant-load-hoisting")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CHERISH_POLLY_FLAGS} -ffunction-sections -fdata-sections -fvisibility=hidden -fvisibility-inlines-hidden -O3 -flto -Wno-vla-cxx-extension -finput-charset=UTF-8 -fexec-charset=UTF-8")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CHERISH_POLLY_FLAGS} -ffunction-sections -fdata-sections -fvisibility=hidden -fvisibility-inlines-hidden -fno-rtti -fno-exceptions -O3 -flto -Wno-vla-cxx-extension -finput-charset=UTF-8 -fexec-charset=UTF-8")
+set(CMAKE_CXX_STANDARD 23)
+
+add_library(${PROJECT_NAME} SHARED apjni.cpp security.cpp)
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_STRIP} --strip-all --remove-section=.note.gnu.build-id --remove-section=.note.android.ident $<TARGET_FILE:${PROJECT_NAME}>)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE log)
+target_compile_options(${PROJECT_NAME} PRIVATE -flto)
+target_link_options(${PROJECT_NAME} PRIVATE "-Wl,--build-id=none" "-Wl,-icf=all,--lto-O3" "-Wl,-s,-x,--gc-sections" "-Wl,--no-undefined")
+
+# Shizuku server 内置：rish 交互 shell 的 native 库（librish.so）
+# 供 app_process 运行的 rikka.shizuku.server.ShizukuService 通过 System.load 加载
+add_library(rish SHARED
+        rish/main.cpp
+        rish/pts.cpp
+        rish/rikka_rish_RishTerminal.cpp
+        rish/rikka_rish_RishHost.cpp)
+target_compile_options(rish PRIVATE -fno-exceptions -fno-rtti -ffunction-sections -fdata-sections)
+target_link_libraries(rish PRIVATE log)
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_custom_command(TARGET rish POST_BUILD
+            COMMAND ${CMAKE_STRIP} --remove-section=.comment "$<TARGET_FILE:rish>")
+endif ()
+
+# fpdrop - Shizuku 分权控制的 shell 级降权可执行文件（清空 capability）。
+# 编译产物拷贝到 src/main/assets/fpdrop，由 manager 释放到 /data/local/tmp/fpdrop，
+# server 降权执行时以 `/data/local/tmp/fpdrop 2000 2000 -- <cmd...>` 调用。
+add_executable(fpdrop fpdrop/fpdrop.c)
+target_compile_options(fpdrop PRIVATE -ffunction-sections -fdata-sections -fno-unwind-tables)
+target_link_libraries(fpdrop PRIVATE log)
+target_link_options(fpdrop PRIVATE "-Wl,--build-id=none" "-Wl,-s,-x,--gc-sections")
+add_custom_command(TARGET fpdrop POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/../assets"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:fpdrop>" "${CMAKE_CURRENT_SOURCE_DIR}/../assets/fpdrop")

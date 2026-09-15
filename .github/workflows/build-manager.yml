@@ -147,8 +147,20 @@ jobs:
       pack_lkm: true
       pack_ksuinit: true
 
+  build-apd:
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-linux-android
+          - target: armv7-linux-androideabi
+          - target: x86_64-linux-android
+          - target: i686-linux-android
+    uses: ./.github/workflows/apd.yml
+    with:
+      target: ${{ matrix.target }}
+
   build-manager:
-    needs: [generate-key]
+    needs: [generate-key, build-ksud, build-ksud-extra, build-apd]
     if: always() && needs.generate-key.result == 'success'
     runs-on: ubuntu-latest
     defaults:
@@ -274,7 +286,25 @@ jobs:
           name: ksud-x86_64-linux-android
           path: artifacts/ksud-x86_64-linux-android
 
-      - name: Place manager apk and ksud artifacts
+      - name: Download arm64 apd
+        uses: actions/download-artifact@v8
+        with:
+          name: apd-aarch64-linux-android
+          path: artifacts/apd-aarch64-linux-android
+
+      - name: Download arm apd
+        uses: actions/download-artifact@v8
+        with:
+          name: apd-armv7-linux-androideabi
+          path: artifacts/apd-armv7-linux-androideabi
+
+      - name: Download x86_64 apd
+        uses: actions/download-artifact@v8
+        with:
+          name: apd-x86_64-linux-android
+          path: artifacts/apd-x86_64-linux-android
+
+      - name: Place manager apk and binaries
         run: |
           mkdir -p manager/app/build/outputs/apk/release
           APK=$(find artifacts/manager-gradle -type f -name "*.apk" | head -n 1)
@@ -284,6 +314,7 @@ jobs:
           mkdir -p target/aarch64-linux-android/release
           mkdir -p target/armv7-linux-androideabi/release
           mkdir -p target/x86_64-linux-android/release
+          
           ARM64_KSUD=$(find artifacts/ksud-aarch64-linux-android -type f -name ksud | head -n 1)
           ARM_KSUD=$(find artifacts/ksud-armv7-linux-androideabi -type f -name ksud | head -n 1)
           X86_64_KSUD=$(find artifacts/ksud-x86_64-linux-android -type f -name ksud | head -n 1)
@@ -293,6 +324,16 @@ jobs:
           cp -f "$ARM64_KSUD" target/aarch64-linux-android/release/ksud
           cp -f "$ARM_KSUD" target/armv7-linux-androideabi/release/ksud
           cp -f "$X86_64_KSUD" target/x86_64-linux-android/release/ksud
+
+          ARM64_APD=$(find artifacts/apd-aarch64-linux-android -type f -name apd | head -n 1)
+          ARM_APD=$(find artifacts/apd-armv7-linux-androideabi -type f -name apd | head -n 1)
+          X86_64_APD=$(find artifacts/apd-x86_64-linux-android -type f -name apd | head -n 1)
+          test -n "$ARM64_APD"
+          test -n "$ARM_APD"
+          test -n "$X86_64_APD"
+          cp -f "$ARM64_APD" target/aarch64-linux-android/release/apd
+          cp -f "$ARM_APD" target/armv7-linux-androideabi/release/apd
+          cp -f "$X86_64_APD" target/x86_64-linux-android/release/apd
 
       - name: Prepare signing inputs
         if: ${{ github.event_name == 'pull_request' || (github.event_name != 'pull_request') || github.ref_type == 'tag' }}

@@ -1,0 +1,48 @@
+name: Build apd
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v8
+    
+    - name: Setup rustup
+      run: |
+        rustup update stable
+        rustup target add ${{ inputs.target }}
+
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: userspace/apd
+        cache-targets: false
+
+    - uses: nttld/setup-ndk@v1
+      id: setup-ndk
+      with:
+        ndk-version: r29
+
+    - name: Build apd
+      env:
+        ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          export KSU_PACKAGE_NAME="me.weishu.kernelsu.pr"
+        fi
+        source .github/scripts/setup-rust-build.sh ${{ inputs.target }} 26
+        cargo build --target $TRIPLE --release --manifest-path ./userspace/apd/Cargo.toml
+
+    - name: Upload apd artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: apd-${{ inputs.target }}
+        path: target/${{ inputs.target }}/release/apd
