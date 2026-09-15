@@ -3,8 +3,8 @@ use std::{env, fs::File, io::Write, path::Path, process::Command};
 // app/src/main/cpp/version is the single source of the KernelPatch version;
 // both this crate and the root build.gradle.kts derive their copy from it.
 fn get_kp_version() -> (u32, u32, u32) {
-    let header = std::fs::read_to_string("../app/src/main/cpp/version")
-        .expect("Failed to read ../app/src/main/cpp/version");
+    let header = std::fs::read_to_string("../../manager/app/src/main/cpp/apatch/version")
+        .expect("Failed to read ../../manager/app/src/main/cpp/apatch/version");
     let parse = |name: &str| -> u32 {
         header
             .lines()
@@ -12,7 +12,7 @@ fn get_kp_version() -> (u32, u32, u32) {
                 line.strip_prefix(format!("#define {name} ").as_str())
                     .and_then(|v| v.trim().parse().ok())
             })
-            .unwrap_or_else(|| panic!("{name} not found in app/src/main/cpp/version"))
+            .unwrap_or_else(|| panic!("{name} not found in manager/app/src/main/cpp/apatch/version"))
     };
     (parse("MAJOR"), parse("MINOR"), parse("PATCH"))
 }
@@ -50,7 +50,7 @@ fn main() {
     // update VersionCode when git repository change
     println!("cargo:rerun-if-changed=../.git/HEAD");
     println!("cargo:rerun-if-changed=../.git/refs/");
-    println!("cargo:rerun-if-changed=../app/src/main/cpp/version");
+    println!("cargo:rerun-if-changed=../../manager/app/src/main/cpp/apatch/version");
 
     let (code, name) = match get_git_version() {
         Ok((code, name)) => (code, name),
