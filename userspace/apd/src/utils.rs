@@ -224,7 +224,8 @@ pub fn daemonize() -> Result<()> {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn umask(mask: u32) {
-    unsafe { libc::umask(mask) };
+    #[allow(clippy::useless_conversion)]
+    unsafe { libc::umask(mask.try_into().unwrap_or(mask as libc::mode_t)) };
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]

@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use libc::{EEXIST, EINVAL, c_long, c_void, syscall, uid_t};
+use libc::{EINVAL, c_long, c_void, syscall, uid_t};
 use log::{error, info, warn};
 
 use crate::package::{read_ap_package_config, synchronize_package_uid};
@@ -60,10 +60,10 @@ struct SuProfile {
 }
 
 fn ver_and_cmd(cmd: c_long) -> c_long {
-    let version_code: u32 = ((KP_MAJOR << 16) + (KP_MINOR << 8) + KP_PATCH)
+    let version_code: u64 = ((KP_MAJOR << 16) + (KP_MINOR << 8) + KP_PATCH)
         .try_into()
         .unwrap();
-    ((version_code as c_long) << 32) | (0x1158 << 16) | (cmd & 0xFFFF)
+    ((version_code << 32) | (0x1158 << 16) | ((cmd as u64) & 0xFFFF)) as c_long
 }
 
 pub fn report_kernel_event(superkey: &Option<String>, event: &str, state: &str) -> c_long {

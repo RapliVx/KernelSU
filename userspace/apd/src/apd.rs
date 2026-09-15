@@ -193,10 +193,7 @@ pub fn root_shell() -> Result<()> {
         // guaranteed to be one, which is UB and made every lookup fail.
         let c_name = CString::new(name.as_str())?;
         (uid, gid) = unsafe {
-            #[cfg(target_arch = "aarch64")]
             let pw = libc::getpwnam(c_name.as_ptr()).as_ref();
-            #[cfg(target_arch = "x86_64")]
-            let pw = libc::getpwnam(c_name.as_ptr() as *const i8).as_ref();
 
             match pw {
                 Some(pw) => (pw.pw_uid, pw.pw_gid),

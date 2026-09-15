@@ -74,9 +74,9 @@ pub fn run(
         const SUPERCALL_HELLO: c_long = 0x1000;
         const SUPERCALL_HELLO_MAGIC: c_long = 0x11581158;
         let key = b"su\0";
-        let version_code: u32 = (0 << 16) | (13 << 8) | 1;
-        let cmd = ((version_code as c_long) << 32) | (0x1158 << 16) | (SUPERCALL_HELLO & 0xFFFF);
-        let ret = unsafe { libc::syscall(__NR_SUPERCALL, key.as_ptr(), cmd) };
+        let version_code: u64 = (0 << 16) | (13 << 8) | 1;
+        let cmd = (version_code << 32) | (0x1158 << 16) | ((SUPERCALL_HELLO & 0xFFFF) as u64);
+        let ret = unsafe { libc::syscall(__NR_SUPERCALL, key.as_ptr(), cmd as c_long) };
         if ret == SUPERCALL_HELLO_MAGIC {
             info!("real KernelPatch detected via supercall, skipping jailbreak late-load entirely");
             return Ok(());
