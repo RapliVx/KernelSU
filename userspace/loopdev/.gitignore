@@ -1,0 +1,7 @@
+target/
+/Cargo.lock
+test.img
+disk.img
+*.rustfmt
+.vagrant
+*.log

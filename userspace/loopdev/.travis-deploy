@@ -1,0 +1,15 @@
+#!/bin/bash
+set -uo pipefail
+trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+IFS=$'\n\t'
+
+PKGID="$(cargo pkgid)"
+echo "Cargo version: ${PKGID##*#}"
+echo "Travis tag:    ${TRAVIS_TAG}"
+
+if [[ "${PKGID##*#}" == "$TRAVIS_TAG" ]]; then
+    cargo publish --token "$CARGO_TOKEN"
+else
+    echo "Git tag '${TRAVIS_TAG}' does not match cargo version '${PKGID##*#}'" 1>&2
+    exit 1
+fi

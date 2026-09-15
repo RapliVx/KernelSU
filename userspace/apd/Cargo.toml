@@ -54,7 +54,7 @@ rustix = { version = "1", features = ["all-apis"] }
 # some android specific dependencies which compiles under unix are also listed here for convenience of coding
 android-properties = { version = "0.2.2", features = ["bionic-deprecated"] }
 procfs = "0.18"
-loopdev = { git = "https://github.com/AndroidPatch/loopdev" }
+loopdev = { path = "../loopdev" }
 prop-rs-android = { git = "https://github.com/Kernel-SU/ksu_props", rev = "6f5723105d8d4cacad31d83d343defbf032c7b33"}
 # Pinned to pre-rewrite rev: master (6ee5489) sepol_add_type does two reallocs
 # and writes the new pointers back only if BOTH succeed; on a partial failure

@@ -3,6 +3,7 @@ members = [
     "userspace/ksud",
     "userspace/ksuinit",
     "userspace/apd",
+    "userspace/loopdev",
 ]
 default-members = [
     "userspace/ksud",

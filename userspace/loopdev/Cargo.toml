@@ -1,0 +1,29 @@
+[package]
+name = "loopdev"
+description = "Setup and control loop devices"
+version = "0.5.0"
+authors = ["Michael Daffin <michael@daffin.io>"]
+license = "MIT"
+documentation = "https://docs.rs/loopdev"
+repository = "https://github.com/mdaffin/loopdev"
+readme = "README.md"
+keywords = ["loop", "losetup"]
+edition = "2021"
+
+[badges]
+travis-ci = { repository = "serde-rs/serde" }
+
+[features]
+direct_io = []
+
+[dependencies]
+errno = "0.2.8"
+libc = "0.2.105"
+
+[dev-dependencies]
+tempfile = "3.2.0"
+lazy_static = "1.4.0"
+serde_json = "1.0.68"
+serde = { version = "1.0.130", features = ["derive"] }
+gpt = "3.0.0"
+glob = "0.3.0"

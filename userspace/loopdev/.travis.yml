@@ -1,0 +1,42 @@
+sudo: required
+language: rust
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+
+rust:
+  - nightly
+  - beta
+  - stable
+  - 1.52.0
+  - 1.51.0
+  - 1.50.0
+
+matrix:
+  allow_failures:
+    - rust: nightly
+
+before_script:
+  - fallocate -l 128M disk.img
+  - '[[ "$TRAVIS_RUST_VERSION" != "stable" ]] || rustup component add clippy-preview'
+
+env:
+  global:
+    - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+    - secure: "yxpJSNW4ASzz983BpHFHE3uoS+4eyB1YIZjZjtL+1/VLESMp5ZEx5nfYdcbg/yA45nsldERZaLEtyhhgbnSOofdzPsZjxrmF2B+ePheTg4GEvH4HGg1Gz8Phmkjd4PRt4w8ji0Qk6h0NruUMMImUBYLRAAB6z2iKQCaCftKhBtQDXtJ6XUe7xom4McooLsBYuJgY//Fjn/BbvClwn3RfpSWttEQJ6j8gQlMLxtLNxtQ8cf/NShkGmRyl4U0QqURBZqvR2LstnqVkYEVifJoWfnIn9qCKYTouj4tRxy3IUwOPFZ9/SvcN639zP8V4qy1vJ146GyfEDpN4mtFP23U6gBbnwVGaaPeGyVVCYYbPfFWbgSs0GUt2JCUTAJaHuIXCrUb8Tlcj3a5smd7ffwdoSK29arTkHF2j94GmTdDZLeGmLtOPz9GGHLnafmNyd8C2UW4psxapskEXaixAYg81R907dW4ZitDxKygnsBHHYzJoHP94cCqR+n6rad9z/YW0ZtMWgEenEkr4qht/jEMRz23a1kLEfmphCAPNzYI3jXFYaBq/sZHeoe/d5cSWxOyeUti9cLtlnpDOEi0S+M9Fczz/iH9EU3a0pQt1KGuOIzExcIV3WmpBErEaF+Xj0Vw7BfFt7yJAk0EAv1nCM8untqoFnmQQCYeiOP+XbhjHzjo="
+
+script:
+  - '[[ "$TRAVIS_RUST_VERSION" != "stable" ]] || cargo clippy -- -D warnings'
+  - cargo build
+  - sudo -E  env "PATH=$PATH" cargo test --jobs 1
+
+deploy:
+  - provider: script
+    skip_cleanup: true
+    on:
+      tags: true
+      condition: "$TRAVIS_RUST_VERSION = stable"
+    script: ./.travis-deploy
