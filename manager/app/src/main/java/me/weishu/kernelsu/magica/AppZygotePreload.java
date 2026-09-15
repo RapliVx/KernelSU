@@ -4,10 +4,12 @@ import android.app.ZygotePreload;
 import android.content.pm.ApplicationInfo;
 import android.util.Log;
 
+import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 
 import java.io.File;
 
+@Keep
 public class AppZygotePreload implements ZygotePreload {
     public static final String TAG = "KernelSUMagica";
 

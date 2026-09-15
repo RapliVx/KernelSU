@@ -7,6 +7,7 @@ import androidx.compose.runtime.Immutable
 import dalvik.annotation.optimization.FastNative
 import kotlinx.parcelize.Parcelize
 
+@Keep
 object APatchNatives {
     init {
         System.loadLibrary("apjni")

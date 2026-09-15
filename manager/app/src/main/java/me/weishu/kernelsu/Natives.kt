@@ -12,6 +12,7 @@ import me.weishu.kernelsu.ui.util.rootAvailable
  * @author weishu
  * @date 2022/12/8.
  */
+@Keep
 object Natives {
     var superKey: String = "su"
     val isAPatchInstalled: Boolean
