@@ -2,10 +2,12 @@
 members = [
     "userspace/ksud",
     "userspace/ksuinit",
+    "userspace/apd",
 ]
 default-members = [
     "userspace/ksud",
     "userspace/ksuinit",
+    "userspace/apd",
 ]
 resolver = "3"
 
@@ -23,4 +25,7 @@ opt-level = "z"
 panic = "abort"
 
 [profile.release.package.ksud]
+codegen-units = 1
+
+[profile.release.package.apd]
 codegen-units = 1
