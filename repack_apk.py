@@ -241,15 +241,23 @@ def repack_apk(
     out_unsigned_path: Path,
     arch_filters: List[str],
     ksud_by_arch: Dict[str, Path],
+    apd_by_arch: Dict[str, Path],
     strip_tool: Optional[Path] = None,
 ) -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
-        ksud_bytes_by_arch: Dict[str, bytes] = {}; apd_bytes_by_arch: Dict[str, bytes] = {}
+        ksud_bytes_by_arch: Dict[str, bytes] = {}
+        apd_bytes_by_arch: Dict[str, bytes] = {}
         for arch, ksud_path in ksud_by_arch.items():
             if strip_tool is not None:
                 ksud_bytes_by_arch[arch] = strip_binary(ksud_path, strip_tool, Path(tmp_dir))
             else:
                 ksud_bytes_by_arch[arch] = ksud_path.read_bytes()
+
+        for arch, apd_path in apd_by_arch.items():
+            if strip_tool is not None:
+                apd_bytes_by_arch[arch] = strip_binary(apd_path, strip_tool, Path(tmp_dir))
+            else:
+                apd_bytes_by_arch[arch] = apd_path.read_bytes()
 
         with ZipFile(apk_path, "r") as zin, ZipFile(out_unsigned_path, "w") as zout:
             for info in zin.infolist():
@@ -261,9 +269,14 @@ def repack_apk(
                         continue
 
                 # Drop original libksud.so only for arches that have a replacement binary.
-                if name.startswith("lib/") and name.endswith(f"/lib{bin_name}.so"):
+                if name.startswith("lib/") and name.endswith("/libksud.so"):
                     parts = name.split("/")
                     if len(parts) >= 3 and parts[1] in ksud_bytes_by_arch:
+                        continue
+
+                if name.startswith("lib/") and name.endswith("/libapd.so"):
+                    parts = name.split("/")
+                    if len(parts) >= 3 and parts[1] in apd_bytes_by_arch:
                         continue
 
                 data = zin.read(name)
@@ -278,15 +291,15 @@ def repack_apk(
                 else:
                     zout.writestr(new_info, data)
 
-            for arch in arch_filters:
-                ksud_bytes = ksud_bytes_by_arch.get(arch)
-                if ksud_bytes is None:
-                    continue
-                lib_path = f"lib/{arch}/libksud.so"
-                entry = ZipInfo(filename=lib_path)
-                entry.compress_type = ZIP_DEFLATED
-                zout.writestr(entry, ksud_bytes)
+            for arch, data in ksud_bytes_by_arch.items():
+                info = ZipInfo(filename=f"lib/{arch}/libksud.so", date_time=(2024, 1, 1, 0, 0, 0))
+                info.external_attr = 0o100755 << 16
+                zout.writestr(info, data, compress_type=ZIP_DEFLATED)
 
+            for arch, data in apd_bytes_by_arch.items():
+                info = ZipInfo(filename=f"lib/{arch}/libapd.so", date_time=(2024, 1, 1, 0, 0, 0))
+                info.external_attr = 0o100755 << 16
+                zout.writestr(info, data, compress_type=ZIP_DEFLATED)
 
 def assert_required_libs(apk_path: Path, arch_filters: List[str]) -> None:
     with ZipFile(apk_path, "r") as zf:
@@ -329,10 +342,11 @@ def do_repack(args: argparse.Namespace) -> int:
             arch_filters = ["arm64-v8a"]
         print(f"[INFO] No arch configured, using: {', '.join(arch_filters)}")
 
-    ksud_by_arch = find_binaries_by_arch(cfg["ksud_build_type"], arch_filters)
+    ksud_by_arch = find_binaries_by_arch(cfg["ksud_build_type"], arch_filters, "ksud")
+    apd_by_arch = find_binaries_by_arch(cfg["ksud_build_type"], arch_filters, "apd")
     missing_ksud_arches = [arch for arch in arch_filters if arch not in ksud_by_arch]
     if missing_ksud_arches:
-        existing_ksud_arches = set(collect_existing_ksud_arches(apk))
+        existing_ksud_arches = set(collect_existing_ksud_arches(apk, "ksud"))
         missing_in_apk = [arch for arch in missing_ksud_arches if arch not in existing_ksud_arches]
         if missing_in_apk:
             raise RuntimeError(
