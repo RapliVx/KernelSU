@@ -1174,6 +1174,7 @@ fun ModuleItemPreview() {
         hasWebUi = false,
         hasActionScript = false,
         metamodule = true,
+        isKpm = false,
         banner = null, actionIconPath = null, webUiIconPath = null
     )
     ModuleItem(EmptyDestinationsNavigator, module, "", {}, {}, {}, {})

@@ -151,7 +151,7 @@ class ModuleViewModel : ViewModel() {
                     val result = listModules()
                     Log.i(TAG, "result: $result")
                     val array = JSONArray(result)
-                    (0 until array.length()).asSequence()
+                    val list = (0 until array.length()).asSequence()
                         .map { array.getJSONObject(it) }
                         .map { obj ->
                             ModuleInfo(
@@ -175,7 +175,7 @@ class ModuleViewModel : ViewModel() {
                             )
                         }.toMutableList()
                     
-                    if (Natives.isAPatchInstalled) {
+                    if (me.weishu.kernelsu.Natives.isAPatchInstalled) {
                         val kpmList = me.weishu.kernelsu.apatch.APatchNatives.kernelPatchModuleList()
                         if (kpmList.isNotBlank()) {
                             for (kernelName in kpmList.split('\n')) {
@@ -186,8 +186,8 @@ class ModuleViewModel : ViewModel() {
                                     val version = lines.firstOrNull { it.startsWith("version=") }?.removePrefix("version=") ?: ""
                                     val author = lines.firstOrNull { it.startsWith("author=") }?.removePrefix("author=") ?: ""
                                     val description = lines.firstOrNull { it.startsWith("description=") }?.removePrefix("description=") ?: ""
-                                    // Check if disabled by checking /data/adb/ap/kpm/$id/disable
-                                    val disabled = com.topjohnwu.superuser.ShellUtils.fastCmdResult(me.weishu.kernelsu.ui.util.KsuCli.SHELL, "[ -e '/data/adb/ap/kpm/$id/disable' ] && echo 1 || echo 0").trim() == "1"
+                                    
+                                    val disabled = com.topjohnwu.superuser.Shell.cmd("[ -e '/data/adb/ap/kpm/$id/disable' ] && echo 1 || echo 0").exec().out.joinToString("").trim() == "1"
                                     
                                     list.add(
                                         ModuleInfo(

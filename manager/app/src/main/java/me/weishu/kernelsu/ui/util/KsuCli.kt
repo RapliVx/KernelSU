@@ -154,11 +154,11 @@ fun getSuperuserCount(): Int {
 
 fun toggleModule(id: String, enable: Boolean): Boolean {
     if (me.weishu.kernelsu.Natives.isAPatchInstalled) {
-        val hasModuleDir = com.topjohnwu.superuser.ShellUtils.fastCmdResult(SHELL, "[ -d '/data/adb/modules/$id' ] && echo 1 || echo 0").trim() == "1"
+        val hasModuleDir = com.topjohnwu.superuser.ShellUtils.fastCmdResult(getRootShell(), "[ -d '/data/adb/modules/$id' ] && echo 1 || echo 0").trim() == "1"
         if (!hasModuleDir) {
             val dir = "/data/adb/ap/kpm/$id"
             val cmd = if (enable) "rm -f '$dir/disable'" else "mkdir -p '$dir' && touch '$dir/disable'"
-            com.topjohnwu.superuser.ShellUtils.fastCmdResult(SHELL, cmd)
+            com.topjohnwu.superuser.ShellUtils.fastCmdResult(getRootShell(), cmd)
             return true
         }
     }
@@ -637,5 +637,5 @@ fun flashAPatch(uri: Uri, onStdout: (String) -> Unit, onStderr: (String) -> Unit
         .edit()
         .putString("superKey", me.weishu.kernelsu.Natives.superKey)
         .apply()
-    return FlashResult(com.topjohnwu.superuser.ShellUtils.fastCmdResult(getRootShell(), "echo 'Not implemented'"), false)
+    return FlashResult(com.topjohnwu.superuser.Shell.cmd("echo 'Not implemented'").exec(), false)
 }

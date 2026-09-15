@@ -34,6 +34,8 @@
     <string name="confirm">Confirm</string>
     <string name="uninstall">Uninstall</string>
     <string name="module_install">Install</string>
+    <string name="install_kernel_patch">Install KernelPatch</string>
+    <string name="install_options">Install Options</string>
     <string name="install">Install</string>
     <string name="reboot">Reboot</string>
     <string name="settings">Settings</string>
