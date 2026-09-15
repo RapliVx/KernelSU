@@ -175,6 +175,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 val lkmMode = remember(ksuVersion) {
                     ksuVersion?.let { if (kernelVersion.isGKI()) Natives.isLkmMode else null }
                 }
+                val lkmVariant = remember(isManager) { if (isManager) Natives.lkmVariant else null }
                 val requireNewKernel = remember { Natives.managerUAPIVersion > Natives.kernelUAPIVersion }
                 val isRootAvailable = remember { rootAvailable() }
                 val fullFeatured = remember(isManager, requireNewKernel, isRootAvailable) {
@@ -185,6 +186,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     kernelVersion = kernelVersion,
                     ksuVersion = ksuVersion,
                     lkmMode = lkmMode,
+                    lkmVariant = lkmVariant,
                     fullFeatured = fullFeatured,
                     useClassicLayout = useClassicLayout,
                     onClickInstall = { navigator.navigate(InstallScreenDestination) },
@@ -328,6 +330,7 @@ private fun StatusCard(
     kernelVersion: KernelVersion,
     ksuVersion: Int?,
     lkmMode: Boolean?,
+    lkmVariant: String? = null,
     fullFeatured: Boolean?,
     useClassicLayout: Boolean,
     onClickInstall: () -> Unit = {},
@@ -339,7 +342,7 @@ private fun StatusCard(
     
     val workingMode = when (lkmMode) {
         null -> "Legacy"
-        true -> "LKM"
+        true -> lkmVariant ?: "LKM"
         else -> "GKI"
     }
 
