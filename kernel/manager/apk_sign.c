@@ -1,4 +1,3 @@
-#include "util.h"
 #include <linux/err.h>
 #include <linux/fs.h>
 #include <linux/gfp.h>
@@ -155,11 +154,14 @@ static __always_inline bool check_v2_signature(char *path, unsigned expected_siz
     int v2_signing_blocks = 0;
 
     int i;
-    struct file *fp = ksu_filp_open_nonotify(path, O_RDONLY | O_NOATIME);
+    struct file *fp = filp_open(path, O_RDONLY, 0);
     if (IS_ERR(fp)) {
         pr_err("open %s error.\n", path);
         return false;
     }
+
+    // disable inotify for this file
+    fp->f_mode |= FMODE_NONOTIFY;
 
     file_size = generic_file_llseek(fp, 0, SEEK_END);
     if (file_size < 0)
