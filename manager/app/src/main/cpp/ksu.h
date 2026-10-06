@@ -62,11 +62,6 @@ bool is_selinux_hide_enabled();
 
 bool is_selinux_hide_supported();
 
-// Avc spoof
-bool set_avc_spoof_enabled(bool enabled);
-
-bool is_avc_spoof_enabled();
-
 // Adb Root
 bool set_adb_root_enabled(bool enabled);
 
