@@ -68,7 +68,7 @@ source .github/scripts/setup-rust-build.sh "$TARGET" 26
 export PATH="$LLVM_BIN:$HOME/.cargo/bin:$PATH"
 
 DIR="$(pwd)"
-DDK_RELEASE="$(grep -oP 'ddk_release.*?\K[0-9]+' .github/workflows/build-lkm.yml)"
+DDK_RELEASE="$(grep -oP "default: '[0-9]+'" .github/workflows/ddk-lkm.yml | grep -oP '[0-9]+' || echo '20260828')"
 VALID_KMIS="$(grep android .github/workflows/build-lkm.yml | sed 's/.*- android/android/g')"
 
 BUILD_KSUD=0
@@ -250,5 +250,24 @@ fi
 wait_for_jobs manager
 echo "=== Repacking manager APK ==="
 rm -f out/*.apk dist/*.apk
+if [ ! -f "repack-config.json" ]; then
+    cat << EOF > repack-config.json
+{
+    "signing": {
+        "keystore_path": "$KEYSTORE_FILE",
+        "key_alias": "$KEY_ALIAS",
+        "keystore_pass": "$KEYSTORE_PASSWORD",
+        "key_pass": "$KEY_PASSWORD"
+    },
+    "app_build_type": "release",
+    "ksud_build_type": "release",
+    "arch": [
+        "arm64-v8a"
+    ],
+    "output_name": "",
+    "strip": true
+}
+EOF
+fi
 python3 repack_apk.py repack
 cp -f dist/*.apk out/
