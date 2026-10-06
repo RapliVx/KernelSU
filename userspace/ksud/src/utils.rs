@@ -17,6 +17,7 @@ use crate::defs::KSU_TEMP_BACKUP_DIR_NAME;
 use crate::{assets, boot_patch, defs, ksucalls, module, restorecon};
 #[allow(unused_imports)]
 use std::fs::{Permissions, set_permissions};
+#[cfg(unix)]
 use std::os::unix::prelude::PermissionsExt;
 
 use std::path::PathBuf;
@@ -32,7 +33,7 @@ type PropertyReadCallback = unsafe extern "C" fn(*mut c_void, *const c_char, *co
 
 unsafe extern "C" {
     fn __system_property_find(name: *const c_char) -> *const c_void;
-    fn compat_system_property_read_callback(
+    fn __system_property_read_callback(
         property_info: *const c_void,
         callback: PropertyReadCallback,
         cookie: *mut c_void,
@@ -110,6 +111,7 @@ pub fn ensure_binary<T: AsRef<Path>>(
     }
 
     write(&path, contents)?;
+    #[cfg(unix)]
     set_permissions(&path, Permissions::from_mode(0o755))?;
     Ok(())
 }
@@ -138,7 +140,7 @@ pub fn getprop(name: &str) -> Option<String> {
 
     let mut value = None;
     unsafe {
-        compat_system_property_read_callback(
+        __system_property_read_callback(
             property_info,
             property_read_callback,
             std::ptr::addr_of_mut!(value).cast(),

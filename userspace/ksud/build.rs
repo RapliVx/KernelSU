@@ -20,7 +20,7 @@ fn get_git_version() -> Result<(u32, String), std::io::Error> {
         .trim()
         .parse()
         .map_err(|_| std::io::Error::other("Failed to parse git count"))?;
-    let version_code = 30000 + version_code - 84;
+    let version_code = 30000 + version_code;
 
     let version_name = String::from_utf8(
         Command::new("git")
@@ -37,20 +37,14 @@ fn configure_bindgen() {
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
     // the resulting bindings.
-    let mut builder = bindgen::Builder::default()
+    let bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
         .header("src/ksu_uapi.h")
         .clang_args(["-x", "c++", "-I../../"])
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()));
-    if env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("riscv64") {
-        // libc does not yet expose Android's RISC-V signal context. Generate
-        // it from the target NDK rather than assuming another libc's layout.
-        builder = builder.header_contents("ksu_signal_context.h", "#include <sys/ucontext.h>");
-    }
-    let bindings = builder
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         // Finish the builder and generate the bindings.
         .generate()
         // Unwrap the Result and panic on failure.
@@ -234,7 +228,7 @@ fn main() {
         }
     };
     if env::var("KSU_PACKAGE_NAME").is_err() {
-        println!("cargo:rustc-env=KSU_PACKAGE_NAME=com.rapli.mambosu");
+        println!("cargo:rustc-env=KSU_PACKAGE_NAME=com.kowx712.supermanager");
     }
     println!("cargo:rustc-env=VERSION_CODE={code}");
     println!("cargo:rustc-env=VERSION_NAME={name}");
@@ -242,6 +236,5 @@ fn main() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS not set");
     if target_os == "android" {
         configure_bindgen();
-        cc::Build::new() .file("src/compat.c") .flag("-std=gnu23") .compile("compat");
     }
 }
