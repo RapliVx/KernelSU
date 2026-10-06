@@ -172,11 +172,11 @@ const packages = getPackagesInfo(['com.android.settings', 'com.android.shell']);
 An object contains:
 
 - `packageName` `<string>` Package name of the application.
-- `versionName` `<string>` Version of the application.
+- `versionName` `<string>` Version of the application. Empty string if unavailable.
 - `versionCode` `<number>` Version code of the application.
 - `appLabel` `<string>` Display name of the application.
-- `isSystem` `<boolean | null>` Whether the application is a system app.
-- `uid` `<number | null>` UID of the application.
+- `isSystem` `<boolean | null>` Whether the application is a system app. `null` if application info is unavailable.
+- `uid` `<number | null>` UID of the application. `null` if application info is unavailable.
 
 If a package could not be resolved, the returned object contains:
 
@@ -203,6 +203,11 @@ import { io } from 'kernelsu';
 #### io.File
 
 Represents a file or directory path. All operations execute via root shell.
+
+**Error handling**: Methods return default values (false, empty arrays, -1, etc.) on error.
+Check return values carefully. For example, `exists()` returns false both when a file doesn't
+exist and when permission is denied. Use multiple checks to disambiguate (e.g., check parent
+directory permissions if a file operation fails).
 
 ```javascript
 const file = io.File('/data/adb/modules');
@@ -257,15 +262,22 @@ if (file.exists()) {
 
 Read file contents as base64-encoded chunks.
 
+**Error handling**: Methods return empty string or 0 on error. Always check `open()` return
+value before using the stream ID. Close streams when done to avoid resource leaks.
+
 ```javascript
 const reader = io.FileInputStream();
 const id = reader.open('/data/adb/ksu.log');
 
-let chunk;
-while ((chunk = reader.read(id)) !== '') {
-    console.log(atob(chunk));
+if (!id) {
+    console.error('Failed to open file');
+} else {
+    let chunk;
+    while ((chunk = reader.read(id)) !== '') {
+        console.log(atob(chunk));
+    }
+    reader.close(id);
 }
-reader.close(id);
 ```
 
 ##### Methods
@@ -280,12 +292,21 @@ reader.close(id);
 
 Write file contents from base64-encoded data.
 
+**Error handling**: Methods return false on error. Always check `open()` and `write()` return
+values. Close streams when done to avoid resource leaks.
+
 ```javascript
 const writer = io.FileOutputStream();
 const id = writer.open('/data/adb/output.txt');
 
-writer.write(id, btoa('Hello, World!'));
-writer.close(id);
+if (!id) {
+    console.error('Failed to open file for writing');
+} else {
+    if (!writer.write(id, btoa('Hello, World!'))) {
+        console.error('Write failed');
+    }
+    writer.close(id);
+}
 ```
 
 ##### Methods
@@ -300,16 +321,24 @@ writer.close(id);
 
 Random access file I/O with seek support. Uses `dd` under the hood, so each operation has overhead. Prefer `FileInputStream`/`FileOutputStream` for sequential access.
 
+**Error handling**: Methods return default values on error (0, -1, false, empty string, null).
+Always check `open()` return value before using the file ID. Close files when done to avoid
+resource leaks.
+
 ```javascript
 const raf = io.RandomAccessFile();
 const id = raf.open('/data/adb/data.bin', 'rw');
 
-raf.seek(id, 1024);
-raf.writeInt(id, 42);
-raf.seek(id, 1024);
-console.log(raf.readInt(id));
-
-raf.close(id);
+if (!id) {
+    console.error('Failed to open file');
+} else {
+    raf.seek(id, 1024);
+    raf.writeInt(id, 42);
+    raf.seek(id, 1024);
+    console.log(raf.readInt(id));
+    
+    raf.close(id);
+}
 ```
 
 ##### Methods
