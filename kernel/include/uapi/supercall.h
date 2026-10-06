@@ -1,8 +1,11 @@
 #ifndef __KSU_UAPI_SUPERCALL_H
 #define __KSU_UAPI_SUPERCALL_H
 
+// 2: allowlist v4 root profile flags
+// 3: scoped su-session driver fd
 // 4: add KSU_GET_INFO_FLAG_BUNDLED
-#define KERNEL_SU_UAPI_VERSION 4
+// 5: add EVENT_SERVICES with a start/skip result
+#define KERNEL_SU_UAPI_VERSION 5
 
 /* Magic numbers for reboot hook to install fd */
 #define KSU_INSTALL_MAGIC1 0xDEADBEEF
@@ -15,6 +18,7 @@ struct ksu_become_daemon_cmd {
 #define EVENT_POST_FS_DATA 1
 #define EVENT_BOOT_COMPLETED 2
 #define EVENT_MODULE_MOUNTED 3
+#define EVENT_SERVICES 4
 
 #define KSU_GET_INFO_FLAG_LKM (1U << 0)
 #define KSU_GET_INFO_FLAG_MANAGER (1U << 1)
@@ -144,37 +148,38 @@ struct ksu_get_hook_mode_cmd {
 	char mode[16];
 };
 
-#define KSU_UMOUNT_WIPE 0	// ignore everything and wipe list
-#define KSU_UMOUNT_ADD 1	// add entry (path + flags)
-#define KSU_UMOUNT_DEL 2	// delete entry, strcmp
+#define KSU_UMOUNT_WIPE 0	/* ignore everything and wipe list */
+#define KSU_UMOUNT_ADD 1	/* add entry (path + flags) */
+#define KSU_UMOUNT_DEL 2	/* delete entry, strcmp */
 
-// IOCTL command definitions
-#define KSU_IOCTL_GRANT_ROOT _IOC(_IOC_NONE, 'K', 1, 0)
-#define KSU_IOCTL_GET_INFO _IOR('K', 2, struct ksu_get_info_cmd)
-#define KSU_IOCTL_GET_INFO_LEGACY _IOC(_IOC_READ, 'K', 2, 0)
-#define KSU_IOCTL_REPORT_EVENT _IOC(_IOC_WRITE, 'K', 3, 0)
-#define KSU_IOCTL_SET_SEPOLICY _IOC(_IOC_READ|_IOC_WRITE, 'K', 4, 0)
-#define KSU_IOCTL_CHECK_SAFEMODE _IOC(_IOC_READ, 'K', 5, 0)
-// deprecated
-#define KSU_IOCTL_GET_ALLOW_LIST _IOC(_IOC_READ|_IOC_WRITE, 'K', 6, 0)
-// deprecated
-#define KSU_IOCTL_GET_DENY_LIST _IOC(_IOC_READ|_IOC_WRITE, 'K', 7, 0)
-#define KSU_IOCTL_NEW_GET_ALLOW_LIST _IOWR('K', 6, struct ksu_new_get_allow_list_cmd)
-#define KSU_IOCTL_NEW_GET_DENY_LIST _IOWR('K', 7, struct ksu_new_get_allow_list_cmd)
-#define KSU_IOCTL_UID_GRANTED_ROOT _IOC(_IOC_READ|_IOC_WRITE, 'K', 8, 0)
-#define KSU_IOCTL_UID_SHOULD_UMOUNT _IOC(_IOC_READ|_IOC_WRITE, 'K', 9, 0)
-#define KSU_IOCTL_GET_MANAGER_APPID _IOC(_IOC_READ, 'K', 10, 0)
-#define KSU_IOCTL_GET_APP_PROFILE _IOC(_IOC_READ|_IOC_WRITE, 'K', 11, 0)
-#define KSU_IOCTL_SET_APP_PROFILE _IOC(_IOC_WRITE, 'K', 12, 0)
-#define KSU_IOCTL_GET_FEATURE _IOC(_IOC_READ|_IOC_WRITE, 'K', 13, 0)
-#define KSU_IOCTL_SET_FEATURE _IOC(_IOC_WRITE, 'K', 14, 0)
-#define KSU_IOCTL_GET_WRAPPER_FD _IOC(_IOC_WRITE, 'K', 15, 0)
-#define KSU_IOCTL_MANAGE_MARK _IOC(_IOC_READ|_IOC_WRITE, 'K', 16, 0)
-#define KSU_IOCTL_NUKE_EXT4_SYSFS _IOC(_IOC_WRITE, 'K', 17, 0)
-#define KSU_IOCTL_ADD_TRY_UMOUNT _IOC(_IOC_WRITE, 'K', 18, 0)
-#define KSU_IOCTL_SET_INIT_PGRP _IO('K', 19)
-#define KSU_IOCTL_GET_SULOG_FD _IOW('K', 20, struct ksu_get_sulog_fd_cmd)
-#define KSU_IOCTL_DISABLE_ESCAPE_TO_ROOT _IO('K', 21)
+/* IOCTL command definitions */
+#define KSU_IOCTL_GRANT_ROOT			_IOC(_IOC_NONE, 'K', 1, 0)
+#define KSU_IOCTL_GET_INFO			_IOR('K', 2, struct ksu_get_info_cmd)
+/* deprecated */
+#define KSU_IOCTL_GET_INFO_LEGACY		_IOC(_IOC_READ, 'K', 2, 0)
+#define KSU_IOCTL_REPORT_EVENT			_IOC(_IOC_WRITE, 'K', 3, 0)
+#define KSU_IOCTL_SET_SEPOLICY			_IOC(_IOC_READ | _IOC_WRITE, 'K', 4, 0)
+#define KSU_IOCTL_CHECK_SAFEMODE		_IOC(_IOC_READ, 'K', 5, 0)
+/* deprecated */
+#define KSU_IOCTL_GET_ALLOW_LIST		_IOC(_IOC_READ | _IOC_WRITE, 'K', 6, 0)
+/* deprecated */
+#define KSU_IOCTL_GET_DENY_LIST			_IOC(_IOC_READ | _IOC_WRITE, 'K', 7, 0)
+#define KSU_IOCTL_NEW_GET_ALLOW_LIST		_IOWR('K', 6, struct ksu_new_get_allow_list_cmd)
+#define KSU_IOCTL_NEW_GET_DENY_LIST		_IOWR('K', 7, struct ksu_new_get_allow_list_cmd)
+#define KSU_IOCTL_UID_GRANTED_ROOT		_IOC(_IOC_READ | _IOC_WRITE, 'K', 8, 0)
+#define KSU_IOCTL_UID_SHOULD_UMOUNT		_IOC(_IOC_READ | _IOC_WRITE, 'K', 9, 0)
+#define KSU_IOCTL_GET_MANAGER_APPID		_IOC(_IOC_READ, 'K', 10, 0)
+#define KSU_IOCTL_GET_APP_PROFILE		_IOC(_IOC_READ | _IOC_WRITE, 'K', 11, 0)
+#define KSU_IOCTL_SET_APP_PROFILE		_IOC(_IOC_WRITE, 'K', 12, 0)
+#define KSU_IOCTL_GET_FEATURE			_IOC(_IOC_READ | _IOC_WRITE, 'K', 13, 0)
+#define KSU_IOCTL_SET_FEATURE			_IOC(_IOC_WRITE, 'K', 14, 0)
+#define KSU_IOCTL_GET_WRAPPER_FD		_IOC(_IOC_WRITE, 'K', 15, 0)
+#define KSU_IOCTL_MANAGE_MARK			_IOC(_IOC_READ | _IOC_WRITE, 'K', 16, 0)
+#define KSU_IOCTL_NUKE_EXT4_SYSFS		_IOC(_IOC_WRITE, 'K', 17, 0)
+#define KSU_IOCTL_ADD_TRY_UMOUNT		_IOC(_IOC_WRITE, 'K', 18, 0)
+#define KSU_IOCTL_SET_INIT_PGRP			_IO('K', 19)
+#define KSU_IOCTL_GET_SULOG_FD			_IOW('K', 20, struct ksu_get_sulog_fd_cmd)
+#define KSU_IOCTL_DISABLE_ESCAPE_TO_ROOT	_IO('K', 21)
 #define KSU_IOCTL_GET_HOOK_MODE _IOC(_IOC_READ, 'K', 98, 0)
 
 #endif

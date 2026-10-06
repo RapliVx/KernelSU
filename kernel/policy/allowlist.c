@@ -367,6 +367,7 @@ static void do_persistent_allow_list()
 	loff_t off = 0;
 	int i;
 
+	const struct cred *saved = override_creds(ksu_cred);
 	struct file *fp = filp_open(KERNEL_SU_ALLOWLIST, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (IS_ERR(fp)) {
 		pr_err("save_allow_list create file failed: %ld\n", PTR_ERR(fp));
@@ -394,7 +395,7 @@ static void do_persistent_allow_list()
 close_file:
 	filp_close(fp, 0);
 out:
-	return;
+	revert_creds(saved);
 }
 
 // this is a bit heavier than task work / workqueue but this allows
@@ -411,10 +412,8 @@ static int persistent_allow_list_pre(void *data)
 	 */
 	guarded_mutex_lock(&allowlist_mutex);
 	pr_info("do_persistent_allow_list: pid: %d started\n", current->pid);
-
 	escape_to_root_forced(); // give permissions for everything
 	do_persistent_allow_list();
-
 	pr_info("do_persistent_allow_list: pid: %d exit\n", current->pid);
 	return 0;
 }
@@ -459,7 +458,9 @@ void ksu_load_allow_list()
 	size_t app_profile_size;
 
 	// load allowlist now!
+	const struct cred *saved = override_creds(ksu_cred);
 	fp = filp_open(KERNEL_SU_ALLOWLIST, O_RDONLY, 0);
+	revert_creds(saved);
 	if (IS_ERR(fp)) {
 		pr_err("load_allow_list open file failed: %ld\n", PTR_ERR(fp));
 		return;

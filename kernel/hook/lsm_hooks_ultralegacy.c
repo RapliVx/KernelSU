@@ -114,13 +114,13 @@ static inline bool verify_selinux_cred_free(void *fn_ptr)
 	// make sure this happens!
 	// #1. it wont trigger BUG_ON
 	// #2. this way it will kfree(NULL), which does nothing
-	*(volatile void **)&dummy_cred.security = nullptr;
+	*(void **)&dummy_cred.security = nullptr;
 	barrier();
 
 	selinux_cred_free_fn(&dummy_cred);
 
 	// check if selinux_cred_free is successful
-	if ((unsigned long)*(volatile void **)&dummy_cred.security == 0x7UL)
+	if ((unsigned long)*(void **)&dummy_cred.security == 0x7UL)
 		success = true;
 
 	pr_info("selinux_cred_free: 0x%lx cred->security: 0x%lx success: %d\n", (unsigned long)fn_ptr, (unsigned long)dummy_cred.security, success);
@@ -140,8 +140,8 @@ static inline bool is_selinux_ops_valid(uintptr_t addr)
 	uintptr_t member_ptr = 0;
 	uintptr_t current_slot_addr;
 
-	// we will be off by one or off by two due to sizeof("selinux")
-	// thats 8 bytes, on 32 bit, this is two pointers worth, not a big deal
+	// we will be off by two or three due to sizeof(security_operations.name)
+	// thats 11 bytes, on 32 bit, this is three pointers worth, not a big deal
 
 density_verify_start:
 	current_slot_addr = addr + (i * sizeof(void *));
@@ -173,12 +173,11 @@ static inline bool check_candidate(uintptr_t addr)
 {
 	struct security_operations *candidate = (struct security_operations *)addr;
 
-	char char_buf[sizeof("selinux")] = { 0 };
-
+	char char_buf[sizeof("selinux")];
 	if (copy_from_kernel_nofault(char_buf, (void *)addr, sizeof("selinux") ))
 		return false;
 
-	if (!!memcmp(char_buf, "selinux", sizeof("selinux")))
+	if (!!memcmp_inline(char_buf, "selinux", sizeof("selinux")))
 		return false;
 
 	// candidate found!
@@ -198,10 +197,8 @@ static inline bool check_candidate(uintptr_t addr)
 
 	pr_info("%s: selinux_cred_free found via ksym_lookup: 0x%lx probe_result: 0x%lx \n", __func__, (long)ksym_ptr, (long)candidate->cred_free);
 	return true;
-
 test_fn:
 #endif
-
 	// oh yeah I am so confident that this is it
 	pr_info("%s: candidate selinux_cred_free at 0x%lx\n", __func__, (long)candidate->cred_free);
 	return verify_selinux_cred_free((void *)candidate->cred_free);

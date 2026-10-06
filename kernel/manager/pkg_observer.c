@@ -41,14 +41,14 @@ static void ksu_rename_observer_slow(struct dentry *old_dentry, struct dentry *n
 {
 	system_dir_inode_ptr = nullptr; // reset cached inode
 
-	char path[128] = { 0 };
+	char path[128];
 	char *buf = dentry_path_raw(new_dentry, path, sizeof(path) - 1);
 	if (IS_ERR(buf)) {
 		pr_err("dentry_path_raw failed.\n");
 		return;
 	}
 
-	if (!strstr(buf, "/system/packages.list"))
+	if (!strnstr(buf, "/system/packages.list", 128))
 		return;
 
 	pr_info("renameat: %s -> %s, new path: %s\n", old_dentry->d_iname, new_dentry->d_iname, buf);
@@ -69,14 +69,14 @@ static inline void ksu_rename_observer(struct dentry *old_dentry, struct dentry 
 	if (likely(current_uid().val != 1000))
 		return;
 
-	constexpr char plist[] = "packages.list";
+	constexpr unsigned char plist[] = "packages.list";
 
 	// HASH_LEN_DECLARE see dcache.h
 	if (likely(new_dentry->d_name.len != sizeof(plist) - 1  ))
 		return;
 
 	// /data/system/packages.list.tmp -> /data/system/packages.list
-	if (likely(!!__builtin_memcmp(new_dentry->d_iname, plist, sizeof(plist) - 1 )))
+	if (likely(!!memcmp_inline(new_dentry->d_iname, plist, sizeof(plist) - 1 )))
 		return;
 
 	// cache dir inode, we try to go for fast path, lockless

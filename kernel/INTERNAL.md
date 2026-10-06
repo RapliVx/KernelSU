@@ -2,8 +2,9 @@
 ## C-style
 - GNU23, but written in a way compatible to GNU17/GNU11 compilers.
 - pointer-heavy. assumes little endian on everything.
-- some metaprogramming is actually happening (redefines, compat hacks, backports)
-- plethora of compiler attributes / builtins, this is intended.
+- metaprogramming is actually happening: compile-time overloading/reflection, RAII-like cleanup, template-like type trickery
+- compat and backports are also done through that metaprogramming (mostly redefinitions)
+- heavy use of compiler attributes / builtins, this is intended.
 - minimum is GCC 4.9 / Clang 10
 
 ## build system
@@ -76,8 +77,10 @@
 ## kthreads
 - theres a lot of these on the codebase even for mundane tasks
 
-## log / reminders
-- some kernels reads 'cold + noinline' as __init, which evicts our fn. avoid this combination.
-- some kernels have autistic inlining which also fucks up if we ever wanted to \__\attribute__((flatten)) (e.g. sultan and other 'optimization')
-
+## 'We need to see the compiler as an enemy' section.
+- constexpr is broken on clang < 19 even on -std=gnu23. IR generation fails.
+- gcc 4.9 has issues on casted designated init. [related](https://github.com/torvalds/linux/commit/e8c07082a810fbb9db303a2b66b66b8d7e588b53)
+- some have autistic inlining which will oom compilation for \__attribute\_\_((flatten)) (e.g. sultan). avoid.
+- some kernel+compiler combo reads \__attribute\_\_((cold, noinline)) as __init, which evicts our fn. avoid.
+- static_assert on fn ptr (e.g. static_assert(!!&fn);) on clang < 14? fails. compiler thinks it has to prove constness, it works like assert(!!__builtin_constant_p(fn)) NOT assert(__builtin_constant_p(!!fn))
 

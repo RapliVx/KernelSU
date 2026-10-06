@@ -65,6 +65,7 @@
 #include <linux/ioctl.h>
 #include <linux/jump_label.h>
 #include <linux/kernel.h>
+#include <linux/key.h>
 #include <linux/kobject.h>
 #include <linux/kref.h>
 #include <linux/kthread.h>
@@ -84,6 +85,7 @@
 #include <linux/percpu.h>
 #include <linux/pid.h>
 #include <linux/poll.h>
+#include <linux/prctl.h>
 #include <linux/printk.h>
 #include <linux/ptrace.h>
 #include <linux/rculist.h>
@@ -233,24 +235,38 @@
  *	- do NOT use constexpr as array size on C11, it will likely become a VLA
  */
 #if !defined(KSU_HAS_C23)
-
 #define nullptr ((void *)0)
 typedef typeof(nullptr) nullptr_t;
-
 #define constexpr const
 #define auto __auto_type
-
 #define alignas _Alignas
 #define alignof _Alignof
-
-// note: requires clang
-// #define typeof_unqual(a) typeof(0, (a))
-
 #endif // KSU_HAS_C23
 
 // NOTE: clang < 19 has issues on constexpr even with -std=gnu23
 #if defined (KSU_HAS_C23) && defined(__clang__) && (__clang_major__ < 19)
 #define constexpr const
+#endif
+
+/**
+ * typeof_unqual requires C23, we import kernel's typeof_unqual for !C23
+ * https://elixir.bootlin.com/linux/v7.3-rc4/source/include/linux/compiler_types.h#L616
+ *
+ */
+#if !defined(KSU_HAS_C23)
+#define __scalar_type_to_expr_cases(type)	\
+	unsigned type:	(unsigned type)0,	\
+	signed type:	(signed type)0
+
+#define typeof_unqual(x) typeof(				\
+	_Generic((x),						\
+		char:	(char)0,				\
+		__scalar_type_to_expr_cases(char),		\
+		__scalar_type_to_expr_cases(short),		\
+		__scalar_type_to_expr_cases(int),		\
+		__scalar_type_to_expr_cases(long),		\
+		__scalar_type_to_expr_cases(long long),		\
+		default: (x)))
 #endif
 
 /**
@@ -261,23 +277,22 @@ typedef typeof(nullptr) nullptr_t;
  * static_assert(condition); - condition becomes the comment
  * static_assert(condition, "comment");
  */
-#ifndef static_assert
+#if !defined(KSU_HAS_C23) && !defined(static_assert)
 #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)
 #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)
 #endif
+#if defined(KSU_HAS_C23) && defined(static_assert)
+#undef static_assert
+#endif
 
 /**
- * we do NOT have memset_explicit on the linux kernel
- *
- * from: OPENSSL_cleanse, volatile function pointer prevents memset optimization
- * https://github.com/openssl/openssl/blob/master/crypto/mem_clr.c
- * 
+ * nodiscard is C23, we can fallback to __must_check
  */
-static __nocfi __always_inline void *memset_explicit(void *s, int c, size_t count)
-{
-	static typeof(memset) *volatile memset_fnptr = memset;
-	return memset_fnptr(s, c, count);
-}
+#if __has_c_attribute(nodiscard)
+#define nodiscard [[nodiscard]]
+#else
+#define nodiscard __attribute__((__warn_unused_result__))
+#endif
 
 /**
  * old compilers does NOT know fallthrough, this is GNU/C23
@@ -293,6 +308,33 @@ static __nocfi __always_inline void *memset_explicit(void *s, int c, size_t coun
 #define fallthrough do {} while (0) /* fallthrough */
 #endif
 #endif
+
+/**
+ * hardcodable assumptions for micro-optimizations
+ */
+#if defined(__clang__)
+#define assume(expr) __builtin_assume(expr)
+#elif defined(__GNUC__) && (__GNUC__ >= 13)
+#define assume(expr) __attribute__((assume(expr)))
+#else
+#define assume(expr) do {			\
+	if (unlikely(!(expr)))			\
+		__builtin_unreachable();	\
+} while (0)
+#endif
+
+/**
+ * we do NOT have memset_explicit on the linux kernel
+ *
+ * from: OPENSSL_cleanse, volatile function pointer prevents memset optimization
+ * https://github.com/openssl/openssl/blob/master/crypto/mem_clr.c
+ * 
+ */
+static __nocfi __always_inline void *memset_explicit(void *s, int c, size_t count)
+{
+	static typeof(memset) *volatile memset_fnptr = memset;
+	return memset_fnptr(s, c, count);
+}
 
 /**
  * C2y's countof
@@ -320,14 +362,24 @@ typedef unsigned __int128 uint128_t;
 #endif
 
 /**
- * memcpy_inline / memset_inline
+ * memcmp_inline / memcpy_inline / memset_inline
  *
- * - guaranteed inline builtin routines 
+ * - guaranteed inline builtin routines
+ * - https://github.com/llvm/llvm-project/blob/main/libc/docs/dev/builtin_compatibility.md
  * - fallback to builtin + assert for constexpr sizes
  *
  * NOTE:
- * 	- memcpy_inline/memset_inline IR generation tends to fail on older clang
+ * 	- IR generation tends to fail on older clang, we lock this to 17+
  */
+#if __has_builtin(__builtin_memcmp_inline) && defined(__clang__) && (__clang_major__ >= 17)
+#define memcmp_inline	__builtin_memcmp_inline
+#else
+#define memcmp_inline(cs, ct, count) ({			\
+	static_assert(__builtin_constant_p(count));	\
+	__builtin_memcmp((cs), (ct), (count));		\
+})
+#endif
+
 #if __has_builtin(__builtin_memcpy_inline) && defined(__clang__) && (__clang_major__ >= 17)
 #define memcpy_inline	__builtin_memcpy_inline
 #else
@@ -350,9 +402,7 @@ typedef unsigned __int128 uint128_t;
  * __may_alias to workaround "optimizations" even on -fno-strict-aliasing
  *
  */
-#ifndef __may_alias
 #define __may_alias __attribute__((__may_alias__))
-#endif
 
 /**
  * __attribute__((__cleanup__()))
@@ -379,30 +429,12 @@ static inline void spin_unlock_byref(spinlock_t **lock) { spin_unlock(*lock); }
 #define deferred_spin_unlock(lock) spinlock_t *__ksu_dummy_var __cleanup(spin_unlock_byref) = (lock)
 #define guarded_spin_lock(lock) ({ spin_lock(lock); deferred_spin_unlock(lock); 1; })
 
-// basic stack offload.
+// scoped allocations and basic stack offload.
 static inline void kfree_byref(void *buf) { kfree(*(void **)buf); }
-#define __offstack(size) __cleanup(kfree_byref) = kmalloc(size, GFP_KERNEL)
-#define __zoffstack(size) __cleanup(kfree_byref) = kzalloc(size, GFP_KERNEL)
-
-/**
- * workaround for gcc 4.9 with -std=gnu11 enabled
- * - error: initializer element is not constant
- *
- * we just remove (spinlock_t/raw_spinlock_t) cast
- */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0) && !defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 5)
-
-#undef __SPIN_LOCK_UNLOCKED
-#define __SPIN_LOCK_UNLOCKED(lockname) __SPIN_LOCK_INITIALIZER(lockname)
-
-#undef __RAW_SPIN_LOCK_UNLOCKED
-#define __RAW_SPIN_LOCK_UNLOCKED(lockname) __RAW_SPIN_LOCK_INITIALIZER(lockname)
-
-// re-type so it can expand
-#undef raw_spin_lock_init
-#define raw_spin_lock_init(lock) do { *(lock) = (typeof(*(lock))) __RAW_SPIN_LOCK_UNLOCKED(lock); } while (0)
-
-#endif
+#define __scoped_kmalloc(size, flags)	__cleanup(kfree_byref) = kmalloc(size, flags)
+#define __offstack_flags(size, flags)	__scoped_kmalloc(size, flags)
+#define __offstack(size)		__scoped_kmalloc(size, GFP_KERNEL | __GFP_NOFAIL)
+#define __zoffstack(size)		__scoped_kmalloc(size, GFP_KERNEL | __GFP_NOFAIL | __GFP_ZERO)
 
 /**
  * replace common mem/str functions with builtins
@@ -428,7 +460,6 @@ static inline void kfree_byref(void *buf) { kfree(*(void **)buf); }
 #define strncasecmp	__builtin_strncasecmp
 #define strncat		__builtin_strncat
 #define strncmp		__builtin_strncmp
-#define strncpy		__builtin_strncpy
 #define strpbrk		__builtin_strpbrk
 #define strrchr		__builtin_strrchr
 #define strspn		__builtin_strspn
@@ -441,6 +472,9 @@ static inline void kfree_byref(void *buf) { kfree(*(void **)buf); }
  *
  */
 #if defined(CONFIG_KSU_NOPRINTK) && !defined(CONFIG_KSU_DEBUG)
+#ifndef no_printk
+#define no_printk(...) do { } while (0)
+#endif
 #define pr_emerg(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
 #define pr_alert(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
 #define pr_crit(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
@@ -452,5 +486,47 @@ static inline void kfree_byref(void *buf) { kfree(*(void **)buf); }
 #define pr_devel(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
 #define printk(fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
 #endif // CONFIG_KSU_NOPRINTK && !CONFIG_KSU_DEBUG
+
+/**
+ * disallow usage of old string functions removed on newer linux kernels
+ * 
+ * k7.2 deprecated strncpy, torvalds/linux 079a028
+ * k6.8 deprecated strlcpy, torvalds/linux d262700
+ *
+ */
+#define strncpy(...) static_assert(1 == 0, "strncpy has been deprecated, please use strscpy instead")
+#define strlcpy(...) static_assert(1 == 0, "strlcpy has been deprecated, please use strscpy instead")
+
+/**
+ * workaround for gcc 4.9 with -std=gnu11 enabled
+ * - error: initializer element is not constant
+ *
+ * we just remove (spinlock_t/raw_spinlock_t) cast
+ */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0) && !defined(__clang__) && defined(__GNUC__) && (__GNUC__ < 5)
+
+#undef __SPIN_LOCK_UNLOCKED
+#define __SPIN_LOCK_UNLOCKED(lockname) __SPIN_LOCK_INITIALIZER(lockname)
+
+#undef __RAW_SPIN_LOCK_UNLOCKED
+#define __RAW_SPIN_LOCK_UNLOCKED(lockname) __RAW_SPIN_LOCK_INITIALIZER(lockname)
+
+// re-type so it can expand
+#undef raw_spin_lock_init
+#define raw_spin_lock_init(lock) do { *(lock) = (typeof(*(lock))) __RAW_SPIN_LOCK_UNLOCKED(lock); } while (0)
+
+#endif
+
+/**
+ * enforce minimum compiler version
+ * if youre reading this: go and update your compiler
+ * gcc 4.9 / 5.1 should have no problems on 3.x kernels 
+ * go here: https://developer.arm.com/Downloads/-/Legacy%20Linaro%20GNU%20Toolchains
+ *
+ * NOTE: no need to actually enforce clang, minimum clang for gnu11 with _Generic is 3.1
+ */
+#if !defined(__clang__) && defined(__GNUC__) && ((__GNUC__ < 4) || (__GNUC__ == 4 && __GNUC_MINOR__ < 9))
+static_assert(1 == 0, "This codebase requires GCC 4.9 or newer.");
+#endif
 
 #endif // __KSU_H_KERNEL_INCLUDES
