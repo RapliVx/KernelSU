@@ -101,16 +101,6 @@ object Natives {
     @JvmStatic
     external fun setSelinuxHideEnabled(enabled: Boolean): Int
 
-    /**
-     * Avc spoof can be enabled/disabled.
-     * 0: disabled
-     * 1: enabled
-     * negative : error
-     */
-    external fun isAvcSpoofEnabled(): Boolean
-    @JvmStatic
-    external fun setAvcSpoofEnabled(enabled: Boolean): Boolean
-
     @JvmStatic
     external fun isAdbRootEnabled(): Boolean?
     @JvmStatic
