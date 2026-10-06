@@ -418,6 +418,9 @@ fun SettingScreen(navigator: DestinationsNavigator) {
 
                     val adbRootState by AdbRootManager.adbRootState.collectAsState()
                     val selinuxHideState by SelinuxHideManager.selinuxHideState.collectAsState()
+                    val avcSpoofStatus by produceState(initialValue = "") {
+                        value = getFeatureStatus("avc_spoof")
+                    }
 
                     val listContent = buildList<@Composable () -> Unit> {
                         if (adbRootState != null) {
@@ -548,6 +551,51 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                                     }
                                 }
                             )
+                        }
+
+                        if (avcSpoofStatus == "supported") {
+                            add {
+                                val currentAvcSpoofEnabled = remember { Natives.isAvcSpoofEnabled() }
+                                var avcSpoofMode by rememberSaveable { mutableIntStateOf(if (!currentAvcSpoofEnabled) 1 else 0) }
+                                val avcSpoofPersistValue by produceState(initialValue = null as Long?) {
+                                    value = getFeaturePersistValue("avc_spoof")
+                                }
+                                LaunchedEffect(avcSpoofPersistValue) {
+                                    avcSpoofPersistValue?.let { v ->
+                                        avcSpoofMode = if (v == 0L) 2 else if (!currentAvcSpoofEnabled) 1 else 0
+                                    }
+                                }
+                                val avcSpoofSummary = stringResource(id = R.string.settings_disable_avc_spoof_summary)
+                                ExpressiveDropdownItem(
+                                    icon = Icons.AutoMirrored.Filled.Article,
+                                    title = stringResource(id = R.string.settings_disable_avc_spoof),
+                                    summary = avcSpoofSummary,
+                                    items = modeItems,
+                                    enabled = true,
+                                    selectedIndex = avcSpoofMode,
+                                    onItemSelected = { index ->
+                                        when (index) {
+                                            0 -> if (Natives.setAvcSpoofEnabled(true)) {
+                                                execKsud("feature save", true)
+                                                prefs.edit { putInt("avc_spoof_mode", 0) }
+                                                avcSpoofMode = 0
+                                            }
+                                            1 -> if (Natives.setAvcSpoofEnabled(true)) {
+                                                execKsud("feature save", true)
+                                                if (Natives.setAvcSpoofEnabled(false)) {
+                                                    prefs.edit { putInt("avc_spoof_mode", 1) }
+                                                    avcSpoofMode = 1
+                                                }
+                                            }
+                                            2 -> if (Natives.setAvcSpoofEnabled(false)) {
+                                                execKsud("feature save", true)
+                                                prefs.edit { putInt("avc_spoof_mode", 2) }
+                                                avcSpoofMode = 2
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         }
 
                         if (selinuxHideState != null) {
