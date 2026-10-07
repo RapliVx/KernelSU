@@ -349,10 +349,15 @@ private fun StatusCard(
     val context = LocalContext.current
     val cs = MaterialTheme.colorScheme
     
-    val workingMode = when (lkmMode) {
-        null -> "Legacy"
-        true -> lkmVariant ?: "LKM"
-        else -> "GKI"
+    val isJailbreak = Natives.isLateLoadMode
+    val workingMode = if (isJailbreak) {
+        stringResource(R.string.jailbreak_mode)
+    } else {
+        when (lkmMode) {
+            null -> "Legacy"
+            true -> lkmVariant ?: "LKM"
+            else -> "GKI"
+        }
     }
 
     val statusText = if (ksuVersion != null)
@@ -437,7 +442,7 @@ private fun StatusCard(
                         Box(
                             modifier = Modifier
                                 .background(
-                                    color = cs.onSecondaryContainer.copy(alpha = 0.15f),
+                                    color = if (isJailbreak) cs.errorContainer else cs.onSecondaryContainer.copy(alpha = 0.15f),
                                     shape = RoundedCornerShape(6.dp)
                                 )
                                 .padding(horizontal = 6.dp, vertical = 2.dp)
@@ -445,7 +450,7 @@ private fun StatusCard(
                             Text(
                                 text = workingMode,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = cs.onSecondaryContainer
+                                color = if (isJailbreak) cs.onErrorContainer else cs.onSecondaryContainer
                             )
                         }
                     }
