@@ -2,13 +2,18 @@ name: Build XX-branch LKM for KernelSU
 on:
   workflow_call:
     inputs:
-      expected_size2:
-        description: 'Second expected signature size (for PR builds)'
+      package_name:
+        description: 'package name of manager'
         required: false
         default: ''
         type: string
-      expected_hash2:
-        description: 'Second expected signature hash (for PR builds)'
+      expected_size:
+        description: 'expected signature size'
+        required: false
+        default: ''
+        type: string
+      expected_hash:
+        description: 'expected signature hash'
         required: false
         default: ''
         type: string
@@ -57,8 +62,9 @@ jobs:
 
     - name: Build kernelsu.ko
       env:
-        EXPECTED_SIZE2: ${{ inputs.expected_size2 }}
-        EXPECTED_HASH2: ${{ inputs.expected_hash2 }}
+        PACKAGE_NAME: ${{ inputs.package_name }}
+        EXPECTED_SIZE: ${{ inputs.expected_size }}
+        EXPECTED_HASH: ${{ inputs.expected_hash }}
       run: |
         git config --global --add safe.directory /__w/KernelSU/KernelSU
 
@@ -66,18 +72,15 @@ jobs:
 
         echo "=== Building kernelsu.ko for KMI: ${{ matrix.kmi }} from xx branch ==="
 
-        EXTRA_ARGS=""
-        if [ -n "$EXPECTED_SIZE2" ] && [ -z "$EXPECTED_HASH2" ]; then
-          echo "ERROR: expected_hash2 must be provided when expected_size2 is set."
-          exit 1
-        fi
-        if [ -z "$EXPECTED_SIZE2" ] && [ -n "$EXPECTED_HASH2" ]; then
-          echo "ERROR: expected_size2 must be provided when expected_hash2 is set."
-          exit 1
-        fi
-        if [ -n "$EXPECTED_SIZE2" ]; then
-          EXTRA_ARGS="KSU_EXPECTED_SIZE2=$EXPECTED_SIZE2 KSU_EXPECTED_HASH2=$EXPECTED_HASH2"
-        fi
+        # The xx branch Makefile carries upstream defaults; fall back to My MamboSU
+        # values when the caller doesn't provide them (e.g. non-PR builds).
+        PACKAGE_NAME="${PACKAGE_NAME:-com.rapli.mambosu}"
+        EXPECTED_SIZE="${EXPECTED_SIZE:-0x384}"
+        EXPECTED_HASH="${EXPECTED_HASH:-a9462b8b98ea1ca7901b0cbdcebfaa35f0aa95e51b01d66e6b6d2c81b97746d8}"
+
+        EXTRA_ARGS="KSU_PACKAGE_NAME=$PACKAGE_NAME"
+        EXTRA_ARGS="$EXTRA_ARGS KSU_EXPECTED_SIZE=$EXPECTED_SIZE"
+        EXTRA_ARGS="$EXTRA_ARGS KSU_EXPECTED_HASH=$EXPECTED_HASH"
         CONFIG_KSU=m CC=clang make $EXTRA_ARGS
 
         echo "=== Build completed ==="
