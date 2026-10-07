@@ -206,13 +206,18 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     }
                 )
 
-                if (ksuVersion == null && getSELinuxStatus() == "Permissive") {
-                    androidx.compose.material3.Button(
-                        onClick = {
-                            context.startService(android.content.Intent(context, me.weishu.kernelsu.magica.MagicaService::class.java))
-                            android.widget.Toast.makeText(context, R.string.jailbreak_timeout, android.widget.Toast.LENGTH_LONG).show()
-                        },
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        if (ksuVersion == null && getSELinuxStatus() == "Permissive") {
+                            androidx.compose.material3.Button(
+                                onClick = {
+                                    context.startService(android.content.Intent(context, me.weishu.kernelsu.magica.MagicaService::class.java))
+                                    kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                        kotlinx.coroutines.delay(30000)
+                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                            android.widget.Toast.makeText(context, R.string.jailbreak_timeout, android.widget.Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                },
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                             containerColor = androidx.compose.material3.MaterialTheme.colorScheme.error,
                             contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onError
                         ),

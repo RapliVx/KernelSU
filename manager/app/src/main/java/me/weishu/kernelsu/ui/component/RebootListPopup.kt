@@ -49,6 +49,10 @@ fun RebootDropdownItems(onItemClick: (String) -> Unit) {
 @Composable
 fun RebootListPopup() {
     var expanded by remember { mutableStateOf(false) }
+    
+    val title = stringResource(R.string.reboot)
+    val message = stringResource(R.string.jailbreak_reboot_warning)
+    val confirmDialog = rememberConfirmDialog(onConfirm = { reboot() })
 
     KsuIsValid {
         IconButton(onClick = { expanded = true }) {
@@ -64,7 +68,11 @@ fun RebootListPopup() {
         ) {
             RebootDropdownItems { reason ->
                 expanded = false
-                reboot(reason)
+                if (me.weishu.kernelsu.Natives.isLateLoadMode && reason.isEmpty()) {
+                    confirmDialog.showConfirm(title = title, content = message)
+                } else {
+                    reboot(reason)
+                }
             }
         }
     }

@@ -105,6 +105,52 @@ fun flashModulesSequentially(
     return FlashResult(0, "", true)
 }
 
+private const val JAILBREAK_WARNING_COUNTDOWN = 10
+
+@Composable
+fun JailbreakFlashWarningDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var countdown by remember { androidx.compose.runtime.mutableIntStateOf(JAILBREAK_WARNING_COUNTDOWN) }
+
+    LaunchedEffect(Unit) {
+        while (countdown > 0) {
+            kotlinx.coroutines.delay(1000)
+            countdown--
+        }
+    }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(android.R.string.dialog_alert_title)) },
+        text = {
+            Text(
+                stringResource(R.string.jailbreak_flash_warning),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = onConfirm,
+                enabled = countdown == 0
+            ) {
+                Text(
+                    if (countdown > 0)
+                        stringResource(R.string.jailbreak_flash_warning_countdown, countdown)
+                    else
+                        stringResource(R.string.install_next)
+                )
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Destination<RootGraph>
@@ -115,12 +161,23 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt, skipConfirma
     val logContent = rememberSaveable { StringBuilder() }
     var showFloatAction by rememberSaveable { mutableStateOf(false) }
 
+    val needJailbreakWarning = flashIt is FlashIt.FlashBoot && Natives.isLateLoadMode
+    var flashingEnabled by rememberSaveable { mutableStateOf(!needJailbreakWarning) }
+
     val snackBarHost = LocalSnackbarHost.current
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     var flashing by rememberSaveable {
         mutableStateOf(FlashingStatus.FLASHING)
+    }
+
+    val showJailbreakWarning = needJailbreakWarning && !flashingEnabled
+    if (showJailbreakWarning) {
+        JailbreakFlashWarningDialog(
+            onConfirm = { flashingEnabled = true },
+            onDismiss = { navigator.popBackStack() }
+        )
     }
 
     val context = LocalContext.current
@@ -130,7 +187,8 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt, skipConfirma
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
 
-    LaunchedEffect(flashIt, skipConfirmation) {
+    LaunchedEffect(flashIt, skipConfirmation, flashingEnabled) {
+        if (!flashingEnabled) return@LaunchedEffect
         if (isSafeMode && flashIt is FlashIt.FlashModules) {
             confirmDialog.showConfirm(
                 title = context.getString(R.string.safe_mode),
