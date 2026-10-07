@@ -55,7 +55,7 @@ object Natives {
 
     val isManager: Boolean
         external get
-        
+
     val hookMode: String
         external get
 
@@ -74,47 +74,39 @@ object Natives {
 
     /**
      * `su` compat mode can be disabled temporarily.
-     * 0: disabled
-     * 1: enabled
-     * negative : error
+     *  0: disabled
+     *  1: enabled
+     *  negative : error
      */
     external fun isSuEnabled(): Boolean
     external fun setSuEnabled(enabled: Boolean): Boolean
 
     /**
      * Kernel module umount can be disabled temporarily.
-     * 0: disabled
-     * 1: enabled
-     * negative : error
+     *  0: disabled
+     *  1: enabled
+     *  negative : error
      */
     external fun isKernelUmountEnabled(): Boolean
     external fun setKernelUmountEnabled(enabled: Boolean): Boolean
 
     /**
      * SELinux hide can be disabled temporarily.
-     * 0: disabled
-     * 1: enabled
-     * negative : error
+     *  0: disabled
+     *  1: enabled
+     *  negative : error
      */
-    @JvmStatic
-    external fun isSelinuxHideEnabled(): Boolean?
-    @JvmStatic
+    external fun isSelinuxHideEnabled(): Boolean
     external fun setSelinuxHideEnabled(enabled: Boolean): Int
 
     /**
      * Avc spoof can be enabled/disabled.
-     * 0: disabled
-     * 1: enabled
-     * negative : error
+     *  0: disabled
+     *  1: enabled
+     *  negative : error
      */
     external fun isAvcSpoofEnabled(): Boolean
-    @JvmStatic
     external fun setAvcSpoofEnabled(enabled: Boolean): Boolean
-
-    @JvmStatic
-    external fun isAdbRootEnabled(): Boolean?
-    @JvmStatic
-    external fun setAdbRootEnabled(enabled: Boolean): Boolean
 
     /**
      * Get the user name for the uid.

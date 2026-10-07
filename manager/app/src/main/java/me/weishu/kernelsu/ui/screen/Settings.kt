@@ -104,7 +104,6 @@ import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.BuildConfig
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.ui.util.AdbRootManager
 import me.weishu.kernelsu.ui.util.SelinuxHideManager
 import androidx.compose.runtime.collectAsState
 import me.weishu.kernelsu.ui.component.AboutDialog
@@ -147,7 +146,6 @@ fun SettingScreen(navigator: DestinationsNavigator) {
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
 
     LaunchedEffect(Unit) {
-        AdbRootManager.fetchState()
         SelinuxHideManager.fetchState()
     }
     
@@ -416,29 +414,12 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                         )
                     }
 
-                    val adbRootState by AdbRootManager.adbRootState.collectAsState()
                     val selinuxHideState by SelinuxHideManager.selinuxHideState.collectAsState()
                     val avcSpoofStatus by produceState(initialValue = "") {
                         value = getFeatureStatus("avc_spoof")
                     }
 
                     val listContent = buildList<@Composable () -> Unit> {
-                        if (adbRootState != null) {
-                            add {
-                                val isProcessing by AdbRootManager.isProcessing.collectAsState()
-                                ExpressiveSwitchItem(
-                                    icon = Icons.Filled.Adb,
-                                    title = stringResource(id = R.string.settings_adb_root),
-                                    summary = stringResource(id = R.string.settings_adb_root_summary),
-                                    checked = adbRootState == true,
-                                    enabled = !isProcessing,
-                                    onCheckedChange = { isChecked ->
-                                        AdbRootManager.setAdbRoot(isChecked)
-                                    }
-                                )
-                            }
-                        }
-
                         add {
                             var useSoftReboot by rememberSaveable { mutableStateOf(prefs.getBoolean("use_soft_reboot", false)) }
                             ExpressiveSwitchItem(
