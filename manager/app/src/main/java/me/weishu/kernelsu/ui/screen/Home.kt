@@ -135,6 +135,7 @@ import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.rootAvailable
 
 
+@OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
 @Destination<RootGraph>(start = true)
 @Composable
 fun HomeScreen(navigator: DestinationsNavigator) {

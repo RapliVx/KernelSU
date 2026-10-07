@@ -133,6 +133,7 @@ fun AppProfileTemplateScreen(
                 onRefresh = onRefresh,
             ),
             topBar = {
+                @Suppress("DEPRECATION")
                 val clipboardManager = LocalClipboardManager.current
                 val showToast = remember {
                     fun(msg: String) {

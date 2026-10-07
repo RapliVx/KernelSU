@@ -56,6 +56,7 @@ fun setSELinuxMode(mode: SELinuxMode): Boolean {
 
 @Composable
 fun getSELinuxStatus(): String {
+    @Suppress("DEPRECATION")
     val shell = Shell.Builder.create()
         .setFlags(Shell.FLAG_REDIRECT_STDERR)
         .build("sh")
