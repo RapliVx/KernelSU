@@ -72,6 +72,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.expressiveLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -247,6 +248,9 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     var appSettings by remember { mutableStateOf(ThemeController.getAppSettings(context)) }
     var currentColorMode by remember { mutableStateOf(appSettings.colorMode) }
     var currentKeyColor by remember { mutableIntStateOf(appSettings.keyColor) }
+    var dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+    var enableFloatingNav by rememberSaveable { mutableStateOf(prefs.getBoolean("enable_floating_navbar", false)) }
+    var useClassicLayout by remember { mutableStateOf(context.getLayoutStyle()) }
 
     Scaffold(
         topBar = {
@@ -274,7 +278,14 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             
             Spacer(modifier = Modifier.height(4.dp))
             
-            ThemePreviewCard(keyColor = currentKeyColor, isDark = isDark)
+            ThemePreviewCard(
+                keyColor = currentKeyColor, 
+                isDark = isDark,
+                hasCustomHeader = hasCustomHeader,
+                enableFloatingNav = enableFloatingNav,
+                useClassicLayout = useClassicLayout,
+                dpiScale = dpiScale
+            )
 
             val scrollState = rememberScrollState()
             Row(
@@ -357,7 +368,7 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             }
             
             SettingsGroupCard(title = stringResource(R.string.ui_scale_title)) {
-                var dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+
 
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
@@ -445,9 +456,7 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             }
 
             SettingsGroupCard(title = stringResource(R.string.nav_bar_title)) {
-                var enableFloatingNav by rememberSaveable {
-                    mutableStateOf(prefs.getBoolean("enable_floating_navbar", false))
-                }
+
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -479,7 +488,7 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
                 ) {
-                    var useClassicLayout by remember { mutableStateOf(context.getLayoutStyle()) }
+
                     val layoutOptions = listOf(true, false) // True = Classic, False = Modern
 
                     layoutOptions.forEachIndexed { index, isClassic ->
@@ -524,7 +533,14 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
 @SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ThemePreviewCard(keyColor: Int, isDark: Boolean) {
+private fun ThemePreviewCard(
+    keyColor: Int, 
+    isDark: Boolean,
+    hasCustomHeader: Boolean,
+    enableFloatingNav: Boolean,
+    useClassicLayout: Boolean,
+    dpiScale: Float
+) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.toFloat()
@@ -540,6 +556,14 @@ private fun ThemePreviewCard(keyColor: Int, isDark: Boolean) {
         else -> rememberDynamicColorScheme(seedColor = Color(keyColor), isDark = isDark)
     }
 
+    val systemDensity = androidx.compose.ui.platform.LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        androidx.compose.ui.unit.Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
+
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         Surface(
             modifier = Modifier
@@ -550,114 +574,126 @@ private fun ThemePreviewCard(keyColor: Int, isDark: Boolean) {
             border = BorderStroke(2.dp, color = MaterialTheme.colorScheme.outlineVariant), 
             shadowElevation = 8.dp 
         ) {
-            Column {
-                Box(
-                    modifier = Modifier
-                        .height(56.dp)
-                        .fillMaxWidth()
-                        .background(colorScheme.surfaceContainer), 
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Text(
-                        text = stringResource(R.string.app_name_mambo),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .background(colorScheme.surface),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+            CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides customDensity) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .height(56.dp)
+                            .fillMaxWidth()
+                            .background(if (hasCustomHeader) colorScheme.primary.copy(alpha = 0.5f) else colorScheme.surfaceContainer), 
+                        contentAlignment = Alignment.CenterStart
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().height(72.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Surface(
-                                color = colorScheme.secondaryContainer,
-                                shape = RoundedCornerShape(16.dp),
-                                modifier = Modifier.weight(0.6f).fillMaxHeight()
-                            ) {
-                                Box(modifier = Modifier.fillMaxSize().padding(12.dp), contentAlignment = Alignment.BottomStart) {
-                                    Surface(color = colorScheme.primary, shape = RoundedCornerShape(4.dp), modifier = Modifier.width(36.dp).height(8.dp)) {}
-                                }
-                            }
-                            Column(
-                                modifier = Modifier.weight(0.4f).fillMaxHeight(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Surface(
-                                    color = colorScheme.surfaceVariant,
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.weight(1f).fillMaxWidth()
-                                ) {}
-                                Surface(
-                                    color = colorScheme.surfaceVariant,
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.weight(1f).fillMaxWidth()
-                                ) {}
-                            }
-                        }
+                        Text(
+                            text = stringResource(R.string.app_name_mambo),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (hasCustomHeader) colorScheme.onPrimary else colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
 
-                        Surface(
-                            color = colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.fillMaxWidth().height(56.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .background(colorScheme.surface),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize().padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Box(modifier = Modifier.size(24.dp).background(colorScheme.primaryContainer, CircleShape))
-                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Surface(color = colorScheme.onSurfaceVariant.copy(alpha = 0.8f), shape = RoundedCornerShape(2.dp), modifier = Modifier.width(48.dp).height(6.dp)) {}
-                                    Surface(color = colorScheme.onSurfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(2.dp), modifier = Modifier.width(32.dp).height(4.dp)) {}
+                            if (useClassicLayout) {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Surface(color = colorScheme.secondaryContainer, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().height(64.dp)) {}
+                                    Surface(color = colorScheme.surfaceVariant, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().height(140.dp)) {}
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().height(72.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Surface(
+                                        color = colorScheme.secondaryContainer,
+                                        shape = RoundedCornerShape(16.dp),
+                                        modifier = Modifier.weight(0.6f).fillMaxHeight()
+                                    ) {
+                                        Box(modifier = Modifier.fillMaxSize().padding(12.dp), contentAlignment = Alignment.BottomStart) {
+                                            Surface(color = colorScheme.primary, shape = RoundedCornerShape(4.dp), modifier = Modifier.width(36.dp).height(8.dp)) {}
+                                        }
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(0.4f).fillMaxHeight(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Surface(color = colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).fillMaxWidth()) {}
+                                        Surface(color = colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).fillMaxWidth()) {}
+                                    }
+                                }
+                                
+                                Surface(
+                                    color = colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxSize().padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Box(modifier = Modifier.size(24.dp).background(colorScheme.primaryContainer, CircleShape))
+                                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Surface(color = colorScheme.onSurfaceVariant.copy(alpha = 0.8f), shape = RoundedCornerShape(2.dp), modifier = Modifier.width(48.dp).height(6.dp)) {}
+                                            Surface(color = colorScheme.onSurfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(2.dp), modifier = Modifier.width(32.dp).height(4.dp)) {}
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                Surface(
-                    color = colorScheme.surfaceContainerHigh,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = colorScheme.primaryContainer,
-                            modifier = Modifier
-                                .height(28.dp)
-                                .width(48.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Filled.Home, contentDescription = null, tint = colorScheme.onPrimaryContainer, modifier = Modifier.size(16.dp))
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                        if (enableFloatingNav) {
+                            Surface(
+                                modifier = Modifier.padding(bottom = 12.dp).height(40.dp).padding(horizontal = 24.dp),
+                                shape = RoundedCornerShape(50),
+                                color = colorScheme.surfaceContainerHigh
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Surface(shape = RoundedCornerShape(50), color = colorScheme.primaryContainer, modifier = Modifier.height(24.dp).width(40.dp)) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Filled.Home, contentDescription = null, tint = colorScheme.onPrimaryContainer, modifier = Modifier.size(14.dp))
+                                        }
+                                    }
+                                    Box(modifier = Modifier.size(14.dp).background(colorScheme.onSurfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(4.dp)))
+                                    Box(modifier = Modifier.size(14.dp).background(colorScheme.onSurfaceVariant.copy(alpha = 0.5f), CircleShape))
+                                    Icon(Icons.Filled.ViewColumn, contentDescription = null, tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(14.dp))
+                                }
                             }
-                        }
-                        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                            Box(modifier = Modifier.size(14.dp).background(colorScheme.onSurfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(4.dp)))
-                        }
-                        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                            Box(modifier = Modifier.size(14.dp).background(colorScheme.onSurfaceVariant.copy(alpha = 0.5f), CircleShape))
-                        }
-                        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Filled.ViewColumn, contentDescription = null, tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
+                        } else {
+                            Surface(
+                                color = colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.fillMaxWidth().height(48.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Surface(shape = RoundedCornerShape(50), color = colorScheme.primaryContainer, modifier = Modifier.height(28.dp).width(48.dp)) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Filled.Home, contentDescription = null, tint = colorScheme.onPrimaryContainer, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                    Box(modifier = Modifier.size(14.dp).background(colorScheme.onSurfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(4.dp)))
+                                    Box(modifier = Modifier.size(14.dp).background(colorScheme.onSurfaceVariant.copy(alpha = 0.5f), CircleShape))
+                                    Icon(Icons.Filled.ViewColumn, contentDescription = null, tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
+                                }
+                            }
                         }
                     }
                 }
