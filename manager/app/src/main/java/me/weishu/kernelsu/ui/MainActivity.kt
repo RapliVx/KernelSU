@@ -275,13 +275,13 @@ class MainActivity : ComponentActivity() {
                                 if (targetState.destination.route !in bottomBarRoutes) {
                                     slideInHorizontally(
                                         initialOffsetX = { fullWidth -> fullWidth },
-                                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                        animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f)
                                     ) + fadeIn(animationSpec = tween(300))
                                 } else {
                                     fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
                                             scaleIn(
-                                                initialScale = 0.96f,
-                                                animationSpec = tween(220, easing = FastOutSlowInEasing)
+                                                initialScale = 0.92f,
+                                                animationSpec = spring(dampingRatio = 0.8f, stiffness = 350f)
                                             )
                                 }
                             }
@@ -290,11 +290,14 @@ class MainActivity : ComponentActivity() {
                             {
                                 if (initialState.destination.route in bottomBarRoutes && targetState.destination.route !in bottomBarRoutes) {
                                     slideOutHorizontally(
-                                        targetOffsetX = { fullWidth -> -(fullWidth / 4) },
-                                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                        targetOffsetX = { fullWidth -> -(fullWidth / 3) },
+                                        animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f)
                                     ) + fadeOut(animationSpec = tween(300))
                                 } else {
-                                    fadeOut(animationSpec = tween(150))
+                                    fadeOut(animationSpec = tween(200)) + scaleOut(
+                                        targetScale = 0.96f,
+                                        animationSpec = tween(200)
+                                    )
                                 }
                             }
 
@@ -302,11 +305,14 @@ class MainActivity : ComponentActivity() {
                             {
                                 if (targetState.destination.route in bottomBarRoutes) {
                                     slideInHorizontally(
-                                        initialOffsetX = { fullWidth -> -(fullWidth / 4) },
-                                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                        initialOffsetX = { fullWidth -> -(fullWidth / 3) },
+                                        animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f)
                                     ) + fadeIn(animationSpec = tween(300))
                                 } else {
-                                    fadeIn(animationSpec = tween(220))
+                                    fadeIn(animationSpec = tween(220)) + scaleIn(
+                                        initialScale = 0.96f,
+                                        animationSpec = spring(dampingRatio = 0.8f, stiffness = 350f)
+                                    )
                                 }
                             }
 
@@ -315,10 +321,10 @@ class MainActivity : ComponentActivity() {
                                 if (initialState.destination.route !in bottomBarRoutes) {
                                     slideOutHorizontally(
                                         targetOffsetX = { fullWidth -> fullWidth },
-                                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                        animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f)
                                     ) + fadeOut(animationSpec = tween(300))
                                 } else {
-                                    fadeOut(animationSpec = tween(150))
+                                    fadeOut(animationSpec = tween(200))
                                 }
                             }
                     }
