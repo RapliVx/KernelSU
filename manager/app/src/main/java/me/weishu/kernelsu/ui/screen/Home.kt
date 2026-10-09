@@ -437,21 +437,23 @@ private fun StatusCard(
                             fontWeight = FontWeight.Bold,
                             color = cs.onSecondaryContainer
                         )
-                        Spacer(Modifier.width(8.dp))
+                        if (ksuVersion != null) {
+                            Spacer(Modifier.width(8.dp))
 
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    color = if (isJailbreak) cs.errorContainer else cs.onSecondaryContainer.copy(alpha = 0.15f),
-                                    shape = RoundedCornerShape(6.dp)
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        color = if (isJailbreak) cs.errorContainer else cs.onSecondaryContainer.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = workingMode,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isJailbreak) cs.onErrorContainer else cs.onSecondaryContainer
                                 )
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = workingMode,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (isJailbreak) cs.onErrorContainer else cs.onSecondaryContainer
-                            )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
