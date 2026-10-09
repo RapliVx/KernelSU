@@ -561,11 +561,15 @@ private fun StatusCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .height(if (fullFeatured == true) IntrinsicSize.Min else 140.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            headerCardContent(Modifier.weight(0.6f).fillMaxHeight())
-            statsCardsContent(Modifier.weight(0.4f).fillMaxHeight(), true)
+            if (fullFeatured == true) {
+                headerCardContent(Modifier.weight(0.6f).fillMaxHeight())
+                statsCardsContent(Modifier.weight(0.4f).fillMaxHeight(), true)
+            } else {
+                headerCardContent(Modifier.fillMaxWidth().fillMaxHeight())
+            }
         }
     }
 }
