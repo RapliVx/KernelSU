@@ -168,8 +168,10 @@ class SuperUserViewModel : ViewModel() {
         RootService.stop(intent)
     }
 
+    private val fetchMutex = Mutex()
+
     suspend fun fetchAppList() {
-        Mutex().withLock {
+        fetchMutex.withLock {
             withContext(Dispatchers.Main) { isRefreshing = true }
 
             val result = connectKsuService {
