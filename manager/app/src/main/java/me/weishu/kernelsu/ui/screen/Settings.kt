@@ -420,6 +420,13 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     val avcSpoofStatus by produceState(initialValue = "") {
                         value = getFeatureStatus("avc_spoof")
                     }
+                    
+                    val adbRootStatus by me.weishu.kernelsu.ui.util.AdbRootManager.adbRootStatus.collectAsState()
+                    val adbRootState by me.weishu.kernelsu.ui.util.AdbRootManager.adbRootState.collectAsState()
+                    
+                    LaunchedEffect(Unit) {
+                        me.weishu.kernelsu.ui.util.AdbRootManager.fetchState()
+                    }
 
                     val listContent = buildList<@Composable () -> Unit> {
                         add {
@@ -594,6 +601,27 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                                         SelinuxHideManager.setSelinuxHide(isChecked) { cmd, root ->
                                             execKsud(cmd, root)
                                         }
+                                    }
+                                )
+                            }
+                        }
+
+                        if (adbRootState != null) {
+                            add {
+                                val adbRootSummary = when (adbRootStatus) {
+                                    "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                                    "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                                    else -> stringResource(id = R.string.settings_adb_root_summary)
+                                }
+                                val isProcessing by me.weishu.kernelsu.ui.util.AdbRootManager.isProcessing.collectAsState()
+                                ExpressiveSwitchItem(
+                                    icon = Icons.Filled.Adb,
+                                    title = stringResource(id = R.string.settings_adb_root),
+                                    summary = adbRootSummary,
+                                    enabled = adbRootStatus == "supported" && !isProcessing,
+                                    checked = adbRootState == true,
+                                    onCheckedChange = { isChecked ->
+                                        me.weishu.kernelsu.ui.util.AdbRootManager.setAdbRoot(isChecked)
                                     }
                                 )
                             }
