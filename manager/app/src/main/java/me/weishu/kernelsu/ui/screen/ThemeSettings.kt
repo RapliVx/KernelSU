@@ -580,14 +580,14 @@ private fun ThemePreviewCard(
                         modifier = Modifier
                             .height(56.dp)
                             .fillMaxWidth()
-                            .background(if (hasCustomHeader) colorScheme.primary.copy(alpha = 0.5f) else colorScheme.surfaceContainer), 
+                            .background(colorScheme.surfaceContainer), 
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Text(
                             text = stringResource(R.string.app_name_mambo),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (hasCustomHeader) colorScheme.onPrimary else colorScheme.onSurface,
+                            color = colorScheme.onSurface,
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
                     }
@@ -605,8 +605,32 @@ private fun ThemePreviewCard(
                         ) {
                             if (useClassicLayout) {
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Surface(color = colorScheme.secondaryContainer, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().height(64.dp)) {}
-                                    Surface(color = colorScheme.surfaceVariant, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().height(140.dp)) {}
+                                    Surface(
+                                        color = colorScheme.secondaryContainer,
+                                        shape = RoundedCornerShape(16.dp),
+                                        modifier = Modifier.fillMaxWidth().height(72.dp)
+                                    ) {
+                                        Box(modifier = Modifier.fillMaxSize().padding(12.dp), contentAlignment = Alignment.BottomStart) {
+                                            Surface(color = colorScheme.primary, shape = RoundedCornerShape(4.dp), modifier = Modifier.width(36.dp).height(8.dp)) {}
+                                        }
+                                    }
+                                    Surface(
+                                        color = colorScheme.surfaceVariant,
+                                        shape = RoundedCornerShape(16.dp),
+                                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxSize().padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            Box(modifier = Modifier.size(24.dp).background(colorScheme.primaryContainer, CircleShape))
+                                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Surface(color = colorScheme.onSurfaceVariant.copy(alpha = 0.8f), shape = RoundedCornerShape(2.dp), modifier = Modifier.width(48.dp).height(6.dp)) {}
+                                                Surface(color = colorScheme.onSurfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(2.dp), modifier = Modifier.width(32.dp).height(4.dp)) {}
+                                            }
+                                        }
+                                    }
                                 }
                             } else {
                                 Row(
