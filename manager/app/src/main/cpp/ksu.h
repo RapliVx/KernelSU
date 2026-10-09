@@ -38,6 +38,8 @@ bool is_manager();
 bool is_pr_build();
 
 const char* get_hook_mode(void);
+const char* get_susfs_version(void);
+const char* get_driver_name(void);
 
 using p_key_t = char[KSU_MAX_PACKAGE_NAME];
 

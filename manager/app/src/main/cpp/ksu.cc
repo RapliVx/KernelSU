@@ -149,12 +149,31 @@ bool is_manager() {
 
 const char* get_hook_mode(void)
 {
-    static struct ksu_get_hook_mode_cmd cmd = {0};
+    static struct ksu_hook_type_cmd cmd_new = {0};
+    if (ksuctl(KSU_IOCTL_HOOK_TYPE, &cmd_new) == 0)
+        return cmd_new.hook_type;
 
-    if (ksuctl(KSU_IOCTL_GET_HOOK_MODE, &cmd) == 0)
-        return cmd.mode;
+    static struct ksu_get_hook_mode_cmd cmd_old = {0};
+    if (ksuctl(KSU_IOCTL_GET_HOOK_MODE, &cmd_old) == 0)
+        return cmd_old.mode;
 
     return "";
+}
+
+const char* get_susfs_version(void)
+{
+    static struct ksu_susfs_version_cmd cmd = {0};
+    if (ksuctl(KSU_IOCTL_SUSFS_VERSION, &cmd) == 0)
+        return cmd.version;
+    return "";
+}
+
+const char* get_driver_name(void)
+{
+    static struct ksu_driver_name_cmd cmd = {0};
+    if (ksuctl(KSU_IOCTL_DRIVER_NAME, &cmd) == 0)
+        return cmd.name;
+    return "KernelSU";
 }
 
 bool is_pr_build() {

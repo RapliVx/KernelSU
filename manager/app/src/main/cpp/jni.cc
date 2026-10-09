@@ -95,6 +95,20 @@ Java_me_weishu_kernelsu_Natives_getHookMode(JNIEnv *env, jclass clazz) {
     return env->NewStringUTF(mode);
 }
 
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_me_weishu_kernelsu_Natives_getSusfsVersion(JNIEnv *env, jclass clazz) {
+    const char* version = get_susfs_version();
+    return env->NewStringUTF(version);
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_me_weishu_kernelsu_Natives_getDriverName(JNIEnv *env, jclass clazz) {
+    const char* name = get_driver_name();
+    return env->NewStringUTF(name);
+}
+
 static void fillIntArray(JNIEnv *env, jobject list, int *data, int count) {
     auto cls = env->GetObjectClass(list);
     auto add = env->GetMethodID(cls, "add", "(Ljava/lang/Object;)Z");
