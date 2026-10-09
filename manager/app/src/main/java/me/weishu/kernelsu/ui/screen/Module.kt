@@ -189,7 +189,7 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
 
     val isFloating = remember { prefs.getBoolean("enable_floating_navbar", false) }
-    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) } // Injeksi Skala DPI
+    val dpiScale = 1.0f
 
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
     val sysNavBarPadding = remember(navBarPadding) { navBarPadding.calculateBottomPadding() }

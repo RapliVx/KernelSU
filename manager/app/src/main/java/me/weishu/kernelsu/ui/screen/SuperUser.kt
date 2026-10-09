@@ -99,7 +99,7 @@ fun SuperUserScreen(
     val scope = rememberCoroutineScope()
     
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+    val dpiScale = 1.0f
 
     val systemDensity = LocalDensity.current
     val customDensity = remember(systemDensity, dpiScale) {

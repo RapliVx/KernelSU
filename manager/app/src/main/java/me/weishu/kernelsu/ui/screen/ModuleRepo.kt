@@ -192,7 +192,7 @@ fun ModuleRepoScreen(
     
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     val repoSortByNameState = remember { mutableStateOf(prefs.getBoolean("module_repo_sort_name", false)) }
-    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+    val dpiScale = 1.0f
     
     val listState = rememberLazyListState()
 
@@ -525,7 +525,7 @@ fun ModuleRepoDetailScreen(
     val scope = rememberCoroutineScope()
     
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+    val dpiScale = 1.0f
 
     val systemDensity = LocalDensity.current
     val customDensity = remember(systemDensity, dpiScale) {
