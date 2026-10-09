@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -98,23 +99,51 @@ fun BottomBar(navController: NavHostController) {
                 color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
                 tonalElevation = 0.dp
             ) {
+                val indicatorBounds = remember { androidx.compose.runtime.mutableStateMapOf<Int, androidx.compose.ui.geometry.Rect>() }
+                var selectedIndex by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+                
+                visibleTabs.forEachIndexed { index, destination ->
+                    val isCurrent by navController.isRouteOnBackStackAsState(destination.direction)
+                    if (isCurrent) {
+                        selectedIndex = index
+                    }
+                }
+                
+                val targetRect = indicatorBounds[selectedIndex] ?: androidx.compose.ui.geometry.Rect.Zero
+                val animatedLeft by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = targetRect.left, 
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 300f),
+                    label = "indicatorLeft"
+                )
+                val animatedRight by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = targetRect.right, 
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 300f),
+                    label = "indicatorRight"
+                )
+                val pillColor = MaterialTheme.colorScheme.primaryContainer
+
                 Row(
                     modifier = Modifier
                         .padding(horizontal = 8.dp, vertical = 6.dp)
-                        .height(48.dp),
+                        .height(48.dp)
+                        .androidx.compose.ui.draw.drawBehind {
+                            if (targetRect != androidx.compose.ui.geometry.Rect.Zero) {
+                                drawRoundRect(
+                                    color = pillColor,
+                                    topLeft = androidx.compose.ui.geometry.Offset(animatedLeft, 0f),
+                                    size = androidx.compose.ui.geometry.Size(animatedRight - animatedLeft, size.height),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2, size.height / 2)
+                                )
+                            }
+                        },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    visibleTabs.forEach { destination ->
+                    visibleTabs.forEachIndexed { index, destination ->
                         val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
 
                         val animationSpec = tween<Color>(durationMillis = 300, easing = FastOutSlowInEasing)
 
-                        val bgColor by animateColorAsState(
-                            targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                            animationSpec = animationSpec,
-                            label = "bgColor"
-                        )
                         val contentColor by animateColorAsState(
                             targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                             animationSpec = animationSpec,
@@ -124,8 +153,12 @@ fun BottomBar(navController: NavHostController) {
                         Row(
                             modifier = Modifier
                                 .fillMaxHeight()
+                                .androidx.compose.ui.layout.onPlaced { coords ->
+                                    val x = coords.positionInParent().x
+                                    val width = coords.size.width.toFloat()
+                                    indicatorBounds[index] = androidx.compose.ui.geometry.Rect(x, 0f, x + width, 0f)
+                                }
                                 .clip(RoundedCornerShape(50))
-                                .background(bgColor)
                                 .clickable {
                                     if (isCurrentDestOnBackStack) {
                                         navigator.popBackStack(destination.direction, false)
