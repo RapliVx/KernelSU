@@ -180,6 +180,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     ksuVersion?.let { if (kernelVersion.isGKI()) Natives.isLkmMode else null }
                 }
                 val lkmVariant = remember(isManager) { if (isManager) Natives.lkmVariant else null }
+                val driverName = remember(isManager) { if (isManager) runCatching { Natives.driverName }.getOrElse { "" } else "" }
                 val requireNewKernel = remember { Natives.managerUAPIVersion > Natives.kernelUAPIVersion }
                 val isRootAvailable = remember { rootAvailable() }
                 val fullFeatured = remember(isManager, requireNewKernel, isRootAvailable) {
@@ -191,6 +192,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                     ksuVersion = ksuVersion,
                     lkmMode = lkmMode,
                     lkmVariant = lkmVariant,
+                    driverName = driverName,
                     fullFeatured = fullFeatured,
                     useClassicLayout = useClassicLayout,
                     onClickInstall = { navigator.navigate(InstallScreenDestination) },
@@ -340,6 +342,7 @@ private fun StatusCard(
     ksuVersion: Int?,
     lkmMode: Boolean?,
     lkmVariant: String? = null,
+    driverName: String = "",
     fullFeatured: Boolean?,
     useClassicLayout: Boolean,
     onClickInstall: () -> Unit = {},
@@ -352,6 +355,8 @@ private fun StatusCard(
     val isJailbreak = Natives.isLateLoadMode
     val workingMode = if (isJailbreak) {
         stringResource(R.string.jailbreak_mode)
+    } else if (driverName.isNotEmpty() && driverName != "KernelSU" && driverName != "Not supported") {
+        driverName
     } else {
         when (lkmMode) {
             null -> "Legacy"
@@ -678,6 +683,8 @@ private fun InfoCard() {
     val selinuxStatus = getSELinuxStatus()
 
     val hookMode = remember { runCatching { Natives.hookMode }.getOrElse { "" } }
+    val susfsVersion = remember { runCatching { Natives.susfsVersion }.getOrElse { "" } }
+    val driverName = remember { runCatching { Natives.driverName }.getOrElse { "" } }
 
     // State expand
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -738,6 +745,15 @@ private fun InfoCard() {
                         label = stringResource(id = R.string.hook_mode),
                         content = hookMode,
                         icon = Icons.Filled.Link,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                }
+
+                if (susfsVersion.isNotEmpty() && susfsVersion != "Not supported") {
+                    InfoCardItem(
+                        label = "SuSFS Version",
+                        content = susfsVersion,
+                        icon = Icons.Filled.Security,
                     )
                     Spacer(Modifier.height(16.dp))
                 }

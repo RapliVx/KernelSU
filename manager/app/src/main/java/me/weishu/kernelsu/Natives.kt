@@ -59,6 +59,12 @@ object Natives {
     val hookMode: String
         external get
 
+    val susfsVersion: String
+        external get
+
+    val driverName: String
+        external get
+
     val isPrBuild: Boolean
         external get
 
