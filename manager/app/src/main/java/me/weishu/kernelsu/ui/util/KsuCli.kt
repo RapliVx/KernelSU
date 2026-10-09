@@ -33,7 +33,7 @@ import java.util.Locale
 private const val TAG = "KsuCli"
 private const val BUSYBOX = "/data/adb/ksu/bin/busybox"
 
-private fun getKsuDaemonPath(): String {
+fun getKsuDaemonPath(): String {
     return ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud.so"
 }
 
