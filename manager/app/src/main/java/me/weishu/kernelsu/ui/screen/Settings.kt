@@ -159,12 +159,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
             }
             SelinuxHideManager.clearStatusEvent()
         }
-    }
-    
-    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
-
-    val systemDensity = LocalDensity.current
-    val customDensity = remember(systemDensity, dpiScale) {
+    }    val customDensity = remember(systemDensity, dpiScale) {
         Density(
             density = systemDensity.density * dpiScale,
             fontScale = systemDensity.fontScale * dpiScale

@@ -113,11 +113,7 @@ fun InstallScreen(navigator: DestinationsNavigator) {
     var allowShell by remember { mutableStateOf(false) }
     var enableAdb by remember { mutableStateOf(false) }
 
-    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
-
-    val onInstall = {
-        installMethod?.let { method ->
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }        installMethod?.let { method ->
             if (method is InstallMethod.AnyKernel) {
                 method.uri?.let {
                     navigator.navigate(FlashScreenDestination(FlashIt.FlashAnyKernel(it)))
@@ -194,18 +190,6 @@ fun InstallScreen(navigator: DestinationsNavigator) {
     }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-
-    val systemDensity = LocalDensity.current
-    val customDensity = remember(systemDensity, dpiScale) {
-        Density(
-            density = systemDensity.density * dpiScale,
-            fontScale = systemDensity.fontScale * dpiScale
-        )
-    }
-
-    CompositionLocalProvider(
-        LocalDensity provides customDensity
-    ) {
         Scaffold(
             topBar = {
                 TopBar(
@@ -576,5 +560,3 @@ private fun isKoFile(context: Context, uri: Uri): Boolean {
         } ?: false
     } catch (_: Throwable) {
         false
-    }
-}

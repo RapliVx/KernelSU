@@ -192,10 +192,6 @@ fun ModuleRepoScreen(
     
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     val repoSortByNameState = remember { mutableStateOf(prefs.getBoolean("module_repo_sort_name", false)) }
-    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
-    
-    val listState = rememberLazyListState()
-
     val offline = remember { !isNetworkAvailable(context) }
     
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
@@ -220,17 +216,7 @@ fun ModuleRepoScreen(
             1f to cs.surface.copy(alpha = if (isDark) 0.40f else 0.32f)
         )
     }
-    val bannerAlpha = remember(isDark) { if (isDark) 0.12f else 0.16f }
-
-    val systemDensity = LocalDensity.current
-    val customDensity = remember(systemDensity, dpiScale) {
-        Density(
-            density = systemDensity.density * dpiScale,
-            fontScale = systemDensity.fontScale * dpiScale
-        )
-    }
-
-    CompositionLocalProvider(LocalDensity provides customDensity) {
+    val bannerAlpha = remember(isDark) { if (isDark) 0.12f else 0.16f }    CompositionLocalProvider(LocalDensity provides customDensity) {
         Scaffold(
             topBar = {
                 SearchAppBar(
@@ -524,11 +510,7 @@ fun ModuleRepoDetailScreen(
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
     
-    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
-
-    val systemDensity = LocalDensity.current
-    val customDensity = remember(systemDensity, dpiScale) {
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }    val customDensity = remember(systemDensity, dpiScale) {
         Density(
             density = systemDensity.density * dpiScale,
             fontScale = systemDensity.fontScale * dpiScale
