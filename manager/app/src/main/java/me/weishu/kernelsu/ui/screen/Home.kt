@@ -558,10 +558,13 @@ private fun StatusCard(
             statsCardsContent(Modifier.fillMaxWidth(), false)
         }
     } else {
+        val rowModifier = if (fullFeatured == true) {
+            Modifier.fillMaxWidth().height(IntrinsicSize.Min)
+        } else {
+            Modifier.fillMaxWidth().height(140.dp)
+        }
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(if (fullFeatured == true) IntrinsicSize.Min else 140.dp),
+            modifier = rowModifier,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (fullFeatured == true) {
