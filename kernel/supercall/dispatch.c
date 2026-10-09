@@ -351,8 +351,13 @@ static int do_get_feature(void __user *arg)
 		return -EFAULT;
 	}
 
+	bool is_avc_spoof = (cmd.feature_id == 10003);
+	if (is_avc_spoof) cmd.feature_id = 4; // KSU_FEATURE_SELINUX_HIDE
+
 	ret = ksu_get_feature(cmd.feature_id, &cmd.value, &supported);
 	cmd.supported = supported ? 1 : 0;
+
+	if (is_avc_spoof) cmd.feature_id = 10003;
 
 	if (ret && supported) {
 		pr_err("get_feature: failed for feature %u: %d\n", cmd.feature_id, ret);
@@ -376,6 +381,9 @@ static int do_set_feature(void __user *arg)
 		pr_err("set_feature: copy_from_user failed\n");
 		return -EFAULT;
 	}
+
+	bool is_avc_spoof = (cmd.feature_id == 10003);
+	if (is_avc_spoof) cmd.feature_id = 4; // KSU_FEATURE_SELINUX_HIDE
 
 	ret = ksu_set_feature(cmd.feature_id, cmd.value);
 	if (ret) {
@@ -701,30 +709,62 @@ static int do_disable_escape_to_root(void __user *arg)
 	return 0;
 }
 
-static int do_get_hook_mode(void __user *arg)
-{
-	struct ksu_get_hook_mode_cmd cmd = {0};
-	const char *type = "Manual";
-
-#ifdef MODULE
-	type = "MamboLKM";
-#elif defined(CONFIG_KSU_KPROBES_KSUD)
-	type = "Kprobes";
+#if defined(CONFIG_KSU_HACK_ARM64_BRANCH_LINK)
+char hook_type[] = "Branch Link x/3";
 #elif defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
-	type = "MamboHook";
+const char *hook_type = "Syscall Table Tamper";
+#elif defined(CONFIG_KSU_KPROBES_KSUD)
+# ifdef CONFIG_KSU_SUSFS
+const char *hook_type = "De-inlined SUSFS / Hybrid";
+# else
+const char *hook_type = "Hybrid";
+# endif
+#else
+# ifdef CONFIG_KSU_SUSFS
+const char *hook_type = "De-inlined SUSFS / Manual";
+# else
+const char *hook_type = "Manual";
+# endif
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
-	strscpy(cmd.mode, type, sizeof(cmd.mode));
-#else
-	strlcpy(cmd.mode, type, sizeof(cmd.mode));
-#endif
+static int do_get_hook_type(void __user *arg)
+{
+	struct ksu_hook_type_cmd cmd = { 0 };
+
+	strscpy(cmd.hook_type, hook_type, sizeof(cmd.hook_type));
 
 	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
-		pr_err("get_hook_mode: copy_to_user failed\n");
+		pr_err("get_hook_type: copy_to_user failed\n");
 		return -EFAULT;
 	}
 
+	return 0;
+}
+
+static int do_get_susfs_version(void __user *arg)
+{
+	struct ksu_susfs_version_cmd cmd = { 0 };
+
+#ifdef CONFIG_KSU_SUSFS
+	strscpy(cmd.version, SUSFS_VERSION, sizeof(cmd.version));
+#else
+	strscpy(cmd.version, "Not supported", sizeof(cmd.version));
+#endif
+
+	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
+		return -EFAULT;
+	}
+	return 0;
+}
+
+static int do_get_driver_name(void __user *arg)
+{
+	struct ksu_driver_name_cmd cmd = { 0 };
+	strscpy(cmd.name, "xxKSU", sizeof(cmd.name));
+
+	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
+		return -EFAULT;
+	}
 	return 0;
 }
 
@@ -754,7 +794,9 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
 	{ .cmd = KSU_IOCTL_SET_INIT_PGRP, .name = "SET_INIT_PGRP", .handler = do_set_init_pgrp, .perm_check = only_root },
 	{ .cmd = KSU_IOCTL_GET_SULOG_FD, .name = "GET_SULOG_FD", .handler = do_get_sulog_fd, .perm_check = only_root },
 	{ .cmd = KSU_IOCTL_DISABLE_ESCAPE_TO_ROOT, .name = "DISABLE_ESCAPE_TO_ROOT", .handler = do_disable_escape_to_root, .perm_check = only_root, .allow_su_session = true },
-	{ .cmd = KSU_IOCTL_GET_HOOK_MODE, .name = "GET_HOOK_MODE", .handler = do_get_hook_mode, .perm_check = manager_or_root },
+	{ .cmd = KSU_IOCTL_HOOK_TYPE, .name = "HOOK_TYPE", .handler = do_get_hook_type, .perm_check = manager_or_root },
+	{ .cmd = KSU_IOCTL_SUSFS_VERSION, .name = "SUSFS_VERSION", .handler = do_get_susfs_version, .perm_check = manager_or_root },
+	{ .cmd = KSU_IOCTL_DRIVER_NAME, .name = "DRIVER_NAME", .handler = do_get_driver_name, .perm_check = manager_or_root },
 	{ .cmd = 0, .name = NULL, .handler = NULL, .perm_check = NULL } // Sentinel
 };
 

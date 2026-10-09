@@ -524,11 +524,15 @@ static int bl_hack_init_thread(void *data)
 {
 	set_user_nice(current, 19); // low prio
 
+	extern char hook_type[];
+
 	bool faccessat = !!!bl_hook_faccessat(data);
 	bool newfstatat = !!!bl_hook_newfstatat(data);
 	bool execve = !!!bl_hook_execve(data);
 
 	pr_info("branch_link: done! faccessat: %s newfstatat: %s execve: %s\n", (faccessat) ? "ok" : "fail", (newfstatat) ? "ok" : "fail", (execve) ? "ok" : "fail");
+
+	hook_type[12] = 48 + faccessat + newfstatat + execve;
 
 	dotted_kallsyms_destroy_hash_array();
 
