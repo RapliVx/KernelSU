@@ -64,7 +64,11 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
     val scrollState = rememberScrollState()
 
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }        if (text.isNotEmpty()) {
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+
+    LaunchedEffect(Unit) {
+        if (text.isNotEmpty()) {
             return@LaunchedEffect
         }
         withContext(Dispatchers.IO) {
@@ -85,6 +89,18 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
             )
         }
     }
+
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
+
+    CompositionLocalProvider(
+        LocalDensity provides customDensity
+    ) {
         Scaffold(
             topBar = {
                 TopBar(
@@ -149,4 +165,6 @@ private fun TopBar(onBack: () -> Unit = {}, onSave: () -> Unit = {}) {
                     contentDescription = stringResource(id = R.string.save_log),
                 )
             }
+        }
     )
+}

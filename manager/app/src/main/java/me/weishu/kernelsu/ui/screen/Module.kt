@@ -189,6 +189,8 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
 
     val isFloating = remember { prefs.getBoolean("enable_floating_navbar", false) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) } // Injeksi Skala DPI
+
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
     val sysNavBarPadding = remember(navBarPadding) { navBarPadding.calculateBottomPadding() }
     val floatingPadding = remember(isFloating, sysNavBarPadding) { if (isFloating) sysNavBarPadding + 96.dp else 0.dp }
@@ -268,6 +270,18 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
         if (viewModel.isRefreshing) 1f
         else LinearOutSlowInEasing.transform(pullToRefreshState.distanceFraction).coerceIn(0f, 1f)
     }
+
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
+
+    CompositionLocalProvider(
+        LocalDensity provides customDensity
+    ) {
         Scaffold(
             modifier = Modifier
                 .pullToRefresh(
@@ -1159,3 +1173,4 @@ fun ModuleItemPreview() {
         banner = null, actionIconPath = null, webUiIconPath = null
     )
     ModuleItem(EmptyDestinationsNavigator, module, "", {}, {}, {}, {})
+}

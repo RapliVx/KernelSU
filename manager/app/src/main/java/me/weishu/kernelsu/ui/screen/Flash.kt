@@ -184,7 +184,11 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt, skipConfirma
     val isSafeMode = Natives.isSafeMode
     val confirmDialog = rememberConfirmDialog()
 
-    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }        if (!flashingEnabled) return@LaunchedEffect
+    val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+
+    LaunchedEffect(flashIt, skipConfirmation, flashingEnabled) {
+        if (!flashingEnabled) return@LaunchedEffect
         if (isSafeMode && flashIt is FlashIt.FlashModules) {
             confirmDialog.showConfirm(
                 title = context.getString(R.string.safe_mode),
@@ -245,6 +249,18 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt, skipConfirma
             }
         }
     }
+
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
+
+    CompositionLocalProvider(
+        LocalDensity provides customDensity
+    ) {
         Scaffold(
             topBar = {
                 TopBar(
@@ -407,8 +423,10 @@ private fun TopBar(
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         scrollBehavior = scrollBehavior
     )
+}
 
 @Preview
 @Composable
 fun InstallPreview() {
     InstallScreen(EmptyDestinationsNavigator)
+}

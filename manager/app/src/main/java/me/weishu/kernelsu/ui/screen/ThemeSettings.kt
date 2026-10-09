@@ -86,9 +86,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -249,8 +246,6 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
     var appSettings by remember { mutableStateOf(ThemeController.getAppSettings(context)) }
     var currentColorMode by remember { mutableStateOf(appSettings.colorMode) }
     var currentKeyColor by remember { mutableIntStateOf(appSettings.keyColor) }
-    
-    var dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
 
     Scaffold(
         topBar = {
@@ -361,6 +356,8 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
             }
             
             SettingsGroupCard(title = stringResource(R.string.ui_scale_title)) {
+                var dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) }
+
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),

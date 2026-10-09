@@ -144,10 +144,24 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     val kernelVersion = getKernelVersion()
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
     val isFloating = remember { prefs.getBoolean("enable_floating_navbar", false) }
-    val useClassicLayout = remember { context.getLayoutStyle() }    
+    val useClassicLayout = remember { context.getLayoutStyle() }
+    val dpiScale by remember { mutableFloatStateOf(prefs.getFloat("app_dpi_scale", 1.0f)) } // Injeksi Skala DPI
+    
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val sysNavBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val floatingPadding = if (isFloating) sysNavBarPadding + 96.dp else 0.dp
+
+    val systemDensity = LocalDensity.current
+    val customDensity = remember(systemDensity, dpiScale) {
+        Density(
+            density = systemDensity.density * dpiScale,
+            fontScale = systemDensity.fontScale * dpiScale
+        )
+    }
+
+    CompositionLocalProvider(
+        LocalDensity provides customDensity
+    ) {
         Scaffold(
             topBar = { TopBar(scrollBehavior = scrollBehavior) },
             contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
@@ -862,3 +876,4 @@ private fun WarningCardPreview() {
             MaterialTheme.colorScheme.outlineVariant,
             onClick = {})
     }
+}
