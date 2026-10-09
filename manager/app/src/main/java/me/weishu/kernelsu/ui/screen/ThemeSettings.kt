@@ -101,7 +101,7 @@ import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.result.ResultBackNavigator
 import com.yalantis.ucrop.UCrop
 import java.io.File
-import kotlin.math.roundToInt // Tambahan impor untuk presisi persen
+import kotlin.math.roundToInt
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
@@ -574,23 +574,56 @@ private fun ThemePreviewCard(keyColor: Int, isDark: Boolean) {
                     contentAlignment = Alignment.TopCenter
                 ) {
                     Column(
-                        modifier = Modifier.padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Surface(
-                            color = colorScheme.secondaryContainer,
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
-                        ) {}
+                        Row(
+                            modifier = Modifier.fillMaxWidth().height(72.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                color = colorScheme.secondaryContainer,
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.weight(0.6f).fillMaxHeight()
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize().padding(12.dp), contentAlignment = Alignment.BottomStart) {
+                                    Surface(color = colorScheme.primary, shape = RoundedCornerShape(4.dp), modifier = Modifier.width(36.dp).height(8.dp)) {}
+                                }
+                            }
+                            Column(
+                                modifier = Modifier.weight(0.4f).fillMaxHeight(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Surface(
+                                    color = colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f).fillMaxWidth()
+                                ) {}
+                                Surface(
+                                    color = colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.weight(1f).fillMaxWidth()
+                                ) {}
+                            }
+                        }
+
                         Surface(
                             color = colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(140.dp)
-                        ) {}
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().height(56.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxSize().padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(modifier = Modifier.size(24.dp).background(colorScheme.primaryContainer, CircleShape))
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Surface(color = colorScheme.onSurfaceVariant.copy(alpha = 0.8f), shape = RoundedCornerShape(2.dp), modifier = Modifier.width(48.dp).height(6.dp)) {}
+                                    Surface(color = colorScheme.onSurfaceVariant.copy(alpha = 0.4f), shape = RoundedCornerShape(2.dp), modifier = Modifier.width(32.dp).height(4.dp)) {}
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -598,23 +631,32 @@ private fun ThemePreviewCard(keyColor: Int, isDark: Boolean) {
                     color = colorScheme.surfaceContainerHigh,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(48.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Surface(
                             shape = RoundedCornerShape(50),
                             color = colorScheme.primaryContainer,
                             modifier = Modifier
-                                .height(32.dp)
-                                .width(64.dp)
+                                .height(28.dp)
+                                .width(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Filled.Home, contentDescription = null, tint = colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Filled.Home, contentDescription = null, tint = colorScheme.onPrimaryContainer, modifier = Modifier.size(16.dp))
                             }
+                        }
+                        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.size(14.dp).background(colorScheme.onSurfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(4.dp)))
+                        }
+                        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.size(14.dp).background(colorScheme.onSurfaceVariant.copy(alpha = 0.5f), CircleShape))
+                        }
+                        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Filled.ViewColumn, contentDescription = null, tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
                         }
                     }
                 }
