@@ -296,25 +296,27 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     }
                 )
 
-                val quickShell = stringResource(R.string.quick_shell)
-                val quickShellSummary = stringResource(R.string.quick_shell_summary)
-                ExpressiveList(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    content = listOf {
-                        ExpressiveListItem(
-                            onClick = { navigator.navigate(QuickShellScreenDestination) },
-                            headlineContent = { Text(quickShell) },
-                            supportingContent = { Text(quickShellSummary) },
-                            leadingContent = { Icon(Icons.Outlined.Terminal, quickShell) },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    null
-                                )
-                            }
-                        )
-                    }
-                )
+                KsuIsValid {
+                    val quickShell = stringResource(R.string.quick_shell)
+                    val quickShellSummary = stringResource(R.string.quick_shell_summary)
+                    ExpressiveList(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        content = listOf {
+                            ExpressiveListItem(
+                                onClick = { navigator.navigate(QuickShellScreenDestination) },
+                                headlineContent = { Text(quickShell) },
+                                supportingContent = { Text(quickShellSummary) },
+                                leadingContent = { Icon(Icons.Outlined.Terminal, quickShell) },
+                                trailingContent = {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                        null
+                                    )
+                                }
+                            )
+                        }
+                    )
+                }
 
                 val profileTemplate = stringResource(id = R.string.settings_profile_template)
                 val profileTemplateSummary = stringResource(id = R.string.settings_profile_template_summary)
