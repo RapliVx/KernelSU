@@ -180,8 +180,8 @@ fun BottomBar(navController: NavHostController) {
         } else {
             NavigationBar(
                 windowInsets = insets,
-                containerColor = NavigationBarDefaults.containerColor,
-                tonalElevation = NavigationBarDefaults.Elevation
+                containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
+                tonalElevation = 0.dp
             ) {
                 visibleTabs.forEach { destination ->
                     val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
@@ -209,7 +209,12 @@ fun BottomBar(navController: NavHostController) {
                                 stringResource(destination.label)
                             )
                         },
-                        label = { Text(stringResource(destination.label)) },
+                        label = { 
+                            Text(
+                                text = stringResource(destination.label),
+                                fontWeight = if (isCurrentDestOnBackStack) FontWeight.Bold else FontWeight.Medium
+                            ) 
+                        },
                         alwaysShowLabel = false
                     )
                 }
