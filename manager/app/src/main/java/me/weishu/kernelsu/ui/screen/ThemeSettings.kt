@@ -106,6 +106,7 @@ import java.io.File
 import kotlin.math.roundToInt
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.ExpressiveList
+import me.weishu.kernelsu.ui.component.ExpressiveSwitchItem
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
 import me.weishu.kernelsu.ui.util.clearHeaderImage
@@ -135,7 +136,7 @@ private fun SettingsGroupCard(
         title = title,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         content = listOf {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
@@ -406,105 +407,72 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
-            SettingsGroupCard(title = stringResource(R.string.header_image)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.header_custom_title),
-                            style = MaterialTheme.typography.titleMedium
+            ExpressiveList(
+                title = stringResource(R.string.header_image),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                content = listOf {
+                    Column {
+                        ExpressiveSwitchItem(
+                            title = stringResource(R.string.header_custom_title),
+                            summary = stringResource(R.string.header_custom_summary),
+                            checked = hasCustomHeader,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    imagePicker.launch(arrayOf("image/*"))
+                                } else {
+                                    context.clearHeaderImage()
+                                    hasCustomHeader = false
+                                }
+                            }
                         )
-                        Text(
-                            text = stringResource(R.string.header_custom_summary),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = hasCustomHeader,
-                        onCheckedChange = { checked ->
-                            if (checked) {
-                                imagePicker.launch(arrayOf("image/*"))
-                            } else {
-                                context.clearHeaderImage()
-                                hasCustomHeader = false
+                        AnimatedVisibility(visible = hasCustomHeader) {
+                            OutlinedButton(
+                                onClick = { imagePicker.launch(arrayOf("image/*")) },
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Image,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp)
+                                )
+                                Text(stringResource(R.string.header_choose_image))
                             }
                         }
-                    )
-                }
-
-                AnimatedVisibility(visible = hasCustomHeader) {
-                    OutlinedButton(
-                        onClick = { imagePicker.launch(arrayOf("image/*")) },
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Image,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Text(stringResource(R.string.header_choose_image))
                     }
                 }
-            }
+            )
 
-            SettingsGroupCard(title = stringResource(R.string.nav_bar_title)) {
-
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.floating_nav_title),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = stringResource(R.string.floating_nav_summary),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Switch(
-                        checked = enableFloatingNav,
-                        onCheckedChange = { isChecked ->
-                            prefs.edit { putBoolean("enable_floating_navbar", isChecked) }
-                            enableFloatingNav = isChecked
-                        }
-                    )
-                }
-
-                if (enableFloatingNav) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Floating Navbar Gesture",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                text = "Enable iOS-style gesture scrubbing on floating navbar.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        var enableFloatingNavGesture by rememberSaveable { mutableStateOf(prefs.getBoolean("floating_navbar_gesture", true)) }
-                        Switch(
-                            checked = enableFloatingNavGesture,
+            ExpressiveList(
+                title = stringResource(R.string.nav_bar_title),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                content = buildList<@Composable () -> Unit> {
+                    add {
+                        ExpressiveSwitchItem(
+                            title = stringResource(R.string.floating_nav_title),
+                            summary = stringResource(R.string.floating_nav_summary),
+                            checked = enableFloatingNav,
                             onCheckedChange = { isChecked ->
-                                prefs.edit { putBoolean("floating_navbar_gesture", isChecked) }
-                                enableFloatingNavGesture = isChecked
+                                prefs.edit { putBoolean("enable_floating_navbar", isChecked) }
+                                enableFloatingNav = isChecked
                             }
                         )
                     }
+                    if (enableFloatingNav) {
+                        add {
+                            var enableFloatingNavGesture by rememberSaveable { mutableStateOf(prefs.getBoolean("floating_navbar_gesture", true)) }
+                            ExpressiveSwitchItem(
+                                title = "Floating Navbar Gesture",
+                                summary = "Enable iOS-style gesture scrubbing on floating navbar.",
+                                checked = enableFloatingNavGesture,
+                                onCheckedChange = { isChecked ->
+                                    prefs.edit { putBoolean("floating_navbar_gesture", isChecked) }
+                                    enableFloatingNavGesture = isChecked
+                                }
+                            )
+                        }
+                    }
                 }
-            }
+            )
 
             SettingsGroupCard(title = stringResource(R.string.card_layout_title)) {
                 Row(
