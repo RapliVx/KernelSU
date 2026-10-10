@@ -12,6 +12,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -146,6 +148,25 @@ fun BottomBar(navController: NavHostController) {
                                     size = Size(animatedRight - animatedLeft, size.height),
                                     cornerRadius = CornerRadius(size.height / 2, size.height / 2)
                                 )
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, _ ->
+                                val x = change.position.x
+                                val targetIndex = indicatorBounds.entries.find { it.value.left <= x && it.value.right >= x }?.key
+                                if (targetIndex != null && targetIndex != selectedIndex) {
+                                    val dest = visibleTabs[targetIndex]
+                                    val isFromNonBottom = currentRoute !in bottomBarRoutes
+                                    navigator.navigate(dest.direction) {
+                                        if (isFromNonBottom) {
+                                            popUpTo(NavGraphs.root) { inclusive = true }
+                                        } else {
+                                            popUpTo(NavGraphs.root) { saveState = true }
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
                             }
                         },
                     verticalAlignment = Alignment.CenterVertically,
