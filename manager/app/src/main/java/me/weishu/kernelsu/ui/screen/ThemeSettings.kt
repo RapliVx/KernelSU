@@ -9,6 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -732,6 +735,11 @@ private fun ColorButton(color: Color, isSelected: Boolean, isDark: Boolean, onCl
             rememberDynamicColorScheme(seedColor = color, isDark = isDark)
         }
 
+    val innerCornerRadius by animateDpAsState(
+        targetValue = if (isSelected) 24.dp else 16.dp,
+        label = "innerCornerRadius"
+    )
+
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
@@ -739,20 +747,18 @@ private fun ColorButton(color: Color, isSelected: Boolean, isDark: Boolean, onCl
         modifier = Modifier.size(72.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Canvas(modifier = Modifier.size(48.dp)) {
+            Canvas(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(innerCornerRadius))) {
                 // Top
-                drawArc(
+                drawRect(
                     color = colorScheme.primaryContainer,
-                    startAngle = 180f,
-                    sweepAngle = 180f,
-                    useCenter = true
+                    topLeft = Offset(0f, 0f),
+                    size = Size(size.width, size.height / 2)
                 )
                 // Bottom
-                drawArc(
+                drawRect(
                     color = colorScheme.tertiaryContainer,
-                    startAngle = 0f,
-                    sweepAngle = 180f,
-                    useCenter = true
+                    topLeft = Offset(0f, size.height / 2),
+                    size = Size(size.width, size.height / 2)
                 )
             }
 
