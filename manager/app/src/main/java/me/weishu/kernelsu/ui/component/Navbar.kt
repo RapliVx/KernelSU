@@ -118,7 +118,7 @@ fun BottomBar(navController: NavHostController) {
                 var selectedIndex by remember { mutableIntStateOf(0) }
                 
                 var isGestureActive by remember { mutableStateOf(false) }
-                var dragPositionX by remember { mutableFloatStateOf(0f) }
+                var dragPositionX by remember { mutableStateOf(0f) }
                 var hoveredIndex by remember { mutableIntStateOf(-1) }
                 
                 visibleTabs.forEachIndexed { index, destination ->
@@ -151,7 +151,7 @@ fun BottomBar(navController: NavHostController) {
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                         .height(48.dp)
                         .drawBehind {
-                            if (targetRect != Rect.Zero) {
+                            if (animatedRight > animatedLeft) {
                                 drawRoundRect(
                                     color = pillColor,
                                     topLeft = Offset(animatedLeft, 0f),
