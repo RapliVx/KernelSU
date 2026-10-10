@@ -151,7 +151,7 @@ fun BottomBar(navController: NavHostController) {
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                         .height(48.dp)
                         .drawBehind {
-                            if (animatedRight > animatedLeft) {
+                            if (enableGesture && animatedRight > animatedLeft) {
                                 drawRoundRect(
                                     color = pillColor,
                                     topLeft = Offset(animatedLeft, 0f),
@@ -213,6 +213,12 @@ fun BottomBar(navController: NavHostController) {
 
                         val animationSpec = tween<Color>(durationMillis = 300, easing = FastOutSlowInEasing)
 
+                        val bgColor by animateColorAsState(
+                            targetValue = if (!enableGesture && isActive) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                            animationSpec = animationSpec,
+                            label = "bgColor"
+                        )
+
                         val contentColor by animateColorAsState(
                             targetValue = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                             animationSpec = animationSpec,
@@ -228,6 +234,7 @@ fun BottomBar(navController: NavHostController) {
                                     indicatorBounds[index] = Rect(x, 0f, x + width, 0f)
                                 }
                                 .clip(RoundedCornerShape(50))
+                                .background(bgColor)
                                 .clickable {
                                     if (isCurrentDestOnBackStack) {
                                         navigator.popBackStack(destination.direction, false)
