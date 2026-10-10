@@ -105,6 +105,7 @@ import com.yalantis.ucrop.UCrop
 import java.io.File
 import kotlin.math.roundToInt
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.ExpressiveList
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.ThemeController
 import me.weishu.kernelsu.ui.util.clearHeaderImage
@@ -124,31 +125,25 @@ private val keyColorOptions = listOf(
     Color(0xFF795548).toArgb(),
 )
 
+
 @Composable
 private fun SettingsGroupCard(
     title: String,
     content: @Composable () -> Unit
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow, 
-        shape = RoundedCornerShape(20.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            content()
+    ExpressiveList(
+        title = title,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        content = listOf {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                content()
+            }
         }
-    }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
