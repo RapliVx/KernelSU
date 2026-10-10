@@ -24,10 +24,10 @@ object AdbRootManager {
             val shell = getRootShell()
             if (!shell.isRoot) return@launch
 
-            val statusStr = ShellUtils.fastCmd(shell, "${getKsuDaemonPath()} feature status adb_root").trim()
+            val statusStr = ShellUtils.fastCmd(shell, "${getKsuDaemonPath()} feature check adb_root").trim()
             _adbRootStatus.value = statusStr
             
-            val getConfigOut = ShellUtils.fastCmd(shell, "${getKsuDaemonPath()} feature get-config adb_root").trim()
+            val getConfigOut = ShellUtils.fastCmd(shell, "${getKsuDaemonPath()} feature get --config adb_root").trim()
             val isEnabled = getConfigOut.contains("Status: enabled")
             _adbRootState.value = isEnabled
         }
