@@ -113,8 +113,13 @@ fun BottomBar(navController: NavHostController) {
                 color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
                 tonalElevation = 0.dp
             ) {
+                val enableGesture = remember { prefs.getBoolean("floating_navbar_gesture", true) }
                 val indicatorBounds = remember { mutableStateMapOf<Int, Rect>() }
                 var selectedIndex by remember { mutableIntStateOf(0) }
+                
+                var isGestureActive by remember { mutableStateOf(false) }
+                var dragPositionX by remember { mutableFloatStateOf(0f) }
+                var hoveredIndex by remember { mutableIntStateOf(-1) }
                 
                 visibleTabs.forEachIndexed { index, destination ->
                     val isCurrent by navController.isRouteOnBackStackAsState(destination.direction)
@@ -123,14 +128,19 @@ fun BottomBar(navController: NavHostController) {
                     }
                 }
                 
-                val targetRect = indicatorBounds[selectedIndex] ?: Rect.Zero
+                val radiusPx = with(androidx.compose.ui.platform.LocalDensity.current) { 24.dp.toPx() }
+                val activeRect = indicatorBounds[selectedIndex] ?: Rect.Zero
+                
+                val targetLeft = if (isGestureActive) dragPositionX - radiusPx else activeRect.left
+                val targetRight = if (isGestureActive) dragPositionX + radiusPx else activeRect.right
+
                 val animatedLeft by animateFloatAsState(
-                    targetValue = targetRect.left, 
+                    targetValue = targetLeft, 
                     animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
                     label = "indicatorLeft"
                 )
                 val animatedRight by animateFloatAsState(
-                    targetValue = targetRect.right, 
+                    targetValue = targetRight, 
                     animationSpec = spring(dampingRatio = 0.85f, stiffness = 300f),
                     label = "indicatorRight"
                 )
@@ -151,22 +161,45 @@ fun BottomBar(navController: NavHostController) {
                             }
                         }
                         .pointerInput(Unit) {
-                            detectDragGestures { change, _ ->
-                                val x = change.position.x
-                                val targetIndex = indicatorBounds.entries.find { it.value.left <= x && it.value.right >= x }?.key
-                                if (targetIndex != null && targetIndex != selectedIndex) {
-                                    val dest = visibleTabs[targetIndex]
-                                    val isFromNonBottom = currentRoute !in bottomBarRoutes
-                                    navigator.navigate(dest.direction) {
-                                        if (isFromNonBottom) {
-                                            popUpTo(NavGraphs.root) { inclusive = true }
-                                        } else {
-                                            popUpTo(NavGraphs.root) { saveState = true }
+                            if (enableGesture) {
+                                detectDragGestures(
+                                    onDragStart = { offset ->
+                                        isGestureActive = true
+                                        dragPositionX = offset.x
+                                        hoveredIndex = selectedIndex
+                                    },
+                                    onDragEnd = {
+                                        isGestureActive = false
+                                        if (hoveredIndex != -1 && hoveredIndex != selectedIndex) {
+                                            val dest = visibleTabs[hoveredIndex]
+                                            val isFromNonBottom = currentRoute !in bottomBarRoutes
+                                            navigator.navigate(dest.direction) {
+                                                if (isFromNonBottom) {
+                                                    popUpTo(NavGraphs.root) { inclusive = true }
+                                                } else {
+                                                    popUpTo(NavGraphs.root) { saveState = true }
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
+                                        hoveredIndex = -1
+                                    },
+                                    onDragCancel = {
+                                        isGestureActive = false
+                                        hoveredIndex = -1
+                                    },
+                                    onDrag = { change, _ ->
+                                        val minX = indicatorBounds[0]?.left ?: 0f
+                                        val maxX = indicatorBounds[visibleTabs.size - 1]?.right ?: size.width.toFloat()
+                                        dragPositionX = change.position.x.coerceIn(minX, maxX)
+                                        
+                                        val newTarget = indicatorBounds.entries.find { it.value.left <= dragPositionX && it.value.right >= dragPositionX }?.key
+                                        if (newTarget != null) {
+                                            hoveredIndex = newTarget
+                                        }
                                     }
-                                }
+                                )
                             }
                         },
                     verticalAlignment = Alignment.CenterVertically,
@@ -175,10 +208,13 @@ fun BottomBar(navController: NavHostController) {
                     visibleTabs.forEachIndexed { index, destination ->
                         val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
 
+                        val isHovered = isGestureActive && hoveredIndex == index
+                        val isActive = (!isGestureActive && isCurrentDestOnBackStack) || isHovered
+
                         val animationSpec = tween<Color>(durationMillis = 300, easing = FastOutSlowInEasing)
 
                         val contentColor by animateColorAsState(
-                            targetValue = if (isCurrentDestOnBackStack) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            targetValue = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                             animationSpec = animationSpec,
                             label = "contentColor"
                         )
@@ -213,13 +249,13 @@ fun BottomBar(navController: NavHostController) {
                             horizontalArrangement = Arrangement.Center
                         ) {
                             Icon(
-                                imageVector = if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
+                                imageVector = if (isActive) destination.iconSelected else destination.iconNotSelected,
                                 contentDescription = stringResource(destination.label),
                                 tint = contentColor
                             )
 
                             AnimatedVisibility(
-                                visible = isCurrentDestOnBackStack,
+                                visible = isCurrentDestOnBackStack && !isGestureActive,
                                 enter = expandHorizontally(
                                     animationSpec = tween(300, easing = FastOutSlowInEasing),
                                     expandFrom = Alignment.Start

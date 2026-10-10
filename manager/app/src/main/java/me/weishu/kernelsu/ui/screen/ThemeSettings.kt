@@ -481,6 +481,34 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                         }
                     )
                 }
+
+                if (enableFloatingNav) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Floating Navbar Gesture",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = "Enable iOS-style gesture scrubbing on floating navbar.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        var enableFloatingNavGesture by rememberSaveable { mutableStateOf(prefs.getBoolean("floating_navbar_gesture", true)) }
+                        Switch(
+                            checked = enableFloatingNavGesture,
+                            onCheckedChange = { isChecked ->
+                                prefs.edit { putBoolean("floating_navbar_gesture", isChecked) }
+                                enableFloatingNavGesture = isChecked
+                            }
+                        )
+                    }
+                }
             }
 
             SettingsGroupCard(title = stringResource(R.string.card_layout_title)) {
