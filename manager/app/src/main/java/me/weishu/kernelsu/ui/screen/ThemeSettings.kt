@@ -459,7 +459,7 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                     }
                     if (enableFloatingNav) {
                         add {
-                            var enableFloatingNavGesture by rememberSaveable { mutableStateOf(prefs.getBoolean("floating_navbar_gesture", true)) }
+                            var enableFloatingNavGesture by rememberSaveable { mutableStateOf(prefs.getBoolean("floating_navbar_gesture", false)) }
                             ExpressiveSwitchItem(
                                 title = "Floating Navbar Gesture",
                                 summary = "Enable iOS-style gesture scrubbing on floating navbar.",

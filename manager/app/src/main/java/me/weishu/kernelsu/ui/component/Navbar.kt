@@ -113,7 +113,7 @@ fun BottomBar(navController: NavHostController) {
                 color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
                 tonalElevation = 0.dp
             ) {
-                val enableGesture = remember { prefs.getBoolean("floating_navbar_gesture", true) }
+                val enableGesture = remember { prefs.getBoolean("floating_navbar_gesture", false) }
                 val indicatorBounds = remember { mutableStateMapOf<Int, Rect>() }
                 var selectedIndex by remember { mutableIntStateOf(0) }
                 
