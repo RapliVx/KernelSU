@@ -106,8 +106,12 @@ struct ksu_set_app_profile_cmd {
 struct ksu_get_feature_cmd {
 	__u32 feature_id; /* Input: feature ID (enum ksu_feature_id) */
 	__u64 value; /* Output: feature value/state */
-	__u8 supported; /* Output: true if feature is supported, false otherwise */
+	__u8 supported; /* Output: KSU_FEATURE_FLAG_* bits, 0 if feature is not supported */
 };
+
+#define KSU_FEATURE_FLAG_SUPPORTED (1 << 0)
+/* Value is forced by boot config (force_feature param), SET_FEATURE is refused */
+#define KSU_FEATURE_FLAG_FORCED (1 << 1)
 
 struct ksu_set_feature_cmd {
 	__u32 feature_id; /* Input: feature ID (enum ksu_feature_id) */
@@ -144,18 +148,6 @@ struct ksu_get_sulog_fd_cmd {
 	__u32 flags; /* Input: reserved for future use, must be 0 */
 };
 
-struct ksu_hook_type_cmd {
-	char hook_type[32];
-};
-
-struct ksu_susfs_version_cmd {
-	char version[32];
-};
-
-struct ksu_driver_name_cmd {
-	char name[32];
-};
-
 #define KSU_UMOUNT_WIPE 0	/* ignore everything and wipe list */
 #define KSU_UMOUNT_ADD 1	/* add entry (path + flags) */
 #define KSU_UMOUNT_DEL 2	/* delete entry, strcmp */
@@ -188,8 +180,5 @@ struct ksu_driver_name_cmd {
 #define KSU_IOCTL_SET_INIT_PGRP			_IO('K', 19)
 #define KSU_IOCTL_GET_SULOG_FD			_IOW('K', 20, struct ksu_get_sulog_fd_cmd)
 #define KSU_IOCTL_DISABLE_ESCAPE_TO_ROOT	_IO('K', 21)
-#define KSU_IOCTL_HOOK_TYPE			_IOC(_IOC_READ, 'K', 101, 0)
-#define KSU_IOCTL_SUSFS_VERSION			_IOC(_IOC_READ, 'K', 102, 0)
-#define KSU_IOCTL_DRIVER_NAME			_IOC(_IOC_READ, 'K', 104, 0)
 
 #endif

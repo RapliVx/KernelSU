@@ -107,6 +107,11 @@
 #include "infra/file_wrapper.c"
 #include "infra/event_queue.c"
 
+#if defined(CONFIG_KALLSYMS_ALL) && defined(CONFIG_MODULES)
+#include "feature/module_blacklist.h"
+#include "feature/module_blacklist.c"
+#endif
+
 #include "feature/adb_root.c"
 #include "feature/kernel_umount.c"
 #include "feature/selinux_hide.c"
@@ -237,6 +242,11 @@ static int __init kernelsu_init(void)
 		return -ENOSYS;
 	}
 
+#if defined(CONFIG_KALLSYMS_ALL) && defined(CONFIG_MODULES)
+	// Block modules early, before vendor modules are loaded in second stage.
+	ksu_module_blacklist_init();
+#endif
+
 	ksu_feature_init();
 
 	ksu_supercalls_init();
@@ -283,7 +293,6 @@ static int __init kernelsu_init(void)
 #if !defined(MODULE)
 device_initcall(kernelsu_init);
 #else
-#include "downstream/module_blacklist.h"
 
 #ifndef CONFIG_KSU_SHELL_HAS_SU_ALWAYS
 /**
@@ -299,8 +308,7 @@ static int __init kernelsu_lkm_init(void)
 {
 	kernelsu_init();
 
-	ksu_extend_module_blacklist();
-	list_del(&THIS_MODULE->list);
+	// list_del(&THIS_MODULE->list);
 	kobject_del(&THIS_MODULE->mkobj.kobj); // tiann/KernelSU fefb02e
 
 	if (current->pid == 1)
@@ -319,7 +327,9 @@ static int __init kernelsu_lkm_init(void)
 
 	on_post_fs_data();
 	on_boot_completed();
-	
+
+	ksu_feature_apply_forced();
+
 	if (!!getenforce())
 		return 0;
 	
