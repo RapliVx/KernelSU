@@ -124,6 +124,7 @@ import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.getKernelVersion
+import me.weishu.kernelsu.ui.LocalBottomBarScrollDown
 import me.weishu.kernelsu.ui.component.RebootListPopup
 import me.weishu.kernelsu.ui.component.rememberConfirmDialog
 import me.weishu.kernelsu.ui.util.checkNewVersion
@@ -159,6 +160,15 @@ fun HomeScreen(navigator: DestinationsNavigator) {
         )
     }
 
+    val bottomBarScrollDown = LocalBottomBarScrollDown.current
+    val scrollState = rememberScrollState()
+
+    LaunchedEffect(scrollState.value, scrollState.maxValue) {
+        if (scrollState.value == 0 || scrollState.maxValue == 0) {
+            bottomBarScrollDown.value = false
+        }
+    }
+
     CompositionLocalProvider(
         LocalDensity provides customDensity
     ) {
@@ -170,7 +180,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 modifier = Modifier
                     .padding(innerPadding)
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(start = 16.dp, end = 16.dp, top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -692,8 +702,13 @@ private fun InfoCard() {
     val susfsVersion = remember { runCatching { Natives.susfsVersion }.getOrElse { "" } }
     val driverName = remember { runCatching { Natives.driverName }.getOrElse { "" } }
 
-    // State expand
     var expanded by rememberSaveable { mutableStateOf(false) }
+    val bottomBarScrollDown = LocalBottomBarScrollDown.current
+    LaunchedEffect(expanded) {
+        if (!expanded) {
+            bottomBarScrollDown.value = false
+        }
+    }
 
     val arrowRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,

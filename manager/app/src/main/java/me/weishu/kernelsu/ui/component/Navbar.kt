@@ -69,18 +69,18 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.ramcosta.composedestinations.generated.NavGraphs
-import com.ramcosta.composedestinations.utils.isRouteOnBackStackAsState
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.ui.screen.BottomBarDestination
 import me.weishu.kernelsu.ui.util.rootAvailable
 
 @Composable
-fun BottomBar(navController: NavHostController) {
+fun BottomBar(
+    navController: NavHostController,
+    isFloating: Boolean = false
+) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("settings", Context.MODE_PRIVATE) }
-
-    val isFloating by remember { mutableStateOf(prefs.getBoolean("enable_floating_navbar", false)) }
 
     val navigator = navController.rememberDestinationsNavigator()
     val isManager = Natives.isManager
@@ -110,7 +110,7 @@ fun BottomBar(navController: NavHostController) {
         contentAlignment = Alignment.BottomCenter
     ) {
         if (isFloating) {
-            val enableGesture = remember { prefs.getBoolean("floating_navbar_gesture", false) }
+            val enableGesture = prefs.getBoolean("floating_navbar_gesture", false)
             val indicatorBounds = remember { mutableStateMapOf<Int, Rect>() }
             var selectedIndex by remember { mutableIntStateOf(0) }
             
@@ -120,8 +120,7 @@ fun BottomBar(navController: NavHostController) {
             var hoveredIndex by remember { mutableIntStateOf(-1) }
             
             visibleTabs.forEachIndexed { index, destination ->
-                val isCurrent by navController.isRouteOnBackStackAsState(destination.direction)
-                if (isCurrent) {
+                if (destination.direction.route == currentRoute) {
                     selectedIndex = index
                 }
             }
@@ -205,13 +204,8 @@ fun BottomBar(navController: NavHostController) {
                                         rawDragX = 0f
                                         if (hoveredIndex != -1 && hoveredIndex != selectedIndex) {
                                             val dest = visibleTabs[hoveredIndex]
-                                            val isFromNonBottom = currentRoute !in bottomBarRoutes
                                             navigator.navigate(dest.direction) {
-                                                if (isFromNonBottom) {
-                                                    popUpTo(NavGraphs.root) { inclusive = true }
-                                                } else {
-                                                    popUpTo(NavGraphs.root) { saveState = true }
-                                                }
+                                                popUpTo(NavGraphs.root) { saveState = true }
                                                 launchSingleTop = true
                                                 restoreState = true
                                             }
@@ -241,10 +235,10 @@ fun BottomBar(navController: NavHostController) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     visibleTabs.forEachIndexed { index, destination ->
-                        val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
+                        val isCurrent = destination.direction.route == currentRoute
 
                         val isHovered = isGestureActive && hoveredIndex == index
-                        val isActive = (!isGestureActive && isCurrentDestOnBackStack) || isHovered
+                        val isActive = (!isGestureActive && isCurrent) || isHovered
 
                         val animationSpec = tween<Color>(durationMillis = 300, easing = FastOutSlowInEasing)
 
@@ -276,16 +270,11 @@ fun BottomBar(navController: NavHostController) {
                                     interactionSource = interactionSource,
                                     indication = if (enableGesture || isGestureActive) null else LocalIndication.current
                                 ) {
-                                    if (isCurrentDestOnBackStack) {
+                                    if (isCurrent) {
                                         navigator.popBackStack(destination.direction, false)
                                     } else {
-                                        val isFromNonBottom = currentRoute !in bottomBarRoutes
                                         navigator.navigate(destination.direction) {
-                                            if (isFromNonBottom) {
-                                                popUpTo(NavGraphs.root) { inclusive = true }
-                                            } else {
-                                                popUpTo(NavGraphs.root) { saveState = true }
-                                            }
+                                            popUpTo(NavGraphs.root) { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
@@ -302,7 +291,7 @@ fun BottomBar(navController: NavHostController) {
                             )
 
                             AnimatedVisibility(
-                                visible = isCurrentDestOnBackStack && !isGestureActive,
+                                visible = isCurrent && !isGestureActive,
                                 enter = expandHorizontally(
                                     animationSpec = tween(300, easing = FastOutSlowInEasing),
                                     expandFrom = Alignment.Start
@@ -333,20 +322,15 @@ fun BottomBar(navController: NavHostController) {
                 tonalElevation = 0.dp
             ) {
                 visibleTabs.forEach { destination ->
-                    val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
+                    val isCurrent = destination.direction.route == currentRoute
                     NavigationBarItem(
-                        selected = isCurrentDestOnBackStack,
+                        selected = isCurrent,
                         onClick = {
-                            if (isCurrentDestOnBackStack) {
+                            if (isCurrent) {
                                 navigator.popBackStack(destination.direction, false)
                             } else {
-                                val isFromNonBottom = currentRoute !in bottomBarRoutes
                                 navigator.navigate(destination.direction) {
-                                    if (isFromNonBottom) {
-                                        popUpTo(NavGraphs.root) { inclusive = true }
-                                    } else {
-                                        popUpTo(NavGraphs.root) { saveState = true }
-                                    }
+                                    popUpTo(NavGraphs.root) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
@@ -354,14 +338,14 @@ fun BottomBar(navController: NavHostController) {
                         },
                         icon = {
                             Icon(
-                                if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
+                                if (isCurrent) destination.iconSelected else destination.iconNotSelected,
                                 stringResource(destination.label)
                             )
                         },
                         label = { 
                             Text(
                                 text = stringResource(destination.label),
-                                fontWeight = if (isCurrentDestOnBackStack) FontWeight.Bold else FontWeight.Medium
+                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium
                             ) 
                         },
                         alwaysShowLabel = false

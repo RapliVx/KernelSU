@@ -15,6 +15,8 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -54,8 +56,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf // Tambahan untuk float state
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
@@ -68,9 +73,9 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity // Tambahan untuk memanipulasi DPI
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Density // Tambahan untuk nilai Density
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
@@ -80,7 +85,6 @@ import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
-import com.ramcosta.composedestinations.utils.isRouteOnBackStackAsState
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.ui.screen.BottomBarDestination
@@ -93,6 +97,8 @@ import me.weishu.kernelsu.ui.util.LocalSnackbarHost
 import me.weishu.kernelsu.ui.util.install
 import me.weishu.kernelsu.ui.util.rootAvailable
 import me.weishu.kernelsu.ui.component.BottomBar
+
+val LocalBottomBarScrollDown = compositionLocalOf<MutableState<Boolean>> { mutableStateOf(false) }
 
 class MainActivity : ComponentActivity() {
 
@@ -205,35 +211,55 @@ class MainActivity : ComponentActivity() {
 
                     val navigator = navController.rememberDestinationsNavigator()
                     val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                    val visibleEntries by navController.visibleEntries.collectAsState()
                     val currentRoute = currentBackStackEntry?.destination?.route
-                    val showBottomBar = currentRoute in bottomBarRoutes
+                    val topVisibleRoute = visibleEntries.lastOrNull()?.destination?.route
+                    val showBottomBar = currentRoute in bottomBarRoutes && (topVisibleRoute == null || topVisibleRoute in bottomBarRoutes)
 
-                    var isScrollingDown by remember { mutableStateOf(false) }
+                    val isScrollingDown = remember { mutableStateOf(false) }
 
                     LaunchedEffect(currentRoute) {
-                        isScrollingDown = false
+                        isScrollingDown.value = false
                     }
 
                     val nestedScrollConnection = remember {
                         object : NestedScrollConnection {
                             var scrollAccumulator = 0f
+
+                            override fun onPreScroll(
+                                available: Offset,
+                                source: NestedScrollSource
+                            ): Offset {
+                                if (available.y > 0f) {
+                                    if (scrollAccumulator < 0f) {
+                                        scrollAccumulator = 0f
+                                    }
+                                    scrollAccumulator = (scrollAccumulator + available.y).coerceIn(0f, 200f)
+                                    if (scrollAccumulator > 20f) {
+                                        isScrollingDown.value = false
+                                        scrollAccumulator = 0f
+                                    }
+                                }
+                                return Offset.Zero
+                            }
+
                             override fun onPostScroll(
                                 consumed: Offset,
                                 available: Offset,
                                 source: NestedScrollSource
                             ): Offset {
-                                val delta = consumed.y
-                                if (delta != 0f) {
-                                    scrollAccumulator += delta
-                                    scrollAccumulator = scrollAccumulator.coerceIn(-150f, 150f)
-
-                                    if (scrollAccumulator < -50f) {
-                                        isScrollingDown = true
-                                        scrollAccumulator = 0f
-                                    } else if (scrollAccumulator > 50f) {
-                                        isScrollingDown = false
+                                if (consumed.y < 0f) {
+                                    if (scrollAccumulator > 0f) {
                                         scrollAccumulator = 0f
                                     }
+                                    scrollAccumulator = (scrollAccumulator + consumed.y).coerceIn(-200f, 0f)
+                                    if (scrollAccumulator < -80f) {
+                                        isScrollingDown.value = true
+                                        scrollAccumulator = 0f
+                                    }
+                                } else if (consumed.y > 0f || available.y > 0f) {
+                                    isScrollingDown.value = false
+                                    scrollAccumulator = 0f
                                 }
                                 return Offset.Zero
                             }
@@ -331,14 +357,43 @@ class MainActivity : ComponentActivity() {
 
                     Scaffold(
                         bottomBar = {
-                            if (showBottomBar && configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState) {
-                                BottomBar(navController)
+                            if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT && !isFloatingState) {
+                                AnimatedVisibility(
+                                    visible = showBottomBar,
+                                    enter = slideInVertically(
+                                        initialOffsetY = { it },
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    ) + expandVertically(
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    ),
+                                    exit = slideOutVertically(
+                                        targetOffsetY = { it },
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    ) + shrinkVertically(
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
+                                    )
+                                ) {
+                                    BottomBar(navController, isFloating = false)
+                                }
                             }
                         },
                         contentWindowInsets = WindowInsets(0, 0, 0, 0)
                     ) { innerPadding ->
                         CompositionLocalProvider(
                             LocalSnackbarHost provides snackBarHostState,
+                            LocalBottomBarScrollDown provides isScrollingDown,
                         ) {
                             Box(modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection)) {
 
@@ -363,7 +418,7 @@ class MainActivity : ComponentActivity() {
 
                                 Box(modifier = Modifier.align(Alignment.BottomCenter)) {
                                     AnimatedVisibility(
-                                        visible = showBottomBar && isFloatingState && !isScrollingDown,
+                                        visible = showBottomBar && isFloatingState && !isScrollingDown.value,
                                         enter = slideInVertically(
                                             initialOffsetY = { it * 2 },
                                             animationSpec = spring(
@@ -379,7 +434,7 @@ class MainActivity : ComponentActivity() {
                                             )
                                         ) + fadeOut(tween(400))
                                     ) {
-                                        BottomBar(navController)
+                                        BottomBar(navController, isFloating = true)
                                     }
                                 }
                             }
@@ -410,20 +465,15 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
         ) {
             BottomBarDestination.entries.forEach { destination ->
                 if (!fullFeatured && destination.rootRequired) return@forEach
-                val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
+                val isCurrent = destination.direction.route == currentRoute
                 NavigationRailItem(
-                    selected = isCurrentDestOnBackStack,
+                    selected = isCurrent,
                     onClick = {
-                        if (isCurrentDestOnBackStack) {
+                        if (isCurrent) {
                             navigator.popBackStack(destination.direction, false)
                         } else {
-                            val isFromNonBottom = currentRoute !in bottomBarRoutes
                             navigator.navigate(destination.direction) {
-                                if (isFromNonBottom) {
-                                    popUpTo(NavGraphs.root) { inclusive = true }
-                                } else {
-                                    popUpTo(NavGraphs.root) { saveState = true }
-                                }
+                                popUpTo(NavGraphs.root) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -431,7 +481,7 @@ private fun SideBar(navController: NavHostController, modifier: Modifier = Modif
                     },
                     icon = {
                         Icon(
-                            if (isCurrentDestOnBackStack) destination.iconSelected else destination.iconNotSelected,
+                            if (isCurrent) destination.iconSelected else destination.iconNotSelected,
                             stringResource(destination.label)
                         )
                     },

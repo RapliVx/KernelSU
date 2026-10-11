@@ -79,6 +79,7 @@ import kotlinx.coroutines.launch
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ksuApp
+import me.weishu.kernelsu.ui.LocalBottomBarScrollDown
 import me.weishu.kernelsu.ui.component.AppIconImage
 import me.weishu.kernelsu.ui.component.ExpressiveLazyList
 import me.weishu.kernelsu.ui.component.ExpressiveListItem
@@ -112,6 +113,13 @@ fun SuperUserScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     val pullToRefreshState = rememberPullToRefreshState()
+
+    val bottomBarScrollDown = LocalBottomBarScrollDown.current
+    LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+        if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
+            bottomBarScrollDown.value = false
+        }
+    }
 
     val onRefresh: () -> Unit = {
         scope.launch { viewModel.loadAppList() }

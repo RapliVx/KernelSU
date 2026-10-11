@@ -120,6 +120,7 @@ import me.weishu.kernelsu.ui.component.rememberCustomDialog
 import me.weishu.kernelsu.ui.component.rememberLoadingDialog
 import me.weishu.kernelsu.ui.util.execKsud
 import me.weishu.kernelsu.ui.util.getFeatureStatus
+import me.weishu.kernelsu.ui.LocalBottomBarScrollDown
 import me.weishu.kernelsu.ui.util.LocalSnackbarHost
 import me.weishu.kernelsu.ui.util.getBugreportFile
 import me.weishu.kernelsu.ui.util.getFeaturePersistValue
@@ -174,6 +175,14 @@ fun SettingScreen(navigator: DestinationsNavigator) {
     CompositionLocalProvider(LocalDensity provides customDensity) {
         val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
         val snackBarHost = LocalSnackbarHost.current
+        val bottomBarScrollDown = LocalBottomBarScrollDown.current
+        val scrollState = rememberScrollState()
+
+        LaunchedEffect(scrollState.value, scrollState.maxValue) {
+            if (scrollState.value == 0 || scrollState.maxValue == 0) {
+                bottomBarScrollDown.value = false
+            }
+        }
 
         Scaffold(
             topBar = {
@@ -194,7 +203,7 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 modifier = Modifier
                     .padding(paddingValues)
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
             ) {
 
                 val exportBugreportLauncher = rememberLauncherForActivityResult(

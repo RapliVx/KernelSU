@@ -132,6 +132,7 @@ import androidx.compose.ui.layout.ContentScale
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ksuApp
+import me.weishu.kernelsu.ui.LocalBottomBarScrollDown
 import me.weishu.kernelsu.ui.component.ConfirmResult
 import me.weishu.kernelsu.ui.component.RebootListPopup
 import me.weishu.kernelsu.ui.component.SearchAppBar
@@ -196,33 +197,8 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     val floatingPadding = remember(isFloating, sysNavBarPadding) { if (isFloating) sysNavBarPadding + 96.dp else 0.dp }
     
     val modules = viewModel.moduleList
-    var isFabVisible by remember { mutableStateOf(true) }
-
-    val nestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            var scrollAccumulator = 0f
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource
-            ): Offset {
-                val delta = consumed.y
-                if (delta != 0f) {
-                    scrollAccumulator += delta
-                    scrollAccumulator = scrollAccumulator.coerceIn(-150f, 150f)
-
-                    if (scrollAccumulator < -50f) {
-                        isFabVisible = false
-                        scrollAccumulator = 0f
-                    } else if (scrollAccumulator > 50f) {
-                        isFabVisible = true
-                        scrollAccumulator = 0f
-                    }
-                }
-                return Offset.Zero
-            }
-        }
-    }
+    val bottomBarScrollDown = LocalBottomBarScrollDown.current
+    val isFabVisible = !bottomBarScrollDown.value
 
     LaunchedEffect(Unit) {
         viewModel.checkModuleUpdate = prefs.getBoolean("module_check_update", true)
