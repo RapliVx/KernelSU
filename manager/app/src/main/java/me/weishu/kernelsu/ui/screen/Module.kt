@@ -770,11 +770,6 @@ fun ModuleItem(
         }
 
         val context = LocalContext.current
-        val moduleSizeMb by produceState<Float?>(initialValue = null, key1 = module.id) {
-            value = withContext(Dispatchers.IO) {
-                calculateModuleSizeMB(module.id)
-            }
-        }
 
         val bannerData by produceState<Any?>(
             initialValue = null,
@@ -852,10 +847,9 @@ fun ModuleItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
-                val size = moduleSizeMb
-                if (size != null && size > 0f) {
+                if (module.size > 0L) {
                     BadgeChip(
-                        text = String.format("%.2f MB", size)
+                        text = formatSize(module.size)
                     )
                 }
 
@@ -1120,20 +1114,16 @@ fun ModuleItem(
 }
 }
 
-fun calculateModuleSizeMB(moduleId: String): Float {
-    return try {
-        val result = Shell.cmd("du -sk /data/adb/modules/$moduleId").exec().out
-
-        if (result.isNotEmpty()) {
-            val outputLine = result[0].trim()
-            val sizeInKb = outputLine.split("\\s+".toRegex()).firstOrNull()?.toLongOrNull() ?: 0L
-
-            sizeInKb / 1024f
-        } else {
-            0f
-        }
-    } catch (e: Exception) {
-        0f
+fun formatSize(size: Long): String {
+    if (size <= 0L) return ""
+    val kb = 1024
+    val mb = kb * 1024
+    val gb = mb * 1024
+    return when {
+        size >= gb -> "%.2f GB".format(size.toDouble() / gb)
+        size >= mb -> "%.2f MB".format(size.toDouble() / mb)
+        size >= kb -> "%.2f KB".format(size.toDouble() / kb)
+        else -> "$size B"
     }
 }
 

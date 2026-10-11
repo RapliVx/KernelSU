@@ -144,6 +144,11 @@ fun getModuleCount(): Int {
     }.getOrElse { return 0 }
 }
 
+fun getModuleSize(dir: File): Long {
+    val result = ShellUtils.fastCmd("$BUSYBOX du -sb '${dir.absolutePath}' | awk '{print $1}'").trim()
+    return result.toLongOrNull() ?: 0L
+}
+
 fun getSuperuserCount(): Int {
     return Natives.getSuperuserCount()
 }

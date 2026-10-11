@@ -24,9 +24,11 @@ import me.weishu.kernelsu.ksuApp
 import me.weishu.kernelsu.ui.util.HanziToPinyin
 import me.weishu.kernelsu.ui.util.isNetworkAvailable
 import me.weishu.kernelsu.ui.util.listModules
+import me.weishu.kernelsu.ui.util.getModuleSize
 import me.weishu.kernelsu.ui.util.module.sanitizeVersionString
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.text.Collator
 import java.util.Locale
 
@@ -54,7 +56,8 @@ class ModuleViewModel : ViewModel() {
         val metamodule: Boolean,
         val banner: String?,
         val actionIconPath: String? = null,
-        val webUiIconPath: String? = null
+        val webUiIconPath: String? = null,
+        val size: Long = 0L
     )
 
     @Immutable
@@ -153,8 +156,11 @@ class ModuleViewModel : ViewModel() {
                     (0 until array.length()).asSequence()
                         .map { array.getJSONObject(it) }
                         .map { obj ->
+                            val id = obj.getString("id")
+                            val moduleDir = File("/data/adb/modules/$id")
+                            val size = getModuleSize(moduleDir)
                             ModuleInfo(
-                                obj.getString("id"),
+                                id,
                                 obj.optString("name"),
                                 obj.optString("author", "Unknown"),
                                 obj.optString("version", "Unknown"),
@@ -169,7 +175,8 @@ class ModuleViewModel : ViewModel() {
                                 (obj.optInt("metamodule") != 0) or obj.optBoolean("metamodule"),
                                 obj.optString("banner"),
                                 null,
-                                null
+                                null,
+                                size
                             )
                         }.toList()
                 }.getOrElse {
