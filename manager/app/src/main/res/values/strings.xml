@@ -223,9 +223,16 @@
     <string name="nav_bar_title">Navigation Bar</string>
     <string name="floating_nav_title">Floating Navigation Bar</string>
     <string name="floating_nav_summary">Material 3 Expressive floating capsule style</string>
+    <string name="floating_nav_gesture_title">Floating Navbar Gesture</string>
+    <string name="floating_nav_gesture_summary">Enable gesture scrubbing on floating navbar</string>
     <string name="card_layout_title">Card Layout</string>
     <string name="layout_classic">Classic</string>
     <string name="layout_modern">Modern</string>
+    <string name="home_cards_title">Home Cards</string>
+    <string name="hide_home_support_title">Hide \"Support Us\"</string>
+    <string name="hide_home_support_summary">Hide the donation card on the home screen</string>
+    <string name="hide_home_learn_title">Hide \"Learn KernelSU\"</string>
+    <string name="hide_home_learn_summary">Hide the guide card on the home screen</string>
     <string name="quick_shell_summary">Run quick terminal commands</string>
     <string name="profile_flags_desc_no_new_privs">Prevent further privilege escalation via KernelSU from within the context of this root profile.</string>
     <string name="hook_mode">Hook Mode</string>

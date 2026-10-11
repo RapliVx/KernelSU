@@ -172,9 +172,16 @@
     <string name="nav_bar_title">Bilah Navigasi</string>
     <string name="floating_nav_title">Navigasi Melayang</string>
     <string name="floating_nav_summary">Gaya kapsul melayang ala Material 3 Expressive</string>
+    <string name="floating_nav_gesture_title">Gestur Navigasi Melayang</string>
+    <string name="floating_nav_gesture_summary">Aktifkan gestur geser pada bilah navigasi melayang</string>
     <string name="card_layout_title">Tata Letak Kartu</string>
     <string name="layout_classic">Klasik</string>
     <string name="layout_modern">Modern</string>
+    <string name="home_cards_title">Kartu Beranda</string>
+    <string name="hide_home_support_title">Sembunyikan \"Dukung Kami\"</string>
+    <string name="hide_home_support_summary">Sembunyikan kartu donasi di halaman beranda</string>
+    <string name="hide_home_learn_title">Sembunyikan \"Pelajari KernelSU\"</string>
+    <string name="hide_home_learn_summary">Sembunyikan kartu panduan di halaman beranda</string>
     <string name="quick_shell_summary">Jalankan perintah terminal cepat</string>
     <string name="profile_flags_desc_no_new_privs">Cegah eskalasi hak istimewa lebih lanjut via KernelSU dari dalam konteks profil root ini.</string>
     <string name="hook_mode">Mode Hook</string>
