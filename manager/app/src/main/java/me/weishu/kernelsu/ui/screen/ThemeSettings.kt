@@ -464,8 +464,8 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                         add {
                             var enableFloatingNavGesture by rememberSaveable { mutableStateOf(prefs.getBoolean("floating_navbar_gesture", false)) }
                             ExpressiveSwitchItem(
-                                title = "Floating Navbar Gesture",
-                                summary = "Enable iOS-style gesture scrubbing on floating navbar.",
+                                title = stringResource(R.string.floating_nav_gesture_title),
+                                summary = stringResource(R.string.floating_nav_gesture_summary),
                                 checked = enableFloatingNavGesture,
                                 onCheckedChange = { isChecked ->
                                     prefs.edit { putBoolean("floating_navbar_gesture", isChecked) }
