@@ -519,6 +519,42 @@ fun ThemeSettingsScreen(resultNavigator: ResultBackNavigator<Boolean>) {
                 }
             }
 
+            var hideHomeSupport by rememberSaveable {
+                mutableStateOf(prefs.getBoolean("hide_home_support", false))
+            }
+            var hideHomeLearn by rememberSaveable {
+                mutableStateOf(prefs.getBoolean("hide_home_learn", false))
+            }
+
+            ExpressiveList(
+                title = stringResource(R.string.home_cards_title),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                content = listOf<@Composable () -> Unit>(
+                    {
+                        ExpressiveSwitchItem(
+                            title = stringResource(R.string.hide_home_support_title),
+                            summary = stringResource(R.string.hide_home_support_summary),
+                            checked = hideHomeSupport,
+                            onCheckedChange = { isChecked ->
+                                prefs.edit { putBoolean("hide_home_support", isChecked) }
+                                hideHomeSupport = isChecked
+                            }
+                        )
+                    },
+                    {
+                        ExpressiveSwitchItem(
+                            title = stringResource(R.string.hide_home_learn_title),
+                            summary = stringResource(R.string.hide_home_learn_summary),
+                            checked = hideHomeLearn,
+                            onCheckedChange = { isChecked ->
+                                prefs.edit { putBoolean("hide_home_learn", isChecked) }
+                                hideHomeLearn = isChecked
+                            }
+                        )
+                    }
+                )
+            )
+
             Spacer(Modifier.height(32.dp))
         }
     }

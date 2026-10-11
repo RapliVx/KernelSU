@@ -254,8 +254,14 @@ fun HomeScreen(navigator: DestinationsNavigator) {
 //                UpdateCard()
 //            }
                 InfoCard()
-                DonateCard()
-                LearnMoreCard()
+                val hideHomeSupport = prefs.getBoolean("hide_home_support", false)
+                val hideHomeLearn = prefs.getBoolean("hide_home_learn", false)
+                if (!hideHomeSupport) {
+                    DonateCard()
+                }
+                if (!hideHomeLearn) {
+                    LearnMoreCard()
+                }
                 Spacer(modifier = Modifier.height(floatingPadding))
             }
         }
