@@ -167,8 +167,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.zIndex
 import androidx.compose.material3.Surface
 
@@ -259,13 +257,11 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
         LocalDensity provides customDensity
     ) {
         Scaffold(
-            modifier = Modifier
-                .pullToRefresh(
-                    state = pullToRefreshState,
-                    isRefreshing = viewModel.isRefreshing,
-                    onRefresh = onRefresh,
-                )
-                .nestedScroll(nestedScrollConnection),
+            modifier = Modifier.pullToRefresh(
+                state = pullToRefreshState,
+                isRefreshing = viewModel.isRefreshing,
+                onRefresh = onRefresh,
+            ),
             topBar = {
                 SearchAppBar(
                     title = {
