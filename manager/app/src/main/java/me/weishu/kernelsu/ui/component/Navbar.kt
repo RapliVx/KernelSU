@@ -57,7 +57,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -107,28 +110,56 @@ fun BottomBar(navController: NavHostController) {
         contentAlignment = Alignment.BottomCenter
     ) {
         if (isFloating) {
+            val enableGesture = remember { prefs.getBoolean("floating_navbar_gesture", false) }
+            val indicatorBounds = remember { mutableStateMapOf<Int, Rect>() }
+            var selectedIndex by remember { mutableIntStateOf(0) }
+            
+            var isGestureActive by remember { mutableStateOf(false) }
+            var dragPositionX by remember { mutableFloatStateOf(0f) }
+            var rawDragX by remember { mutableFloatStateOf(0f) }
+            var hoveredIndex by remember { mutableIntStateOf(-1) }
+            
+            visibleTabs.forEachIndexed { index, destination ->
+                val isCurrent by navController.isRouteOnBackStackAsState(destination.direction)
+                if (isCurrent) {
+                    selectedIndex = index
+                }
+            }
+            
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val maxShiftPx = with(density) { 10.dp.toPx() }
+            val firstTab = indicatorBounds[0]
+            val lastTab = indicatorBounds[visibleTabs.size - 1]
+            val totalTabsWidth = if (firstTab != null && lastTab != null) lastTab.right - firstTab.left else 0f
+            val centerTabsX = if (firstTab != null && lastTab != null) (firstTab.left + lastTab.right) / 2f else 0f
+
+            val targetNavbarOffset = if (isGestureActive && enableGesture && totalTabsWidth > 0f) {
+                val progress = ((rawDragX - centerTabsX) / (totalTabsWidth / 2f)).coerceIn(-1.25f, 1.25f)
+                progress * maxShiftPx
+            } else {
+                0f
+            }
+
+            val animatedNavbarOffset by animateFloatAsState(
+                targetValue = targetNavbarOffset,
+                animationSpec = spring(
+                    dampingRatio = 0.72f,
+                    stiffness = 320f
+                ),
+                label = "navbarOffset"
+            )
+
             Surface(
-                modifier = Modifier.padding(bottom = 16.dp),
+                modifier = Modifier
+                    .padding(bottom = 16.dp)
+                    .graphicsLayer {
+                        translationX = animatedNavbarOffset
+                    },
                 shape = RoundedCornerShape(50),
                 color = MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp),
                 tonalElevation = 0.dp
             ) {
-                val enableGesture = remember { prefs.getBoolean("floating_navbar_gesture", false) }
-                val indicatorBounds = remember { mutableStateMapOf<Int, Rect>() }
-                var selectedIndex by remember { mutableIntStateOf(0) }
-                
-                var isGestureActive by remember { mutableStateOf(false) }
-                var dragPositionX by remember { mutableStateOf(0f) }
-                var hoveredIndex by remember { mutableIntStateOf(-1) }
-                
-                visibleTabs.forEachIndexed { index, destination ->
-                    val isCurrent by navController.isRouteOnBackStackAsState(destination.direction)
-                    if (isCurrent) {
-                        selectedIndex = index
-                    }
-                }
-                
-                val radiusPx = with(androidx.compose.ui.platform.LocalDensity.current) { 24.dp.toPx() }
+                val radiusPx = with(density) { 24.dp.toPx() }
                 val activeRect = indicatorBounds[selectedIndex] ?: Rect.Zero
                 
                 val targetLeft = if (isGestureActive) dragPositionX - radiusPx else activeRect.left
@@ -165,11 +196,13 @@ fun BottomBar(navController: NavHostController) {
                                 detectDragGestures(
                                     onDragStart = { offset ->
                                         isGestureActive = true
+                                        rawDragX = offset.x
                                         dragPositionX = offset.x
                                         hoveredIndex = selectedIndex
                                     },
                                     onDragEnd = {
                                         isGestureActive = false
+                                        rawDragX = 0f
                                         if (hoveredIndex != -1 && hoveredIndex != selectedIndex) {
                                             val dest = visibleTabs[hoveredIndex]
                                             val isFromNonBottom = currentRoute !in bottomBarRoutes
@@ -187,12 +220,14 @@ fun BottomBar(navController: NavHostController) {
                                     },
                                     onDragCancel = {
                                         isGestureActive = false
+                                        rawDragX = 0f
                                         hoveredIndex = -1
                                     },
                                     onDrag = { change, _ ->
+                                        rawDragX = change.position.x
                                         val minX = indicatorBounds[0]?.left ?: 0f
                                         val maxX = indicatorBounds[visibleTabs.size - 1]?.right ?: size.width.toFloat()
-                                        dragPositionX = change.position.x.coerceIn(minX, maxX)
+                                        dragPositionX = rawDragX.coerceIn(minX, maxX)
                                         
                                         val newTarget = indicatorBounds.entries.find { it.value.left <= dragPositionX && it.value.right >= dragPositionX }?.key
                                         if (newTarget != null) {
@@ -225,6 +260,8 @@ fun BottomBar(navController: NavHostController) {
                             label = "contentColor"
                         )
 
+                        val interactionSource = remember { MutableInteractionSource() }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxHeight()
@@ -235,7 +272,10 @@ fun BottomBar(navController: NavHostController) {
                                 }
                                 .clip(RoundedCornerShape(50))
                                 .background(bgColor)
-                                .clickable {
+                                .clickable(
+                                    interactionSource = interactionSource,
+                                    indication = if (enableGesture || isGestureActive) null else LocalIndication.current
+                                ) {
                                     if (isCurrentDestOnBackStack) {
                                         navigator.popBackStack(destination.direction, false)
                                     } else {
