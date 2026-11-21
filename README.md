@@ -16,8 +16,6 @@ curl -LSs "https://raw.githubusercontent.com/RapliVx/KernelSU/xxksu/kernel/setup
 ​
 - 如需启用 AVC 日志伪装功能，请开启  CONFIG_KSU_EXTRAS 
  
- 
- 
 术语注解（内核开发相关）
  
 1. hook：钩子，内核劫持、挂钩函数
