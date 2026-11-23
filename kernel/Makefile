@@ -15,8 +15,8 @@ $(info -- MDIR: $(MDIR))
 CFLAGS_ksu.o += -DKSU_VERSION=32664
 
 KSU_PACKAGE_NAME := com.rapli.mambosu
-KSU_EXPECTED_SIZE := 0x384
-KSU_EXPECTED_HASH := a9462b8b98ea1ca7901b0cbdcebfaa35f0aa95e51b01d66e6b6d2c81b97746d8
+KSU_EXPECTED_SIZE := 0x316
+KSU_EXPECTED_HASH := 559db72df34733ec66c248ec1cabc7dbc9c53d33b1c5eede36d38e37f06e800c
 
 $(info -- KernelSU Manager package name: $(KSU_PACKAGE_NAME))
 $(info -- KernelSU Manager signature size: $(KSU_EXPECTED_SIZE))
